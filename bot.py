@@ -10,6 +10,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN          = os.environ.get("BOT_TOKEN", "")
 OWNER_ID           = int(os.environ.get("OWNER_ID", "0"))
+ALLOWED_USERS      = {OWNER_ID, 8838219142}  # Edwin + papá
 CLAUDE_KEY         = os.environ.get("ANTHROPIC_API_KEY", "")
 FIREBASE_PROJECT   = os.environ.get("FIREBASE_PROJECT_ID", "starwash-cortes")
 FIRESTORE_URL      = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT}/databases/(default)/documents"
@@ -342,7 +343,15 @@ Pregunta de Edwin: {pregunta}"""
     return data["content"][0]["text"]
 
 # ── HANDLERS ──────────────────────────────────────────────────────────────────
+async def check_allowed(update: Update) -> bool:
+    uid = update.effective_user.id
+    if OWNER_ID != 0 and uid not in ALLOWED_USERS:
+        await update.message.reply_text("⛔ No tienes acceso a este bot.")
+        return False
+    return True
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     await update.message.reply_text(
         "👋 Hola! Soy el bot de *Star\\-Wash Cortes*\\.\n\n"
         "Puedo hacer lo siguiente:\n"
@@ -358,6 +367,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def cmd_ultimo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Buscando el último corte...")
     cortes = await get_cortes(limit=1)
     if not cortes:
@@ -367,6 +377,7 @@ async def cmd_ultimo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text(resumen, parse_mode="Markdown")
 
 async def cmd_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     if not context.args:
         await update.message.reply_text("Uso: /fecha 2026-06-15")
         return
@@ -380,6 +391,7 @@ async def cmd_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text(resumen, parse_mode="Markdown")
 
 async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Cargando historial...")
     cortes = await get_cortes(limit=5)
     if not cortes:
@@ -396,6 +408,7 @@ async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text(texto, parse_mode="Markdown")
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     caption = update.message.caption or "📸 Lectura de máquina"
     sender = update.effective_user.first_name
     await update.message.reply_text("✅ Foto recibida.")
@@ -416,6 +429,7 @@ PALABRAS_CORTE_COMPLETO = [
 ]
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
     texto = update.message.text
     texto_lower = texto.lower()
     msg = await update.message.reply_text("⏳ Consultando datos...")
@@ -452,6 +466,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         respuesta = await consultar_claude(texto, cortes)
+        # Limpiar formato incompatible con Telegram Markdown
+        respuesta = respuesta.replace("# ", "").replace("## ", "").replace("### ", "")
         await msg.edit_text(respuesta, parse_mode="Markdown")
 
     except Exception as e:
