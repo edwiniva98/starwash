@@ -99,6 +99,8 @@ def generar_resumen_firebase(corte):
     msg += f"• *Total entraron: {total_entraron}* | Máquina: {m.get('total_vendidos',0)}\n"
     msg += f"• {estado_maq}\n\n"
 
+    msg += f"💵 *BILLETES EN CAJA: {fmt(c.get('billetes',0))}*\n\n"
+
     msg += f"💰 *VENTAS ODOO*\n"
     msg += f"• Total tickets: *{fmt(t.get('total_tickets',0))}*\n"
     msg += f"• Efectivo: {fmt(p.get('efectivo',0))} | Tarjeta: {fmt(p.get('tarjeta',0))} | Trans: {fmt(p.get('transferencia',0))}\n"
@@ -283,6 +285,21 @@ async def consultar_claude(pregunta: str, cortes: list) -> str:
             entrada["ventas_detalle"] = c["ventas_detalle"]
         if c.get("adicionales_detalle"):
             entrada["adicionales_detalle"] = c["adicionales_detalle"]
+
+        # Lecturas iniciales y finales de máquina por paquete
+        paquetes = c.get("paquetes_finales", [])
+        if paquetes:
+            entrada["lecturas_maquina"] = [
+                {
+                    "paquete": p.get("num", i + 1),
+                    "inicio": p.get("inicio", 0),
+                    "final": p.get("final", 0),
+                    "vendidos": p.get("vendidos", 0),
+                    "monto": p.get("monto", 0),
+                }
+                for i, p in enumerate(paquetes)
+                if isinstance(p, dict)
+            ]
 
         notas = [n for n in c.get("notas", []) if n and str(n).strip()]
         if notas:
