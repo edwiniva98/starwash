@@ -137,6 +137,7 @@ table.ct tr.red-r td{background:var(--red-light)}
 .ei{width:100%;border:none;background:transparent;font:inherit;text-align:right;padding:0;outline:none;color:var(--text)}
 .ei:focus{background:var(--amber-light);border-radius:3px;padding:0 3px}
 .ei.center{text-align:center}
+.foto-zone:hover{background:var(--ice)!important;border-color:var(--sky)!important}
 .nota-row input.ni{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;background:var(--gray)}
 .nota-row button{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:2px 5px;margin-top:2px}
 
@@ -231,6 +232,7 @@ table.ct tr.red-r td{background:var(--red-light)}
       <div class="fg fg-3">
         <div class="fl"><label>Cortesías Taller</label><input type="number" id="inp_cortes_taller" placeholder="0"></div>
         <div class="fl"><label>Cortesías Ayuntamiento</label><input type="number" id="inp_cortes_ayto" placeholder="0"></div>
+        <div class="fl"><label>Cortesías Familiar</label><input type="number" id="inp_cortes_familiar" placeholder="0"></div>
         <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seguro" placeholder="0"></div>
         <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0"></div>
         <div class="fl"><label>Regresos</label><input type="number" id="inp_regresos" placeholder="0"></div>
@@ -257,6 +259,13 @@ table.ct tr.red-r td{background:var(--red-light)}
         <button class="tbtn active-no" id="btn_no" onclick="toggleSvc(false)">No</button>
       </div>
       <div id="svc_body" style="display:none">
+        <div style="display:flex;gap:8px;padding:6px 8px;background:var(--ice);border-radius:5px;border:1px solid var(--border);margin-bottom:6px">
+          <span style="flex:1;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Servicio</span>
+          <span style="width:90px;text-align:right;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Precio</span>
+          <span style="width:70px;text-align:center;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Cantidad</span>
+          <span style="width:90px;text-align:right;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Total</span>
+          <span style="width:30px"></span>
+        </div>
         <div id="svc_list"></div>
         <button class="btn-add" onclick="addSvc()">+ Agregar servicio</button>
       </div>
@@ -268,6 +277,25 @@ table.ct tr.red-r td{background:var(--red-light)}
     <div class="card-head"><div class="badge">🔢</div>LECTURA DE LA MÁQUINA</div>
     <div class="card-body">
       <p class="hint">El Final de hoy es el Inicio de mañana.</p>
+      <!-- Foto de lectura -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">📸 Foto de la Lectura</label>
+        <div id="foto_dropzone" onclick="document.getElementById('foto_input').click()"
+          style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--gray);transition:all .2s"
+          ondragover="event.preventDefault();this.style.background='var(--ice)'"
+          ondragleave="this.style.background='var(--gray)'"
+          ondrop="handleFotoDrop(event)">
+          <div id="foto_preview" style="display:none">
+            <img id="foto_img" style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:6px">
+            <div style="font-size:12px;color:var(--teal);font-weight:600" id="foto_name"></div>
+          </div>
+          <div id="foto_placeholder">
+            <div style="font-size:24px;margin-bottom:4px">📷</div>
+            <div style="font-size:12px;color:var(--muted)">Toca para subir foto de la lectura</div>
+          </div>
+        </div>
+        <input type="file" id="foto_input" accept="image/*" capture="environment" style="display:none" onchange="handleFotoFile(this.files[0])">
+      </div>
       <table class="paq-table">
         <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
         <tbody id="paq_input_body"></tbody>
@@ -393,8 +421,10 @@ table.ct tr.red-r td{background:var(--red-light)}
     <div class="card-head"><div class="badge">4</div>OTROS</div>
     <div class="card-body">
       <table class="ct">
-        <tr><td class="lbl">Cortesías Taller</td><td><input class="ei center" type="number" id="out_ct" value="0" oninput="recalcOut()"></td>
-            <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="0" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Cortesías Taller</td><td><input class="ei center" type="number" id="out_ct" value="" oninput="recalcOut()"></td>
+            <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
+            <td></td><td></td></tr>
         <tr><td class="lbl">Seguro de Lluvia</td><td><input class="ei center" type="number" id="out_seg" value="0" oninput="recalcOut()"></td>
             <td class="lbl">Lavados a Mano</td><td><input class="ei center" type="number" id="out_lavm" value="0" oninput="recalcOut()"></td></tr>
         <tr><td class="lbl">Regresos</td><td><input class="ei center" type="number" id="out_reg" value="0" oninput="recalcOut()"></td><td></td><td></td></tr>
@@ -494,7 +524,7 @@ const ADICS=[
   {name:"Pro Cera + Tapetes",     price:50},
 ];
 
-let gastos=[], svcs=[], notas=[], pdfFile=null, hasSvc=false;
+let gastos=[], svcs=[], notas=[], pdfFile=null, fotoFile=null, hasSvc=false;
 let D={}; // all data after generate
 
 window.onload=()=>{
@@ -509,6 +539,130 @@ function handleFile(f){
   if(!f||f.type!=='application/pdf'){alert('Por favor sube un PDF.');return;}
   pdfFile=f;
   document.getElementById('fileInfo').innerHTML=`✔ ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+}
+async function cargarInicioPaquetes(){
+  const fecha = document.getElementById('inp_fecha').value;
+  if(!fecha) return;
+  
+  // Calcular fecha anterior
+  const d = new Date(fecha + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  const fechaAyer = d.toISOString().slice(0,10);
+  
+  const FIREBASE_PROJECT = 'starwash-cortes';
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
+  
+  try{
+    const r = await fetch(`${url}?pageSize=30&orderBy=timestamp+desc`);
+    const data = await r.json();
+    const docs = data.documents || [];
+    
+    // Buscar corte del día anterior
+    let corteAyer = null;
+    for(const doc of docs){
+      const fields = doc.fields || {};
+      const f = fields.fecha?.stringValue || '';
+      if(f === fechaAyer){
+        corteAyer = doc;
+        break;
+      }
+    }
+    
+    if(!corteAyer){
+      console.log('No hay corte del día anterior:', fechaAyer);
+      return;
+    }
+    
+    // Extraer paquetes del corte anterior
+    // Los paquetes están guardados en la lectura de máquina
+    // Buscar en los campos del documento
+    const fields = corteAyer.fields || {};
+    
+    // Los finales del día anterior son los inicios de hoy
+    // Buscar en el historial el documento y leer paquetes
+    const docId = corteAyer.name.split('/').pop();
+    const docUrl = `${url}/${docId}`;
+    const docR = await fetch(docUrl);
+    const docData = await docR.json();
+    const docFields = docData.fields || {};
+    
+    // Los paquetes se guardan como array en firebase
+    // Reconstruir desde los inputs del día anterior guardados
+    // Por ahora mostramos aviso de que se encontró el corte anterior
+    console.log('Corte anterior encontrado:', fechaAyer, docId);
+    
+    // Intentar leer paquetes guardados
+    // En el HTML guardamos los finales en pi_fin_1..6
+    // Los buscamos en Firestore — se guardaron en el array de paquetes o en campos separados
+    // Como no guardamos paquetes en Firebase aún, mostramos aviso
+    // Leer paquetes_finales del corte anterior
+    const paqField = docFields.paquetes_finales;
+    if(paqField && paqField.arrayValue){
+      const paquetes = paqField.arrayValue.values || [];
+      paquetes.forEach((p, i)=>{
+        const fields_p = p.mapValue?.fields || {};
+        const finalVal = fields_p.final?.integerValue || fields_p.final?.doubleValue || 0;
+        const inp = document.getElementById(`pi_ini_${i+1}`);
+        if(inp && finalVal) {
+          inp.value = finalVal;
+          inp.style.background = 'var(--teal-light)';
+          inp.title = `Cargado del corte del ${fechaAyer}`;
+        }
+      });
+      // Update vendidos
+      document.querySelectorAll('#paq_input_body tr').forEach((tr,i)=>{
+        const ini = parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0;
+        const fin = parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0;
+        const vend = document.getElementById(`pi_vend_${i+1}`);
+        if(vend) vend.textContent = Math.max(0, fin-ini);
+      });
+      mostrarAvisoInicios(fechaAyer);
+    } else {
+      console.log('No hay paquetes_finales guardados para', fechaAyer);
+    }
+    
+  } catch(e){
+    console.warn('Error cargando inicios:', e);
+  }
+}
+
+function mostrarAvisoInicios(fecha){
+  // Mostrar banner informativo
+  let banner = document.getElementById('banner_inicios');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'banner_inicios';
+    banner.style.cssText = 'background:var(--teal);color:#fff;padding:8px 14px;border-radius:7px;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:8px';
+    const paqCard = document.querySelector('.card-head .badge');
+    const cards = document.querySelectorAll('.card');
+    // Insert before paquetes section
+    for(const card of cards){
+      if(card.innerHTML.includes('LECTURA DE LA MÁQUINA')){
+        card.querySelector('.card-body').insertBefore(banner, card.querySelector('.card-body').firstChild);
+        break;
+      }
+    }
+  }
+  banner.innerHTML = `✅ Se encontró corte del ${fecha} — captura los Finales de hoy y los Inicios se tomarán del día anterior al guardar.`;
+}
+
+function handleFotoDrop(ev){
+  ev.preventDefault();
+  document.getElementById('foto_dropzone').style.background='var(--gray)';
+  handleFotoFile(ev.dataTransfer.files[0]);
+}
+function handleFotoFile(f){
+  if(!f||!f.type.startsWith('image/')){alert('Por favor sube una imagen.');return;}
+  fotoFile=f;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('foto_img').src=e.target.result;
+    document.getElementById('foto_name').textContent=f.name+' ('+( f.size/1024).toFixed(1)+' KB)';
+    document.getElementById('foto_preview').style.display='block';
+    document.getElementById('foto_placeholder').style.display='none';
+    document.getElementById('foto_dropzone').style.borderColor='var(--teal)';
+  };
+  reader.readAsDataURL(f);
 }
 function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Error'));r.readAsDataURL(f);});}
 
@@ -530,9 +684,11 @@ function renderSvcs(){
   const el=document.getElementById('svc_list');el.innerHTML='';
   svcs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='list-row';
-    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value">
-      <input class="lm" type="number" value="${s.p||''}" placeholder="Precio" oninput="svcs[${i}].p=parseFloat(this.value)||0">
-      <input style="width:60px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="Cant" oninput="svcs[${i}].q=parseFloat(this.value)||0">
+    const tot=(s.p||0)*(s.q||0);
+    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;renderSvcs()">
+      <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;renderSvcs()">
+      <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;renderSvcs()">
+      <span style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
       <button class="del" onclick="svcs.splice(${i},1);renderSvcs()">×</button>`;
     el.appendChild(d);
   });
@@ -698,11 +854,13 @@ function buildCorte(od){
   // Conteos otros
   const ct=parseFloat(document.getElementById('inp_cortes_taller').value)||0;
   const ca=parseFloat(document.getElementById('inp_cortes_ayto').value)||0;
+  const cf=parseFloat(document.getElementById('inp_cortes_familiar')?.value)||0;
   const seg=parseFloat(document.getElementById('inp_seguro').value)||0;
   const lavm=parseFloat(document.getElementById('inp_lavm').value)||0;
   const reg=parseFloat(document.getElementById('inp_regresos').value)||0;
   document.getElementById('out_ct').value=ct||'';
   document.getElementById('out_ca').value=ca||'';
+  document.getElementById('out_cf').value=cf||'';
   document.getElementById('out_seg').value=seg||'';
   document.getElementById('out_lavm').value=lavm||'';
   document.getElementById('out_reg').value=reg||'';
@@ -786,8 +944,8 @@ function buildCorte(od){
   document.getElementById('k_trans').textContent=fmtK(D.trans);
   document.getElementById('k_pagados').textContent=cantPagados;
   document.getElementById('k_pagados2').textContent=cantPagados;
-  document.getElementById('k_entraron').textContent=cantPagados+ct+ca+seg;
-  document.getElementById('k_cortes_total').textContent=ct+ca+seg;
+  document.getElementById('k_entraron').textContent=cantPagados+ct+ca+cf+seg;
+  document.getElementById('k_cortes_total').textContent=ct+ca+cf+seg;
   document.getElementById('k_tcaja_kpi').textContent=fmtK(totalCaja);
   document.getElementById('k_gastos_kpi').textContent=fmtK(totGastos);
   document.getElementById('k_apertura').textContent=fmtK(apertura);
@@ -912,6 +1070,7 @@ function recalcOut(){
 
   const ct=parseFloat(document.getElementById('out_ct')?.value)||0;
   const ca=parseFloat(document.getElementById('out_ca')?.value)||0;
+  const cf=parseFloat(document.getElementById('out_cf')?.value)||0;
   const seg=parseFloat(document.getElementById('out_seg')?.value)||0;
   const lavm=parseFloat(document.getElementById('out_lavm')?.value)||0;
   const reg=parseFloat(document.getElementById('out_reg')?.value)||0;
@@ -989,7 +1148,10 @@ function exportXLSX(){
 
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetAll(){
-  pdfFile=null;gastos=[];svcs=[];notas=[];hasSvc=false;D={};
+  pdfFile=null;fotoFile=null;gastos=[];svcs=[];notas=[];hasSvc=false;D={};
+  document.getElementById('foto_preview').style.display='none';
+  document.getElementById('foto_placeholder').style.display='block';
+  document.getElementById('foto_dropzone').style.borderColor='var(--border)';
   document.getElementById('fileInfo').innerHTML='';
   document.getElementById('corteWrap').style.display='none';
   document.getElementById('actions').style.display='none';
@@ -1175,6 +1337,19 @@ window.enviarTelegram = async function(corte){
       })
     });
     console.log('Telegram notificado');
+    // Mandar foto si existe
+    if(fotoFile){
+      const b64foto = await toB64(fotoFile);
+      const mediaType = fotoFile.type;
+      const formData = new FormData();
+      formData.append('chat_id', CHAT_ID);
+      formData.append('photo', fotoFile, fotoFile.name);
+      formData.append('caption', `📸 Lectura de máquina — ${corte.fecha||'—'} ${corte.sesion||'—'}`);
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+    }
   } catch(e){
     console.warn('Error Telegram:', e);
   }
@@ -1229,6 +1404,7 @@ window.guardarCorte = async function(){
       otros: {
         cortes_taller: D.ct  || 0,
         cortes_ayto:   D.ca  || 0,
+        cortes_familiar: D.cf || 0,
         seguro:        D.seg || 0,
         lavados_mano:  D.lavm|| 0,
         regresos:      D.reg || 0,
@@ -1240,6 +1416,14 @@ window.guardarCorte = async function(){
       },
       gastos: gastos.map(g=>({concepto:g.c, monto:g.m})),
       notas:  notas.filter(n=>n.trim()),
+      tiene_foto: fotoFile !== null,
+      paquetes_finales: Array.from({length:6},(_,i)=>({
+        num: i+1,
+        inicio: parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0,
+        final: parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0,
+        vendidos: Math.max(0,(parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0)),
+        monto: parseFloat(document.getElementById(`pi_mon_${i+1}`)?.value)||0,
+      })),
     };
     const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
     const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
