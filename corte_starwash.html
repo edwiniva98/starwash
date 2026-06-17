@@ -425,7 +425,6 @@ table.ct tr.red-r td{background:var(--red-light)}
             <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="" oninput="recalcOut()"></td></tr>
         <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
             <td></td><td></td></tr>
-        <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
             <td></td><td></td></tr>
         <tr><td class="lbl">Seguro de Lluvia</td><td><input class="ei center" type="number" id="out_seg" value="0" oninput="recalcOut()"></td>
             <td class="lbl">Lavados a Mano</td><td><input class="ei center" type="number" id="out_lavm" value="0" oninput="recalcOut()"></td></tr>
@@ -687,7 +686,7 @@ function renderSvcs(){
   svcs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='list-row';
     const tot=(s.p||0)*(s.q||0);
-    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value">
+    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;updateSvcTot(${i})">
       <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;updateSvcTot(${i})">
       <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;updateSvcTot(${i})">
       <span id="svctot_${i}" style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
@@ -858,10 +857,13 @@ function buildCorte(od){
   let totSvc=0;
   if(svcs.length&&hasSvc){
     const sb=document.getElementById('body_svc_out');sb.innerHTML='';
-    svcs.forEach(s=>{
+    svcs.forEach((s,i)=>{
       const t=(s.p||0)*(s.q||0);totSvc+=t;
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${s.n||'—'}</td><td class="right">${fmt(s.p||0)}</td><td class="center">${s.q||0}</td><td class="right">${fmt(t)}</td>`;
+      tr.innerHTML=`<td><input style="width:100%;border:none;background:transparent;font:inherit;outline:none" type="text" value="${s.n||''}" placeholder="Servicio" oninput="svcs[${i}].n=this.value"></td>
+        <td><input class="ei" style="text-align:right" type="number" value="${s.p||''}" placeholder="$0" oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
+        <td><input class="ei center" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;recalcSvcOut()"></td>
+        <td class="right" id="svc_out_tot_${i}">${fmt(t)}</td>`;
       sb.appendChild(tr);
     });
     document.getElementById('tot_svc_out').textContent=fmt(totSvc);
@@ -1068,6 +1070,25 @@ function addGastoOut(){gastos.push({c:'',m:0});renderGastosOut(true);}
 
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
 function setStyle(id,prop,val){const el=document.getElementById(id);if(el)el.style[prop]=val;}
+function recalcSvcOut(){
+  let totSvc=0;
+  svcs.forEach((s,i)=>{
+    const t=(s.p||0)*(s.q||0); totSvc+=t;
+    const el=document.getElementById('svc_out_tot_'+i);
+    if(el) el.textContent=fmt(t);
+  });
+  set('tot_svc_out',fmt(totSvc));
+  // Update totals that depend on svc
+  D.totSvc=totSvc;
+  const totPagos=(D.efe||0)+(D.tar||0)+(D.trans||0)+totSvc;
+  D.totPagos=totPagos;
+  set('out_svc_pagos',fmt(totSvc));
+  set('out_total_cobrado',fmt(totPagos));
+  set('k_tickets',fmtK((D.totalTix||0)-((D.totSvc||0))+totSvc));
+  // Recalc diff
+  recalcOut();
+}
+
 function recalcPaqOut(){
   let ct=0,mt=0;
   for(let i=1;i<=6;i++){
