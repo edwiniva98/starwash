@@ -813,6 +813,14 @@ JSON:
       gastos=parsed.gastos_odoo.filter(g=>g.concepto&&g.monto>0).map(g=>({c:g.concepto,m:g.monto}));
     }
 
+    // Apply cortesias from PDF to inputs
+    if(parsed.cortesias){
+      const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
+      setV('inp_cortes_taller',   parsed.cortesias.taller);
+      setV('inp_cortes_ayto',     parsed.cortesias.ayuntamiento);
+      setV('inp_cortes_familiar', parsed.cortesias.familiar);
+    }
+
     buildCorte(parsed);
     await runAudit();
   }catch(e){alert('Error: '+e.message);}
