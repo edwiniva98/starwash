@@ -687,15 +687,24 @@ function renderSvcs(){
   svcs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='list-row';
     const tot=(s.p||0)*(s.q||0);
-    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;renderSvcs()">
-      <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;renderSvcs()">
-      <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;renderSvcs()">
-      <span style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
+    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;updateSvcTot(${i})">
+      <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;updateSvcTot(${i})">
+      <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;updateSvcTot(${i})">
+      <span id="svctot_${i}" style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
       <button class="del" onclick="svcs.splice(${i},1);renderSvcs()">×</button>`;
     el.appendChild(d);
   });
 }
 function addSvc(){svcs.push({n:'',p:0,q:1});renderSvcs();}
+function updateSvcTot(i){
+  const tot=(svcs[i].p||0)*(svcs[i].q||0);
+  const el=document.getElementById('svctot_'+i);
+  if(el) el.textContent='$'+tot.toLocaleString('es-MX',{minimumFractionDigits:2});
+  // update grand total
+  const grandTot=svcs.reduce((s,v)=>s+(v.p||0)*(v.q||0),0);
+  const el2=document.getElementById('tot_svc_lbl');
+  if(el2) el2.textContent='$'+grandTot.toLocaleString('es-MX',{minimumFractionDigits:2});
+}
 function toggleSvc(val){
   hasSvc=val;
   document.getElementById('svc_body').style.display=val?'block':'none';
