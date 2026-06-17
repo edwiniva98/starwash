@@ -1066,6 +1066,120 @@ window.cargarHistorial = async function(){
   }
 };
 
+window.enviarTelegram = async function(corte){
+  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
+  const CHAT_ID   = '1159452620';
+  
+  const v = corte.ventas || {};
+  const a = corte.adicionales || {};
+  const p = corte.pagos || {};
+  const c = corte.caja || {};
+  const t = corte.totales || {};
+  const m = corte.maquina || {};
+  const o = corte.otros || {};
+  
+  const fmt = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
+  
+  const autos_pagados = (v.autos||0)+(v.camionetas||0)+(v.pickups||0)+(v.express||0)+(v.fiscalia||0);
+  const total_entraron = autos_pagados + (o.cortes_taller||0) + (o.cortes_ayto||0) + (o.seguro||0);
+  const difDin = t.diferencia_din || 0;
+  const difMaq = m.diferencia || 0;
+  
+  const estadoDin = difDin === 0 ? '✅ Cuadra exacto' : difDin > 0 ? `⚠️ Sobra ${fmt(Math.abs(difDin))}` : `❌ Falta ${fmt(Math.abs(difDin))}`;
+  const estadoMaq = difMaq === 0 ? '✅ Cuadra exacto' : difMaq > 0 ? `⚠️ Máquina marcó ${difMaq} de más (posible sin cobrar)` : `⚠️ Máquina marcó ${Math.abs(difMaq)} de menos`;
+  
+  // Notas
+  const notasLimpias = (corte.notas||[]).filter(n=>n.trim());
+  
+  let msg = `⚡ *STAR WASH — CORTE DEL DÍA*
+`;
+  msg += `📅 ${corte.fecha||'—'} | 🔖 ${corte.sesion||'—'}
+`;
+  msg += `👤 Responsable: ${corte.responsable||'—'}
+
+`;
+  
+  msg += `🚗 *VEHÍCULOS*
+`;
+  msg += `• Autos pagados: *${autos_pagados}*
+`;
+  msg += `• Cortesías: ${(o.cortes_taller||0)+(o.cortes_ayto||0)} | Seguro: ${o.seguro||0}
+`;
+  msg += `• Total entraron: *${total_entraron}*
+`;
+  msg += `• Máquina registró: ${m.total_vendidos||0} | Esperada: ${m.esperada||0}
+`;
+  msg += `• ${estadoMaq}
+
+`;
+  
+  msg += `💰 *VENTAS ODOO*
+`;
+  msg += `• Total tickets: *${fmt(t.total_tickets)}*
+`;
+  msg += `• Efectivo: ${fmt(p.efectivo)} | Tarjeta: ${fmt(p.tarjeta)} | Trans: ${fmt(p.transferencia)}
+`;
+  msg += `• Total cobrado: *${fmt(t.total_cobrado)}*
+
+`;
+  
+  msg += `🏦 *CONTROL DE CAJA*
+`;
+  msg += `• Apertura: ${fmt(c.apertura)}
+`;
+  msg += `• Morralla: ${fmt(c.morralla)} | Billetes: ${fmt(c.billetes)}
+`;
+  msg += `• Terminal: ${fmt(c.terminal)}
+`;
+  msg += `• Total en caja: *${fmt(t.total_caja)}*
+
+`;
+  
+  msg += `📊 *RESULTADO: ${estadoDin}*
+
+`;
+  
+  msg += `💸 *GASTOS: ${fmt(t.total_gastos)}*
+`;
+  (corte.gastos||[]).forEach(g => {
+    if(g.concepto && g.monto > 0) msg += `• ${g.concepto}: ${fmt(g.monto)}
+`;
+  });
+  
+  if((corte.servicios_manuales||[]).length > 0){
+    msg += `
+✨ *SERVICIOS MANUALES*
+`;
+    corte.servicios_manuales.forEach(s => {
+      if(s.nombre && s.total > 0) msg += `• ${s.nombre}: ${fmt(s.total)}
+`;
+    });
+  }
+  
+  if(notasLimpias.length > 0){
+    msg += `
+📝 *NOTAS*
+`;
+    notasLimpias.forEach((n,i) => msg += `${i+1}. ${n}
+`);
+  }
+  
+  try{
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: msg,
+        parse_mode: 'Markdown'
+      })
+    });
+    console.log('Telegram notificado');
+  } catch(e){
+    console.warn('Error Telegram:', e);
+  }
+};
+
 window.guardarCorte = async function(){
   if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
   const btn = document.getElementById('btnGuardar');
@@ -1136,6 +1250,8 @@ window.guardarCorte = async function(){
     btn.style.background = 'var(--green)';
     setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
     console.log('Corte guardado con ID:', docRef.id);
+    // Mandar resumen a Telegram
+    await enviarTelegram(corte);
   } catch(e){
     alert('Error al guardar: ' + e.message);
     btn.textContent = '💾 Guardar Corte';
