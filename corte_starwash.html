@@ -204,7 +204,7 @@ table.ct tr.red-r td{background:var(--red-light)}
     <div class="card-head"><div class="badge">📋</div>DATOS GENERALES</div>
     <div class="card-body">
       <div class="fg fg-3">
-        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha"></div>
+        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha" onchange="cargarInicioPaquetes()"></div>
         <div class="fl"><label>Responsable</label><input type="text" id="inp_resp" placeholder="Nombre"></div>
         <div class="fl"><label>Apertura de Caja ($)</label><input type="number" id="inp_apertura" placeholder="0"></div>
       </div>
@@ -423,6 +423,8 @@ table.ct tr.red-r td{background:var(--red-light)}
       <table class="ct">
         <tr><td class="lbl">Cortesías Taller</td><td><input class="ei center" type="number" id="out_ct" value="" oninput="recalcOut()"></td>
             <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
+            <td></td><td></td></tr>
         <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
             <td></td><td></td></tr>
         <tr><td class="lbl">Seguro de Lluvia</td><td><input class="ei center" type="number" id="out_seg" value="0" oninput="recalcOut()"></td>
@@ -795,6 +797,16 @@ JSON:
 function buildCorte(od){
   // Store odoo data
   D.sesion=od.sesion||'—';
+  // Set fecha from PDF if available
+  if(od.fecha){
+    const p=od.fecha.split('/');
+    if(p.length===3){
+      const fechaISO=`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+      document.getElementById('inp_fecha').value=fechaISO;
+      // Auto-load previous day machine readings
+      setTimeout(cargarInicioPaquetes, 200);
+    }
+  }
   D.ventas=[od.ventas?.autos||0,od.ventas?.camionetas||0,od.ventas?.pickups||0,od.ventas?.express||0,od.ventas?.fiscalia||0,od.ventas?.motos||0];
   D.adics=[od.adicionales?.tapetes_solo||0,od.adicionales?.motor||0,od.adicionales?.mano||0,od.adicionales?.plus_cera||0,od.adicionales?.pro_cera_tapetes||0];
   D.efe=od.pagos?.efectivo||0; D.tar=od.pagos?.tarjeta||0; D.trans=od.pagos?.transferencia||0;
@@ -914,7 +926,11 @@ function buildCorte(od){
     const mon=parseFloat(document.getElementById('pi_mon_'+i)?.value)||0;
     const vend=Math.max(0,fin-ini);
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="center">Paquete ${i}</td><td class="center">${ini}</td><td class="center">${fin}</td><td class="center">${vend}</td><td class="right">${fmt(mon)}</td>`;
+    tr.innerHTML=`<td class="center" style="font-weight:600">Paquete ${i}</td>
+      <td><input class="ei center" id="out_paq_ini_${i}" type="number" value="${ini}" oninput="recalcPaqOut()"></td>
+      <td><input class="ei center" id="out_paq_fin_${i}" type="number" value="${fin}" oninput="recalcPaqOut()"></td>
+      <td class="center" id="out_paq_vend_${i}">${vend}</td>
+      <td><input class="ei" id="out_paq_mon_${i}" type="number" value="${mon||''}" placeholder="$0" oninput="recalcPaqOut()"></td>`;
     pb.appendChild(tr);
     maqVend+=vend;maqMon+=mon;
   }
@@ -1043,6 +1059,50 @@ function addGastoOut(){gastos.push({c:'',m:0});renderGastosOut(true);}
 
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
 function setStyle(id,prop,val){const el=document.getElementById(id);if(el)el.style[prop]=val;}
+function recalcPaqOut(){
+  let ct=0,mt=0;
+  for(let i=1;i<=6;i++){
+    const ini=parseFloat(document.getElementById('out_paq_ini_'+i)?.value)||0;
+    const fin=parseFloat(document.getElementById('out_paq_fin_'+i)?.value)||0;
+    const mon=parseFloat(document.getElementById('out_paq_mon_'+i)?.value)||0;
+    const vend=Math.max(0,fin-ini);
+    const el=document.getElementById('out_paq_vend_'+i);
+    if(el) el.textContent=vend;
+    ct+=vend; mt+=mon;
+  }
+  set('tp_cant',ct); set('tp_mon',fmt(mt));
+  set('k_maq_total',ct);
+  // Update D and recalc maq dif
+  D.maqVend=ct;
+  const cantPagados=D.cantPagados||0;
+  const ct2=parseFloat(document.getElementById('out_ct')?.value)||0;
+  const ca2=parseFloat(document.getElementById('out_ca')?.value)||0;
+  const cf2=parseFloat(document.getElementById('out_cf')?.value)||0;
+  const seg2=parseFloat(document.getElementById('out_seg')?.value)||0;
+  const lavm2=parseFloat(document.getElementById('out_lavm')?.value)||0;
+  const reg2=parseFloat(document.getElementById('out_reg')?.value)||0;
+  const maqEsp=cantPagados+ct2+ca2+cf2+seg2-lavm2+reg2;
+  const difMaq=ct-maqEsp;
+  D.difMaq=difMaq; D.maqEsp=maqEsp;
+  set('k_maq_esp',maqEsp);
+  set('k_maq_dif',difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':''));
+  setStyle('k_maq_card','background',difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)');
+  // Update resumen
+  const resEl=document.getElementById('k_resumen_txt');
+  const resCard=document.getElementById('k_resumen_card');
+  const difDin=D.difDin||0;
+  let msgs=[],color='var(--green)';
+  if(difDin===0&&difMaq===0){msgs.push('✅ Corte exacto');}
+  else{
+    if(difMaq>0){msgs.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina');color='var(--amber)';}
+    else if(difMaq<0){msgs.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina');color='var(--amber)';}
+    if(difDin>0){msgs.push('💰 Sobra '+fmt(difDin)+' en caja');color='var(--amber)';}
+    else if(difDin<0){msgs.push('❌ Falta '+fmt(Math.abs(difDin))+' en caja');color='var(--red)';}
+  }
+  if(resEl) resEl.innerHTML=msgs.join('<br>');
+  if(resCard) resCard.style.background=color;
+}
+
 function recalcOut(){
   const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
   set('tot_gastos_out',fmt(totGastos));
