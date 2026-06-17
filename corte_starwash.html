@@ -508,6 +508,7 @@ table.ct tr.red-r td{background:var(--red-light)}
 </div><!-- /app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 const VENTAS=[
   {name:"Autos",                           price:110, pagado:true},
@@ -620,6 +621,21 @@ async function cargarInicioPaquetes(){
       mostrarAvisoInicios(fechaAyer);
     } else {
       console.log('No hay paquetes_finales guardados para', fechaAyer);
+    }
+    
+    // Cargar morralla de ayer como apertura de hoy
+    const cajaField = docFields.caja;
+    if(cajaField && cajaField.mapValue){
+      const cajaFields = cajaField.mapValue.fields || {};
+      const morrallaAyer = cajaFields.morralla?.integerValue || cajaFields.morralla?.doubleValue || 0;
+      if(morrallaAyer){
+        const inpApertura = document.getElementById('inp_apertura');
+        if(inpApertura && !inpApertura.value){
+          inpApertura.value = morrallaAyer;
+          inpApertura.style.background = 'var(--teal-light)';
+          inpApertura.title = `Morralla del corte del ${fechaAyer}`;
+        }
+      }
     }
     
   } catch(e){
@@ -1301,8 +1317,10 @@ window.cargarHistorial = async function(){
       const caja = d.totales?.total_caja || 0;
       const dif = d.totales?.diferencia_din || 0;
       const maqDif = d.maquina?.diferencia || 0;
+      const corteData = doc.data();
       const div = document.createElement('div');
       div.className='hist-item';
+      div.style.cursor='pointer';
       div.innerHTML=`
         <div class="hi-fecha">${fecha} — ${sesion}</div>
         <div class="hi-meta">Responsable: ${resp}</div>
@@ -1310,11 +1328,50 @@ window.cargarHistorial = async function(){
           <span class="hist-kpi">🎫 $${(tickets/1000).toFixed(1)}K</span>
           <span class="hist-kpi ${dif===0?'green':Math.abs(dif)<500?'amber':'red'}">${dif===0?'✅ Cuadra':'⚠️ $'+Math.abs(dif/1000).toFixed(1)+'K dif'}</span>
           <span class="hist-kpi ${maqDif===0?'green':'amber'}">${maqDif===0?'🚗 OK':'🚗 '+Math.abs(maqDif)+' auto'}</span>
-        </div>`;
+        </div>
+        <div style="font-size:11px;color:var(--sky);margin-top:4px;font-weight:600">👁 Ver corte completo</div>`;
+      div.onclick = () => abrirCorteHistorial(corteData);
       lista.appendChild(div);
     });
   }catch(e){
     lista.innerHTML='<p style="color:var(--red);font-size:12px">Error: '+e.message+'</p>';
+  }
+};
+
+window.generarYEnviarPDF = async function(corte){
+  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
+  const CHAT_ID   = '1159452620';
+  
+  try{
+    const elemento = document.getElementById('corteWrap');
+    const fecha = corte.fecha || document.getElementById('inp_fecha')?.value || 'corte';
+    const nombrePDF = `Corte_StarWash_${fecha}.pdf`;
+    
+    // Opciones del PDF
+    const opt = {
+      margin: [8, 8, 8, 8],
+      filename: nombrePDF,
+      image: { type: 'jpeg', quality: 0.92 },
+      html2canvas: { scale: 1.5, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+    };
+    
+    // Generar PDF como blob
+    const pdfBlob = await html2pdf().set(opt).from(elemento).outputPdf('blob');
+    
+    // Mandar PDF por Telegram
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    formData.append('document', pdfBlob, nombrePDF);
+    formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
+    
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+      method: 'POST',
+      body: formData
+    });
+    console.log('PDF enviado por Telegram');
+  } catch(e){
+    console.warn('Error generando PDF:', e);
   }
 };
 
@@ -1445,6 +1502,76 @@ window.enviarTelegram = async function(corte){
   }
 };
 
+window.abrirCorteHistorial = function(d){
+  // Close historial panel
+  historialVisible = false;
+  document.getElementById('historialPanel').style.display = 'none';
+
+  // Populate D with historical data
+  D = {
+    sesion: d.sesion||'—',
+    ventas: [d.ventas?.autos||0, d.ventas?.camionetas||0, d.ventas?.pickups||0, d.ventas?.express||0, d.ventas?.fiscalia||0, d.ventas?.motos||0],
+    adics:  [d.adicionales?.tapetes_solo||0, d.adicionales?.motor||0, d.adicionales?.mano||0, d.adicionales?.plus_cera||0, d.adicionales?.pro_cera_tapetes||0],
+    efe:    d.pagos?.efectivo||0,
+    tar:    d.pagos?.tarjeta||0,
+    trans:  d.pagos?.transferencia||0,
+    cantPagados: (d.ventas?.autos||0)+(d.ventas?.camionetas||0)+(d.ventas?.pickups||0)+(d.ventas?.express||0)+(d.ventas?.fiscalia||0),
+    maqVend: d.maquina?.total_vendidos||0,
+    maqEsp:  d.maquina?.esperada||0,
+    difMaq:  d.maquina?.diferencia||0,
+    totalTix: d.totales?.total_tickets||0,
+    totPagos: d.totales?.total_cobrado||0,
+    totalCaja: d.totales?.total_caja||0,
+    totGastos: d.totales?.total_gastos||0,
+    totSvc:   (d.servicios_manuales||[]).reduce((s,v)=>s+(v.total||0),0),
+    difDin:   d.totales?.diferencia_din||0,
+    apertura: d.caja?.apertura||0,
+    morralla: d.caja?.morralla||0,
+    billetes: d.caja?.billetes||0,
+    terminal: d.caja?.terminal||0,
+    ct: d.otros?.cortes_taller||0,
+    ca: d.otros?.cortes_ayto||0,
+    cf: d.otros?.cortes_familiar||0,
+    seg: d.otros?.seguro||0,
+    lavm: d.otros?.lavados_mano||0,
+    reg: d.otros?.regresos||0,
+  };
+  
+  // Set svcs and gastos
+  gastos = (d.gastos||[]).map(g=>({c:g.concepto||'',m:g.monto||0}));
+  svcs = (d.servicios_manuales||[]).map(s=>({n:s.nombre||'',p:s.precio||0,q:s.cantidad||1}));
+  hasSvc = svcs.length > 0;
+  notas = d.notas || [];
+
+  // Set fecha
+  if(d.fecha) document.getElementById('inp_fecha').value = d.fecha;
+
+  // Build corte output
+  buildCorte({
+    sesion: d.sesion,
+    fecha:  d.fecha,
+    ventas: {
+      autos: d.ventas?.autos||0, camionetas: d.ventas?.camionetas||0,
+      pickups: d.ventas?.pickups||0, express: d.ventas?.express||0,
+      fiscalia: d.ventas?.fiscalia||0, motos: d.ventas?.motos||0
+    },
+    adicionales: {
+      tapetes_solo: d.adicionales?.tapetes_solo||0, motor: d.adicionales?.motor||0,
+      mano: d.adicionales?.mano||0, plus_cera: d.adicionales?.plus_cera||0,
+      pro_cera_tapetes: d.adicionales?.pro_cera_tapetes||0
+    },
+    pagos: { efectivo: d.pagos?.efectivo||0, tarjeta: d.pagos?.tarjeta||0, transferencia: d.pagos?.transferencia||0 },
+    gastos_odoo: []
+  });
+  
+  // Show historial badge
+  document.getElementById('corteWrap').style.display='block';
+  document.getElementById('actions').style.display='flex';
+  
+  // Scroll to top
+  window.scrollTo(0,0);
+};
+
 window.guardarCorte = async function(){
   if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
   const btn = document.getElementById('btnGuardar');
@@ -1526,6 +1653,8 @@ window.guardarCorte = async function(){
     console.log('Corte guardado con ID:', docRef.id);
     // Mandar resumen a Telegram
     await enviarTelegram(corte);
+    // Generar y mandar PDF del corte
+    await generarYEnviarPDF(corte);
   } catch(e){
     alert('Error al guardar: ' + e.message);
     btn.textContent = '💾 Guardar Corte';
