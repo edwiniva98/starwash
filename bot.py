@@ -4,6 +4,7 @@ import json
 import re
 from datetime import datetime, timedelta
 import httpx
+from aiohttp import web
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -420,6 +421,101 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             caption=f"📸 Lectura de máquina — {sender}\n{caption}"
         )
 
+
+# ── AUDITORÍA AUTOMÁTICA ──────────────────────────────────────────────────────
+async def auditar_corte(corte: dict, historial: list) -> str:
+    """Genera reporte de auditoría comparando el corte vs historial."""
+    alertas = []
+    info = []
+
+    t = corte.get("totales", {})
+    v = corte.get("ventas", {})
+    c = corte.get("caja", {})
+    m = corte.get("maquina", {})
+    o = corte.get("otros", {})
+
+    autos_pagados = sum([v.get(k, 0) for k in ["autos", "camionetas", "pickups", "express", "fiscalia"]])
+    dif_din = t.get("diferencia_din", 0)
+    dif_maq = m.get("diferencia", 0)
+    billetes = c.get("billetes", 0)
+    efectivo_odoo = corte.get("pagos", {}).get("efectivo", 0)
+    gastos = t.get("total_gastos", 0)
+
+    # 1. Diferencia de caja
+    if dif_din != 0:
+        if abs(dif_din) >= 1000:
+            alertas.append(f"🚨 Diferencia de caja: {fmt(abs(dif_din))} ({'sobrante' if dif_din > 0 else 'faltante'}) — revisar conteo de efectivo")
+        elif abs(dif_din) > 0:
+            alertas.append(f"⚠️ Diferencia de caja menor: {fmt(abs(dif_din))} ({'sobrante' if dif_din > 0 else 'faltante'})")
+    else:
+        info.append("✅ Caja cuadra exacto")
+
+    # 2. Diferencia de máquina
+    if dif_maq != 0:
+        causa = ""
+        lavm = o.get("lavados_mano", 0)
+        reg = o.get("regresos", 0)
+        if lavm > 0:
+            causa = f" — hay {lavm} lavado(s) a mano que no pasan por máquina"
+        elif reg > 0:
+            causa = f" — hay {reg} regreso(s) registrado(s)"
+        if dif_maq > 0:
+            alertas.append(f"⚠️ Máquina marcó {dif_maq} auto(s) de más{causa} — posible auto sin cobrar")
+        else:
+            alertas.append(f"⚠️ Máquina marcó {abs(dif_maq)} auto(s) de menos{causa}")
+    else:
+        info.append("✅ Máquina cuadra exacto")
+
+    # 3. Billetes vs efectivo Odoo
+    if efectivo_odoo > 0 and billetes > 0:
+        morralla = c.get("morralla", 0)
+        apertura = c.get("apertura", 0)
+        efectivo_real = billetes + morralla - apertura
+        dif_efe = efectivo_real - efectivo_odoo
+        if abs(dif_efe) > 100:
+            alertas.append(f"⚠️ Billetes+Morralla-Apertura ({fmt(efectivo_real)}) vs Efectivo Odoo ({fmt(efectivo_odoo)}) — diferencia {fmt(abs(dif_efe))}")
+
+    # 4. Comparar vs historial (si hay suficientes cortes)
+    if len(historial) >= 2:
+        hist_autos = [sum([h.get("ventas", {}).get(k, 0) for k in ["autos", "camionetas", "pickups", "express", "fiscalia"]]) for h in historial]
+        hist_gastos = [h.get("totales", {}).get("total_gastos", 0) for h in historial]
+        hist_tickets = [h.get("totales", {}).get("total_tickets", 0) for h in historial]
+
+        prom_autos = sum(hist_autos) / len(hist_autos)
+        prom_gastos = sum(hist_gastos) / len(hist_gastos)
+        prom_tickets = sum(hist_tickets) / len(hist_tickets)
+
+        # Autos bajos
+        if prom_autos > 0 and autos_pagados < prom_autos * 0.75:
+            alertas.append(f"📉 Autos pagados ({autos_pagados}) están {round((1 - autos_pagados/prom_autos)*100)}% por debajo del promedio ({round(prom_autos)})")
+
+        # Gastos inusuales
+        if prom_gastos > 0 and gastos > prom_gastos * 1.30:
+            alertas.append(f"💸 Gastos ({fmt(gastos)}) superan 30% del promedio histórico ({fmt(prom_gastos)}) — revisar")
+
+        # Ventas bajas
+        tickets = t.get("total_tickets", 0)
+        if prom_tickets > 0 and tickets < prom_tickets * 0.75:
+            alertas.append(f"📉 Ventas ({fmt(tickets)}) están {round((1 - tickets/prom_tickets)*100)}% por debajo del promedio ({fmt(prom_tickets)})")
+
+        info.append(f"📊 Promedios históricos ({len(historial)} días): {round(prom_autos)} autos | {fmt(prom_tickets)} ventas | {fmt(prom_gastos)} gastos")
+
+    # Construir mensaje
+    fecha = corte.get("fecha", "—")
+    sesion = corte.get("sesion", "—")
+    msg = f"🔍 *AUDITORÍA — {fecha} | {sesion}*\n\n"
+
+    if alertas:
+        msg += "\n".join(alertas)
+    else:
+        msg += "\n".join(info)
+        msg += "\n\n✅ Todo en orden, sin anomalías detectadas."
+
+    if alertas and info:
+        msg += "\n\n" + "\n".join(info)
+
+    return msg
+
 PALABRAS_CORTE_COMPLETO = [
     "dame el corte", "mándame el corte", "mandame el corte",
     "el corte de", "corte del día", "corte del dia",
@@ -475,16 +571,68 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ Error consultando datos: {str(e)}")
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
+# ── WEBHOOK HTTP para recibir cortes desde el HTML ────────────────────────────
+_bot_app = None  # referencia global al bot
+
+async def handle_corte_nuevo(request):
+    """Recibe un corte guardado desde el HTML y manda auditoría por Telegram."""
+    try:
+        corte = await request.json()
+        # Obtener historial para comparar (excluir el corte actual)
+        historial = await get_cortes(limit=10)
+        fecha_actual = corte.get("fecha", "")
+        historial = [c for c in historial if c.get("fecha") != fecha_actual]
+
+        auditoria_msg = await auditar_corte(corte, historial)
+
+        if _bot_app:
+            await _bot_app.bot.send_message(
+                chat_id=OWNER_ID,
+                text=auditoria_msg,
+                parse_mode="Markdown"
+            )
+        return web.Response(text="ok")
+    except Exception as e:
+        logger.error(f"Error en handle_corte_nuevo: {e}")
+        return web.Response(text=f"error: {e}", status=500)
+
+async def run_web_server():
+    """Servidor HTTP para recibir notificaciones del HTML."""
+    server = web.Application()
+    server.router.add_post("/corte-nuevo", handle_corte_nuevo)
+    runner = web.AppRunner(server)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"Servidor HTTP en puerto {port}")
+
 def main():
+    global _bot_app
     app = Application.builder().token(BOT_TOKEN).build()
+    _bot_app = app
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ultimo", cmd_ultimo))
     app.add_handler(CommandHandler("fecha", cmd_fecha))
     app.add_handler(CommandHandler("historial", cmd_historial))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    logger.info("Bot iniciado...")
-    app.run_polling(drop_pending_updates=True)
+    import asyncio
+
+    async def run_all():
+        await run_web_server()
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling(drop_pending_updates=True)
+        logger.info("Bot iniciado con servidor HTTP...")
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await app.updater.stop()
+            await app.stop()
+            await app.shutdown()
+
+    asyncio.run(run_all())
 
 if __name__ == "__main__":
     main()

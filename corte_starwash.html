@@ -1456,7 +1456,9 @@ window.enviarTelegram = async function(corte){
   msg += `• ${estadoMaq}
 
 `;
-  
+
+  msg += `💵 *BILLETES EN CAJA: ${fmt(c.billetes||0)}*\n\n`;
+
   msg += `💰 *VENTAS ODOO*
 `;
   msg += `• Total tickets: *${fmt(t.total_tickets)}*
@@ -1534,6 +1536,20 @@ window.enviarTelegram = async function(corte){
     }
   } catch(e){
     console.warn('Error Telegram:', e);
+  }
+};
+
+window.dispararAuditoria = async function(corte){
+  const BOT_URL = 'https://worker-production-d35e.up.railway.app/corte-nuevo';
+  try{
+    await fetch(BOT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(corte)
+    });
+    console.log('Auditoría disparada');
+  } catch(e){
+    console.warn('Error disparando auditoría:', e);
   }
 };
 
@@ -1641,7 +1657,7 @@ window.guardarCorte = async function(){
       fecha:        document.getElementById('inp_fecha')?.value || '',
       sesion:       D.sesion || '',
       responsable:  document.getElementById('inp_resp')?.value || '',
-      // Ventas — detalle completo por categoría
+      // Ventas
       ventas: {
         autos:      D.ventas?.[0] || 0,
         camionetas: D.ventas?.[1] || 0,
@@ -1650,26 +1666,13 @@ window.guardarCorte = async function(){
         fiscalia:   D.ventas?.[4] || 0,
         motos:      D.ventas?.[5] || 0,
       },
-      ventas_detalle: VENTAS.map((v, i) => ({
-        nombre:   v.name,
-        precio:   v.price,
-        cantidad: D.ventas?.[i] || 0,
-        total:    (D.ventas?.[i] || 0) * v.price,
-        pagado:   v.pagado,
-      })),
       adicionales: {
-        tapetes_solo:     D.adics?.[0] || 0,
-        motor:            D.adics?.[1] || 0,
-        mano:             D.adics?.[2] || 0,
-        plus_cera:        D.adics?.[3] || 0,
-        pro_cera_tapetes: D.adics?.[4] || 0,
+        tapetes_solo:    D.adics?.[0] || 0,
+        motor:           D.adics?.[1] || 0,
+        mano:            D.adics?.[2] || 0,
+        plus_cera:       D.adics?.[3] || 0,
+        pro_cera_tapetes:D.adics?.[4] || 0,
       },
-      adicionales_detalle: ADICS.map((a, i) => ({
-        nombre:   a.name,
-        precio:   a.price,
-        cantidad: D.adics?.[i] || 0,
-        total:    (D.adics?.[i] || 0) * a.price,
-      })),
       pagos: {
         efectivo:      D.efe     || 0,
         tarjeta:       D.tar     || 0,
@@ -1677,13 +1680,11 @@ window.guardarCorte = async function(){
       },
       servicios_manuales: svcs.map(s=>({nombre:s.n, precio:s.p, cantidad:s.q, total:(s.p||0)*(s.q||0)})),
       totales: {
-        total_tickets:    D.totalTix   || 0,
-        total_lavados:    VENTAS.reduce((s,v,i)=>s+(D.ventas?.[i]||0)*v.price, 0),
-        total_adicionales:ADICS.reduce((s,a,i)=>s+(D.adics?.[i]||0)*a.price, 0),
-        total_cobrado:    D.totPagos   || 0,
-        total_caja:       D.totalCaja  || 0,
-        total_gastos:     D.totGastos  || 0,
-        diferencia_din:   D.difDin     || 0,
+        total_tickets:  D.totalTix   || 0,
+        total_cobrado:  D.totPagos   || 0,
+        total_caja:     D.totalCaja  || 0,
+        total_gastos:   D.totGastos  || 0,
+        diferencia_din: D.difDin     || 0,
       },
       caja: {
         apertura:  D.apertura  || 0,
@@ -1728,6 +1729,8 @@ window.guardarCorte = async function(){
     await enviarTelegram(corte);
     // Generar y mandar PDF del corte
     await generarYEnviarPDF(corte);
+    // Disparar auditoría automática en el bot
+    await dispararAuditoria(corte);
   } catch(e){
     alert('Error al guardar: ' + e.message);
     btn.textContent = '💾 Guardar Corte';
