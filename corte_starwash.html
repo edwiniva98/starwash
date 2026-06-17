@@ -1546,6 +1546,29 @@ window.abrirCorteHistorial = function(d){
   // Set fecha
   if(d.fecha) document.getElementById('inp_fecha').value = d.fecha;
 
+  // Populate manual input fields BEFORE buildCorte reads them
+  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+  setVal('inp_apertura',   d.caja?.apertura);
+  setVal('inp_morralla',   d.caja?.morralla);
+  setVal('inp_billetes',   d.caja?.billetes);
+  setVal('inp_terminal',   d.caja?.terminal);
+  setVal('inp_cortes_taller',   d.otros?.cortes_taller);
+  setVal('inp_cortes_ayto',     d.otros?.cortes_ayto);
+  setVal('inp_cortes_familiar', d.otros?.cortes_familiar);
+  setVal('inp_seguro',   d.otros?.seguro);
+  setVal('inp_lavm',     d.otros?.lavados_mano);
+  setVal('inp_regresos', d.otros?.regresos);
+  setVal('inp_resp',     d.responsable);
+
+  // Populate paquetes inputs
+  if(d.paquetes_finales){
+    d.paquetes_finales.forEach((p,i)=>{
+      setVal(`pi_ini_${i+1}`, p.inicio);
+      setVal(`pi_fin_${i+1}`, p.final);
+      setVal(`pi_mon_${i+1}`, p.monto);
+    });
+  }
+
   // Build corte output
   buildCorte({
     sesion: d.sesion,
@@ -1564,7 +1587,7 @@ window.abrirCorteHistorial = function(d){
     gastos_odoo: []
   });
   
-  // Show historial badge
+  // Show corte
   document.getElementById('corteWrap').style.display='block';
   document.getElementById('actions').style.display='flex';
   
