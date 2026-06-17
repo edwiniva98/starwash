@@ -687,7 +687,7 @@ function renderSvcs(){
   svcs.forEach((s,i)=>{
     const d=document.createElement('div');d.className='list-row';
     const tot=(s.p||0)*(s.q||0);
-    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;updateSvcTot(${i})">
+    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value">
       <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;updateSvcTot(${i})">
       <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;updateSvcTot(${i})">
       <span id="svctot_${i}" style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
