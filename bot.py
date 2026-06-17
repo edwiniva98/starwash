@@ -407,23 +407,44 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             caption=f"📸 Lectura de máquina — {sender}\n{caption}"
         )
 
+PALABRAS_CORTE_COMPLETO = [
+    "dame el corte", "mándame el corte", "mandame el corte",
+    "el corte de", "corte del día", "corte del dia",
+    "ver corte", "muéstrame el corte", "muestrame el corte",
+    "corte completo", "resumen del día", "resumen del dia",
+    "cómo estuvo", "como estuvo", "qué tal estuvo", "que tal estuvo",
+]
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text
+    texto_lower = texto.lower()
     msg = await update.message.reply_text("⏳ Consultando datos...")
 
     try:
-        # Detectar si pregunta por una fecha específica para buscar ese corte primero
         fecha_detectada = detectar_fecha(texto)
 
+        # Si piden el corte completo → usar generar_resumen_firebase (formato fijo, siempre incluye billetes)
+        es_corte_completo = any(p in texto_lower for p in PALABRAS_CORTE_COMPLETO)
+
+        if es_corte_completo:
+            if fecha_detectada:
+                cortes = await get_cortes(limit=30, fecha=fecha_detectada)
+            else:
+                cortes = await get_cortes(limit=1)
+            if not cortes:
+                await msg.edit_text("No encontré corte para ese día.")
+                return
+            resumen = generar_resumen_firebase(cortes[0])
+            await msg.edit_text(resumen, parse_mode="Markdown")
+            return
+
+        # Preguntas analíticas → Claude con contexto completo
         if fecha_detectada:
-            # Buscar corte de esa fecha + últimos 5 para contexto
             cortes_fecha = await get_cortes(limit=30, fecha=fecha_detectada)
             cortes_recientes = await get_cortes(limit=5)
-            # Unir sin duplicar
             ids_vistos = {c["_id"] for c in cortes_fecha}
             cortes = cortes_fecha + [c for c in cortes_recientes if c["_id"] not in ids_vistos]
         else:
-            # Sin fecha detectada: traer últimos 10 para contexto
             cortes = await get_cortes(limit=10)
 
         if not cortes:
