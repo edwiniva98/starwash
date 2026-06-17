@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Star Wash — Corte del Día</title>
+<style>
+:root{
+  --navy:#0F2A45;--blue:#1A6BAA;--sky:#4DA3D4;--ice:#E8F4FD;
+  --teal:#0D7A6F;--amber:#E8A020;--amber-light:#FEF6E4;
+  --red:#C0392B;--red-light:#FDECEA;--green:#1E7C45;--green-light:#E8F5EE;
+  --gray:#F4F6F9;--border:#D0DDE8;--text:#1A2733;--muted:#6B7F8E;
+  --white:#fff;--radius:8px;--shadow:0 2px 8px #0F2A4518;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#E4EDF5;color:var(--text);min-height:100vh}
+
+/* TOPBAR */
+#topbar{background:var(--navy);padding:0 20px;display:flex;align-items:center;gap:16px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px #0008}
+#topbar .logo{color:var(--sky);font-size:18px;font-weight:700;white-space:nowrap}
+#topbar .logo span{color:#fff}
+#topbar .spacer{flex:1}
+.api-wrap label{color:#9BBDD4;font-size:11px;margin-right:6px}
+#apikey{background:#1C3A54;border:1px solid #2D5A7A;color:#fff;border-radius:5px;padding:5px 10px;font-size:12px;width:220px}
+
+/* LAYOUT */
+#app{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+
+/* CARDS */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.card-head{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--navy);color:#fff;font-weight:700;font-size:13px}
+.card-head .badge{background:var(--sky);color:var(--navy);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.card-body{padding:14px 16px}
+.hint{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:10px}
+
+/* FORM GRID */
+.fg{display:grid;gap:10px}
+.fg-2{grid-template-columns:1fr 1fr}
+.fg-3{grid-template-columns:1fr 1fr 1fr}
+.fg-4{grid-template-columns:1fr 1fr 1fr 1fr}
+@media(max-width:580px){.fg-2,.fg-3,.fg-4{grid-template-columns:1fr 1fr}}
+.fl{display:flex;flex-direction:column;gap:4px}
+.fl label{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px}
+.fl input{border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;background:var(--amber-light);color:var(--text);outline:none}
+.fl input:focus{border-color:var(--sky);background:#fff}
+.fl input::placeholder{color:#bbb}
+
+/* DROPZONE */
+#dropzone{border:2px dashed var(--sky);border-radius:10px;background:#fff;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+#dropzone:hover,#dropzone.over{background:var(--ice);border-color:var(--blue)}
+#dropzone .dz-icon{font-size:32px;margin-bottom:6px}
+#dropzone strong{color:var(--navy);font-size:14px}
+#dropzone p{color:var(--muted);font-size:11px;margin-top:3px}
+#fileInfo{margin-top:6px;font-size:12px;color:var(--teal);font-weight:600}
+
+/* GASTOS / NOTAS */
+.list-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.list-row input.li{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;background:var(--gray)}
+.list-row input.lm{width:110px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:right;background:var(--amber-light)}
+.list-row button.del{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:2px 5px}
+.btn-add{background:var(--ice);border:1px dashed var(--sky);color:var(--blue);border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;margin-top:4px}
+
+/* SVC toggle */
+.toggle-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.toggle-row span{font-size:13px;font-weight:600;color:var(--navy)}
+.tbtn{padding:5px 16px;border-radius:5px;border:2px solid var(--border);background:var(--gray);color:var(--muted);font-weight:700;cursor:pointer;font-size:12px;transition:all .15s}
+.tbtn.active-si{background:var(--teal);border-color:var(--teal);color:#fff}
+.tbtn.active-no{background:var(--red);border-color:var(--red);color:#fff}
+
+/* PAQ table in form */
+.paq-table{width:100%;border-collapse:collapse;font-size:12px}
+.paq-table th{background:var(--ice);color:var(--blue);font-weight:700;padding:6px 8px;text-align:center;border:1px solid var(--border);font-size:11px}
+.paq-table td{padding:5px 6px;border:1px solid var(--border);text-align:center}
+.paq-table input{width:100%;border:none;background:transparent;font:inherit;text-align:center;outline:none;padding:2px}
+.paq-table input:focus{background:var(--amber-light);border-radius:3px}
+.paq-table td.pname{font-weight:600;background:var(--gray);color:var(--navy)}
+
+/* GENERATE BUTTON */
+#genBtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);transition:background .15s;margin-top:4px}
+#genBtn:hover{background:var(--navy)}
+#genBtn:disabled{background:#aaa;cursor:not-allowed}
+#spinner{display:none;width:20px;height:20px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CORTE OUTPUT ── */
+#corteWrap{display:none}
+
+/* KPIs */
+.kpi-section{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.kpi-row{display:grid;gap:10px}
+.kpi-row.r4{grid-template-columns:repeat(4,1fr)}
+.kpi-row.r3{grid-template-columns:repeat(3,1fr)}
+.kpi-row.r6{grid-template-columns:repeat(6,1fr)}
+@media(max-width:600px){.kpi-row.r4,.kpi-row.r6{grid-template-columns:repeat(2,1fr)}.kpi-row.r3{grid-template-columns:repeat(3,1fr)}}
+.kpi{border-radius:var(--radius);padding:12px 14px;text-align:center;box-shadow:var(--shadow)}
+.kpi .kl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:4px}
+.kpi .kv{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.kpi.navy{background:var(--navy);color:#fff}
+.kpi.teal{background:var(--teal);color:#fff}
+.kpi.amber-k{background:var(--amber);color:#fff}
+.kpi.green{background:var(--green);color:#fff}
+.kpi.red-k{background:var(--red);color:#fff}
+.kpi.sky{background:var(--sky);color:var(--navy)}
+.kpi.dark2{background:#1C3A54;color:#fff}
+
+/* Tables */
+table.ct{width:100%;border-collapse:collapse;font-size:12.5px}
+table.ct th{background:var(--ice);color:var(--blue);font-weight:700;padding:7px 10px;text-align:center;border:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+table.ct td{padding:6px 10px;border:1px solid var(--border)}
+table.ct td.lbl{font-weight:600;background:var(--gray);white-space:nowrap;color:var(--navy)}
+table.ct td.right{text-align:right;font-variant-numeric:tabular-nums}
+table.ct td.center{text-align:center}
+table.ct tr.sub td{background:var(--green-light);font-weight:700}
+table.ct tr.amb td{background:var(--amber-light)}
+table.ct tr.red-r td{background:var(--red-light)}
+
+/* Two col */
+#twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:580px){#twoCol{grid-template-columns:1fr}}
+
+/* Alert */
+#alertBox{display:none;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+#alertBox .ah{background:var(--sky);color:var(--navy);padding:9px 16px;font-weight:700;font-size:13px}
+#alertBox .ab{padding:14px 16px;font-size:13px;line-height:1.9;background:var(--navy);color:#fff}
+
+/* Actions */
+#actions{display:none;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.btn-sec{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-sec:hover{opacity:.85}
+.b-print{background:#475569;color:#fff}
+.b-excel{background:var(--teal);color:#fff}
+.b-reset{background:#94A3B8;color:#fff}
+.b-analyze{background:var(--amber);color:#fff}
+
+/* Notas */
+.nota-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+.ei{width:100%;border:none;background:transparent;font:inherit;text-align:right;padding:0;outline:none;color:var(--text)}
+.ei:focus{background:var(--amber-light);border-radius:3px;padding:0 3px}
+.ei.center{text-align:center}
+.nota-row input.ni{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;background:var(--gray)}
+.nota-row button{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:2px 5px;margin-top:2px}
+
+.hist-item{background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:background .15s}
+.hist-item:hover{background:var(--ice)}
+.hist-item .hi-fecha{font-weight:700;color:var(--navy);font-size:13px}
+.hist-item .hi-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.hist-item .hi-kpis{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.hist-kpi{background:var(--navy);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700}
+.hist-kpi.green{background:var(--green)}
+.hist-kpi.red{background:var(--red)}
+.hist-kpi.amber{background:var(--amber)}
+@media print{
+  body{background:#fff}
+  #topbar,#inputSection,#actions,.btn-add,.del,.hint,#alertBox{display:none!important}
+  #corteWrap{display:block!important}
+  .card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
+  .kpi{border:1px solid #ccc;color:#000!important;background:#f9f9f9!important}
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">⚡ Star<span>Wash</span></div>
+  <button onclick="toggleHistorial()" style="background:#1C3A54;border:1px solid #2D5A7A;color:#9BBDD4;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600" id="btnHistorial">📋 Historial</button>
+  <div class="spacer"></div>
+  <div class="api-wrap">
+    <label>API Key:</label>
+    <input id="apikey" type="password" placeholder="sk-ant-..." oninput="localStorage.setItem('sw_key',this.value)">
+  </div>
+</div>
+
+<div id="historialPanel" style="display:none;position:fixed;top:54px;right:0;width:420px;height:calc(100vh - 54px);background:#fff;box-shadow:-4px 0 20px #0003;z-index:99;overflow-y:auto;display:none">
+  <div style="background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-weight:700;font-size:14px">📋 Historial de Cortes</span>
+    <button onclick="toggleHistorial()" style="background:none;border:none;color:#9BBDD4;cursor:pointer;font-size:18px">×</button>
+  </div>
+  <div style="padding:12px">
+    <button onclick="cargarHistorial()" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;cursor:pointer;font-weight:600;margin-bottom:12px">🔄 Actualizar</button>
+    <div id="historialLista"></div>
+  </div>
+</div>
+
+<div id="app">
+
+<!-- ══════════════ SECCIÓN DE ENTRADA ══════════════ -->
+<div id="inputSection">
+
+  <!-- PDF -->
+  <div id="dropzone" onclick="document.getElementById('fi').click()"
+    ondragover="event.preventDefault();this.classList.add('over')"
+    ondragleave="this.classList.remove('over')"
+    ondrop="handleDrop(event)">
+    <div class="dz-icon">📄</div>
+    <strong>Sube el Reporte Z de Odoo</strong>
+    <p>Arrastra el PDF aquí o haz clic para seleccionar</p>
+    <div id="fileInfo"></div>
+  </div>
+  <input type="file" id="fi" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+
+  <!-- Datos generales -->
+  <div class="card">
+    <div class="card-head"><div class="badge">📋</div>DATOS GENERALES</div>
+    <div class="card-body">
+      <div class="fg fg-3">
+        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha"></div>
+        <div class="fl"><label>Responsable</label><input type="text" id="inp_resp" placeholder="Nombre"></div>
+        <div class="fl"><label>Apertura de Caja ($)</label><input type="number" id="inp_apertura" placeholder="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Control de efectivo -->
+  <div class="card">
+    <div class="card-head"><div class="badge">💵</div>CONTROL DE EFECTIVO</div>
+    <div class="card-body">
+      <p class="hint">Apertura = morralla que quedó ayer. Billetes = total de billetes contados.</p>
+      <div class="fg fg-3">
+        <div class="fl"><label>Morralla ($)</label><input type="number" id="inp_morralla" placeholder="0"></div>
+        <div class="fl"><label>Billetes ($)</label><input type="number" id="inp_billetes" placeholder="0"></div>
+        <div class="fl"><label>Corte Terminal ($)</label><input type="number" id="inp_terminal" placeholder="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Otros conteos -->
+  <div class="card">
+    <div class="card-head"><div class="badge">🚗</div>OTROS CONTEOS</div>
+    <div class="card-body">
+      <p class="hint">Cortesías y seguros pasan por máquina pero no cobran. Lavados a mano y regresos se descuentan de máquina esperada.</p>
+      <div class="fg fg-3">
+        <div class="fl"><label>Cortesías Taller</label><input type="number" id="inp_cortes_taller" placeholder="0"></div>
+        <div class="fl"><label>Cortesías Ayuntamiento</label><input type="number" id="inp_cortes_ayto" placeholder="0"></div>
+        <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seguro" placeholder="0"></div>
+        <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0"></div>
+        <div class="fl"><label>Regresos</label><input type="number" id="inp_regresos" placeholder="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gastos -->
+  <div class="card">
+    <div class="card-head"><div class="badge">💸</div>GASTOS</div>
+    <div class="card-body">
+      <div id="gastos_list"></div>
+      <button class="btn-add" onclick="addGasto()">+ Agregar gasto</button>
+    </div>
+  </div>
+
+  <!-- Servicios manuales -->
+  <div class="card">
+    <div class="card-head"><div class="badge">✨</div>SERVICIOS MANUALES <span style="font-weight:400;font-size:11px;opacity:.7;margin-left:6px">— opcional</span></div>
+    <div class="card-body">
+      <div class="toggle-row">
+        <span>¿Hubo servicio de pulido o encerado?</span>
+        <button class="tbtn active-no" id="btn_si" onclick="toggleSvc(true)">Sí</button>
+        <button class="tbtn active-no" id="btn_no" onclick="toggleSvc(false)">No</button>
+      </div>
+      <div id="svc_body" style="display:none">
+        <div id="svc_list"></div>
+        <button class="btn-add" onclick="addSvc()">+ Agregar servicio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lectura de máquina -->
+  <div class="card">
+    <div class="card-head"><div class="badge">🔢</div>LECTURA DE LA MÁQUINA</div>
+    <div class="card-body">
+      <p class="hint">El Final de hoy es el Inicio de mañana.</p>
+      <table class="paq-table">
+        <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
+        <tbody id="paq_input_body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Notas -->
+  <div class="card">
+    <div class="card-head"><div class="badge">📝</div>NOTAS</div>
+    <div class="card-body">
+      <div id="notas_list"></div>
+      <button class="btn-add" onclick="addNota()">+ Agregar nota</button>
+    </div>
+  </div>
+
+  <button id="genBtn" onclick="generate()">
+    <div id="spinner"></div>
+    <span>🔍 Leer PDF y Generar Corte</span>
+  </button>
+
+</div><!-- /inputSection -->
+
+<!-- ══════════════ CORTE OUTPUT ══════════════ -->
+<div id="corteWrap">
+
+  <!-- Header info -->
+  <div style="background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 18px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:14px">
+    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Fecha</div>
+    <div style="font-size:14px;font-weight:700" id="out_fecha">—</div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-left:12px">Sesión</div>
+    <div style="font-size:14px;font-weight:700" id="out_sesion">—</div>
+    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-left:12px">Responsable</div>
+    <div style="font-size:14px;font-weight:700" id="out_resp">—</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-section">
+    <!-- Fila 1: Caja -->
+    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr)">
+      <div class="kpi dark2"><div class="kl">Apertura</div><div class="kv" id="k_apertura">$0</div></div>
+      <div class="kpi dark2"><div class="kl">Morralla</div><div class="kv" id="k_morralla">$0</div></div>
+      <div class="kpi dark2"><div class="kl">Billetes</div><div class="kv" id="k_billetes">$0</div></div>
+      <div class="kpi dark2"><div class="kl">Terminal</div><div class="kv" id="k_terminal">$0</div></div>
+      <div class="kpi teal"><div class="kl">Total en Caja</div><div class="kv" id="k_tcaja_kpi">$0</div></div>
+      <div class="kpi navy"><div class="kl">Total Cobrado</div><div class="kv" id="k_cobrado">$0</div></div>
+    </div>
+    <!-- Fila 2: Autos -->
+    <div class="kpi-row r4">
+      <div class="kpi green"><div class="kl">Autos Pagados</div><div class="kv" id="k_pagados">0</div></div>
+      <div class="kpi sky"><div class="kl">Cortesías Total</div><div class="kv" id="k_cortes_total">0</div></div>
+      <div class="kpi teal"><div class="kl">Total Entraron</div><div class="kv" id="k_entraron">0</div></div>
+      <div class="kpi navy"><div class="kl">Máquina</div><div class="kv" id="k_maq_total">0</div></div>
+    </div>
+    <!-- Fila 3: Ventas -->
+    <div class="kpi-row r4">
+      <div class="kpi navy"><div class="kl">Total Tickets</div><div class="kv" id="k_tickets">$0</div></div>
+      <div class="kpi teal"><div class="kl">Efectivo</div><div class="kv" id="k_efe">$0</div></div>
+      <div class="kpi amber-k"><div class="kl">Tarjeta</div><div class="kv" id="k_tar">$0</div></div>
+      <div class="kpi sky"><div class="kl">Transferencia</div><div class="kv" id="k_trans">$0</div></div>
+    </div>
+    <!-- Fila 4: Diferencias + resumen -->
+    <div class="kpi-row r3">
+      <div class="kpi" id="k_dif_card" style="background:var(--green);color:#fff"><div class="kl">Dif. Dinero</div><div class="kv" id="k_dif">$0</div></div>
+      <div class="kpi" id="k_maq_card" style="background:var(--green);color:#fff"><div class="kl">Dif. Máquina</div><div class="kv" id="k_maq_dif">0</div></div>
+      <div class="kpi" id="k_resumen_card" style="background:var(--green);color:#fff;cursor:default">
+        <div class="kl">Resumen del Corte</div>
+        <div style="font-size:13px;font-weight:700;margin-top:4px;line-height:1.4" id="k_resumen_txt">—</div>
+      </div>
+    </div>
+    <!-- Máq. esperada y gastos — info secundaria -->
+    <div class="kpi-row r3" style="opacity:.8">
+      <div class="kpi navy"><div class="kl">Máq. Esperada</div><div class="kv" id="k_maq_esp">0</div></div>
+      <div class="kpi red-k"><div class="kl">Total Gastos</div><div class="kv" id="k_gastos_kpi">$0</div></div>
+      <div class="kpi green"><div class="kl">Autos Pagados</div><div class="kv" id="k_pagados2">0</div></div>
+    </div>
+  </div>
+
+  <!-- AI Alert -->
+  <div id="alertBox">
+    <div class="ah">🤖 Análisis del Corte</div>
+    <div class="ab" id="alertContent"></div>
+  </div>
+
+  <!-- 1. Ventas -->
+  <div class="card">
+    <div class="card-head"><div class="badge">1</div>VENTAS POR CATEGORÍA — Odoo</div>
+    <div class="card-body">
+      <table class="ct">
+        <thead><tr><th>Categoría</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <tbody id="body_ventas"></tbody>
+        <tfoot><tr class="sub"><td colspan="2" class="lbl">SUBTOTAL LAVADOS</td><td class="center" id="sv_cant">0</td><td class="right" id="sv_tot">$0.00</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. Adicionales -->
+  <div class="card">
+    <div class="card-head"><div class="badge">2</div>ADICIONALES — Odoo</div>
+    <div class="card-body">
+      <table class="ct">
+        <thead><tr><th>Adicional</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <tbody id="body_adics"></tbody>
+        <tfoot><tr class="sub"><td colspan="2" class="lbl">SUBTOTAL ADICIONALES</td><td class="center" id="sa_cant">0</td><td class="right" id="sa_tot">$0.00</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. Servicios manuales (solo si hay) -->
+  <div class="card" id="svc_out_card" style="display:none">
+    <div class="card-head"><div class="badge">3</div>SERVICIOS MANUALES</div>
+    <div class="card-body">
+      <table class="ct">
+        <thead><tr><th>Servicio</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <tbody id="body_svc_out"></tbody>
+        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL SERVICIOS MANUALES</td><td class="right" id="tot_svc_out">$0.00</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. Otros -->
+  <div class="card">
+    <div class="card-head"><div class="badge">4</div>OTROS</div>
+    <div class="card-body">
+      <table class="ct">
+        <tr><td class="lbl">Cortesías Taller</td><td><input class="ei center" type="number" id="out_ct" value="0" oninput="recalcOut()"></td>
+            <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="0" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Seguro de Lluvia</td><td><input class="ei center" type="number" id="out_seg" value="0" oninput="recalcOut()"></td>
+            <td class="lbl">Lavados a Mano</td><td><input class="ei center" type="number" id="out_lavm" value="0" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Regresos</td><td><input class="ei center" type="number" id="out_reg" value="0" oninput="recalcOut()"></td><td></td><td></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5+6 Control efectivo + Formas de pago -->
+  <div id="twoCol">
+    <div class="card">
+      <div class="card-head"><div class="badge">5</div>CONTROL DE EFECTIVO</div>
+      <div class="card-body">
+        <table class="ct">
+          <tr class="amb"><td class="lbl">Morralla</td><td><input class="ei" type="number" id="out_morralla_inp" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Billetes</td><td><input class="ei" type="number" id="out_billetes_inp" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Corte Terminal</td><td><input class="ei" type="number" id="out_terminal_inp" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Transferencia</td><td class="right" id="out_trans_caja">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">+ Gastos</td><td class="right" id="out_gastos_caja">$0.00</td></tr>
+          <tr class="red-r"><td class="lbl">− Apertura de Caja</td><td><input class="ei" type="number" id="out_apertura_inp" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="sub"><td class="lbl">TOTAL EN CAJA</td><td class="right" id="out_total_caja">$0.00</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="badge">6</div>FORMAS DE PAGO — Odoo</div>
+      <div class="card-body">
+        <table class="ct">
+          <tr class="amb"><td class="lbl">Efectivo</td><td class="right" id="out_efe">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">Tarjeta</td><td class="right" id="out_tar">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">Transferencia</td><td class="right" id="out_trans">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">Servicios Manuales</td><td class="right" id="out_svc_pagos">$0.00</td></tr>
+          <tr class="sub"><td class="lbl">TOTAL COBRADO</td><td class="right" id="out_total_cobrado">$0.00</td></tr>
+          <tr><td colspan="2" style="padding:3px;border:none"></td></tr>
+          <tr><td class="lbl">Diferencia con Caja</td><td class="right" id="out_dif_caja" style="font-weight:700">$0.00</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Gastos -->
+  <div class="card">
+    <div class="card-head"><div class="badge">7</div>GASTOS <span style="font-weight:400;font-size:11px;opacity:.7;margin-left:6px">— editable</span></div>
+    <div class="card-body">
+      <div id="gastos_out_list"></div>
+      <button class="btn-add" onclick="addGastoOut()">+ Agregar gasto</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--red-light);border-radius:5px;padding:7px 12px;margin-top:8px;font-weight:700;color:var(--red)">
+        <span>TOTAL GASTOS</span><span id="tot_gastos_out">$0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Lectura máquina -->
+  <div class="card">
+    <div class="card-head"><div class="badge">8</div>LECTURA DE LA MÁQUINA</div>
+    <div class="card-body">
+      <table class="ct">
+        <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
+        <tbody id="body_paq_out"></tbody>
+        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL MÁQUINA</td><td class="center" id="tp_cant">0</td><td class="right" id="tp_mon">$0.00</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 9. Notas -->
+  <div class="card" id="notas_out_card" style="display:none">
+    <div class="card-head"><div class="badge">📝</div>NOTAS</div>
+    <div class="card-body"><div id="notas_out"></div></div>
+  </div>
+
+  <!-- Actions -->
+  <div id="actions">
+    <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
+    <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
+    <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="btn-sec b-excel" onclick="exportXLSX()">📥 Descargar Excel</button>
+    <button class="btn-sec b-reset" onclick="resetAll()">🔄 Nuevo Corte</button>
+  </div>
+
+</div><!-- /corteWrap -->
+</div><!-- /app -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const VENTAS=[
+  {name:"Autos",                           price:110, pagado:true},
+  {name:"Camionetas Chicas y Medianas",    price:120, pagado:true},
+  {name:"Pick-Ups, Minivans, SUV Grandes", price:140, pagado:true},
+  {name:"Lavado Express",                  price:90,  pagado:true},
+  {name:"Fiscalía",                        price:80,  pagado:true},
+  {name:"Motos",                           price:60,  pagado:false},
+];
+const ADICS=[
+  {name:"Lavado de Tapetes Solo", price:40},
+  {name:"Lavado de Motor",        price:60},
+  {name:"Lavado a Mano",          price:20},
+  {name:"Plus + Cera",            price:20},
+  {name:"Pro Cera + Tapetes",     price:50},
+];
+
+let gastos=[], svcs=[], notas=[], pdfFile=null, hasSvc=false;
+let D={}; // all data after generate
+
+window.onload=()=>{
+  const k=localStorage.getItem('sw_key'); if(k) document.getElementById('apikey').value=k;
+  document.getElementById('inp_fecha').value=new Date().toISOString().slice(0,10);
+  renderGastos(); renderSvcs(); buildPaqInputs(); renderNotas();
+};
+
+// ── FILE ──────────────────────────────────────────────────────────────────────
+function handleDrop(ev){ev.preventDefault();document.getElementById('dropzone').classList.remove('over');handleFile(ev.dataTransfer.files[0]);}
+function handleFile(f){
+  if(!f||f.type!=='application/pdf'){alert('Por favor sube un PDF.');return;}
+  pdfFile=f;
+  document.getElementById('fileInfo').innerHTML=`✔ ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+}
+function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Error'));r.readAsDataURL(f);});}
+
+// ── INPUT FORMS ───────────────────────────────────────────────────────────────
+function renderGastos(){
+  const el=document.getElementById('gastos_list');el.innerHTML='';
+  if(!gastos.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos aún.</p>';return;}
+  gastos.forEach((g,i)=>{
+    const d=document.createElement('div');d.className='list-row';
+    d.innerHTML=`<input class="li" type="text" value="${g.c}" placeholder="Concepto" oninput="gastos[${i}].c=this.value">
+      <input class="lm" type="number" value="${g.m||''}" placeholder="0.00" oninput="gastos[${i}].m=parseFloat(this.value)||0">
+      <button class="del" onclick="gastos.splice(${i},1);renderGastos()">×</button>`;
+    el.appendChild(d);
+  });
+}
+function addGasto(){gastos.push({c:'',m:0});renderGastos();}
+
+function renderSvcs(){
+  const el=document.getElementById('svc_list');el.innerHTML='';
+  svcs.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='list-row';
+    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value">
+      <input class="lm" type="number" value="${s.p||''}" placeholder="Precio" oninput="svcs[${i}].p=parseFloat(this.value)||0">
+      <input style="width:60px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="Cant" oninput="svcs[${i}].q=parseFloat(this.value)||0">
+      <button class="del" onclick="svcs.splice(${i},1);renderSvcs()">×</button>`;
+    el.appendChild(d);
+  });
+}
+function addSvc(){svcs.push({n:'',p:0,q:1});renderSvcs();}
+function toggleSvc(val){
+  hasSvc=val;
+  document.getElementById('svc_body').style.display=val?'block':'none';
+  document.getElementById('btn_si').className='tbtn '+(val?'active-si':'');
+  document.getElementById('btn_no').className='tbtn '+(val?'':'active-no');
+  if(!val){svcs=[];renderSvcs();}
+}
+
+function buildPaqInputs(){
+  const tb=document.getElementById('paq_input_body');tb.innerHTML='';
+  for(let i=1;i<=6;i++){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="pname">Paquete ${i}</td>
+      <td><input id="pi_ini_${i}" type="number" placeholder="0"></td>
+      <td><input id="pi_fin_${i}" type="number" placeholder="0"></td>
+      <td id="pi_vend_${i}" style="color:var(--muted)">—</td>
+      <td><input id="pi_mon_${i}" type="number" placeholder="$0"></td>`;
+    tb.appendChild(tr);
+    ['pi_ini_','pi_fin_'].forEach(p=>{
+      document.getElementById(p+i).addEventListener('input',()=>{
+        const ini=parseFloat(document.getElementById('pi_ini_'+i).value)||0;
+        const fin=parseFloat(document.getElementById('pi_fin_'+i).value)||0;
+        document.getElementById('pi_vend_'+i).textContent=Math.max(0,fin-ini);
+      });
+    });
+  }
+}
+
+function renderNotas(){
+  const el=document.getElementById('notas_list');el.innerHTML='';
+  if(!notas.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin notas.</p>';return;}
+  notas.forEach((n,i)=>{
+    const d=document.createElement('div');d.className='nota-row';
+    d.innerHTML=`<span style="color:var(--muted);font-size:11px;min-width:20px;padding-top:7px">${i+1}.</span>
+      <input class="ni" type="text" value="${n}" placeholder="Escribe una nota..." oninput="notas[${i}]=this.value">
+      <button onclick="notas.splice(${i},1);renderNotas()">×</button>`;
+    el.appendChild(d);
+  });
+}
+function addNota(){notas.push('');renderNotas();setTimeout(()=>{const ins=document.querySelectorAll('.nota-row input.ni');if(ins.length)ins[ins.length-1].focus();},50);}
+
+// ── GENERATE ──────────────────────────────────────────────────────────────────
+async function generate(){
+  if(!pdfFile){alert('Primero sube el Reporte Z de Odoo.');return;}
+  const key=document.getElementById('apikey').value.trim();
+  if(!key){alert('Ingresa tu API Key de Anthropic.');return;}
+  document.getElementById('spinner').style.display='block';
+  document.getElementById('genBtn').disabled=true;
+
+  try{
+    const b64=await toB64(pdfFile);
+    const prompt=`Extrae datos del Reporte Z de Odoo de Star Wash. Devuelve SOLO JSON válido, sin texto extra ni markdown.
+
+DIFERENCIA EXACTA entre adicionales:
+- "Lavado de Tapetes Solo" = tapetes únicamente $40 → campo: tapetes_solo
+- "Lavado a Mano" = lavado manual extra $20 → campo: mano
+- "Lavado de Motor" = motor $60 → campo: motor
+- "Plus + Cera" = solo cera $20 → campo: plus_cera
+- "Pro Cera + Tapetes" = cera más tapetes $50 → campo: pro_cera_tapetes
+
+JSON:
+{
+  "sesion":"POS/XXXXX",
+  "fecha":"DD/MM/YYYY",
+  "ventas":{"autos":0,"camionetas":0,"pickups":0,"express":0,"fiscalia":0,"motos":0},
+  "adicionales":{"tapetes_solo":0,"motor":0,"mano":0,"plus_cera":0,"pro_cera_tapetes":0},
+  "pagos":{"efectivo":0,"tarjeta":0,"transferencia":0},
+  "gastos_odoo":[{"concepto":"","monto":0}]
+}
+- En "pagos": sección "Pagos" del reporte — Efectivo POS/X, Tarjeta POS/X, Transferencia POS/X
+- En "gastos_odoo": líneas "out-" del control de sesión
+- Si algo no aparece pon 0. No inventes.`;
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:prompt}
+      ]}]})
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.status);}
+    const data=await res.json();
+    const txt=data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
+    const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
+
+    // Merge Odoo gastos into user gastos if gastos is empty
+    if(gastos.length===0 && parsed.gastos_odoo?.length){
+      gastos=parsed.gastos_odoo.filter(g=>g.concepto&&g.monto>0).map(g=>({c:g.concepto,m:g.monto}));
+    }
+
+    buildCorte(parsed);
+    await runAudit();
+  }catch(e){alert('Error: '+e.message);}
+  finally{document.getElementById('spinner').style.display='none';document.getElementById('genBtn').disabled=false;}
+}
+
+// ── BUILD CORTE ───────────────────────────────────────────────────────────────
+function buildCorte(od){
+  // Store odoo data
+  D.sesion=od.sesion||'—';
+  D.ventas=[od.ventas?.autos||0,od.ventas?.camionetas||0,od.ventas?.pickups||0,od.ventas?.express||0,od.ventas?.fiscalia||0,od.ventas?.motos||0];
+  D.adics=[od.adicionales?.tapetes_solo||0,od.adicionales?.motor||0,od.adicionales?.mano||0,od.adicionales?.plus_cera||0,od.adicionales?.pro_cera_tapetes||0];
+  D.efe=od.pagos?.efectivo||0; D.tar=od.pagos?.tarjeta||0; D.trans=od.pagos?.transferencia||0;
+
+  // Header
+  const fecha=document.getElementById('inp_fecha').value;
+  document.getElementById('out_fecha').textContent=fecha||'—';
+  document.getElementById('out_sesion').textContent=D.sesion;
+  document.getElementById('out_resp').textContent=document.getElementById('inp_resp').value||'—';
+
+  // Ventas table
+  let totLav=0,cantPagados=0,cantLav=0;
+  const vb=document.getElementById('body_ventas');vb.innerHTML='';
+  D.ventas.forEach((q,i)=>{
+    const t=q*VENTAS[i].price;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${VENTAS[i].name}</td><td class="right">$${VENTAS[i].price}.00</td><td class="center">${q}</td><td class="right">${fmt(t)}</td>`;
+    vb.appendChild(tr);
+    totLav+=t;
+    if(VENTAS[i].pagado) cantPagados+=q;
+    cantLav+=q;
+  });
+  document.getElementById('sv_cant').textContent=cantPagados;
+  document.getElementById('sv_tot').textContent=fmt(totLav);
+
+  // Adics table
+  let totAd=0,cantAd=0;
+  const ab=document.getElementById('body_adics');ab.innerHTML='';
+  D.adics.forEach((q,i)=>{
+    const t=q*ADICS[i].price;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${ADICS[i].name}</td><td class="right">$${ADICS[i].price}.00</td><td class="center">${q}</td><td class="right">${fmt(t)}</td>`;
+    ab.appendChild(tr);
+    totAd+=t;cantAd+=q;
+  });
+  document.getElementById('sa_cant').textContent=cantAd;
+  document.getElementById('sa_tot').textContent=fmt(totAd);
+
+  // Servicios manuales
+  let totSvc=0;
+  if(svcs.length&&hasSvc){
+    const sb=document.getElementById('body_svc_out');sb.innerHTML='';
+    svcs.forEach(s=>{
+      const t=(s.p||0)*(s.q||0);totSvc+=t;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${s.n||'—'}</td><td class="right">${fmt(s.p||0)}</td><td class="center">${s.q||0}</td><td class="right">${fmt(t)}</td>`;
+      sb.appendChild(tr);
+    });
+    document.getElementById('tot_svc_out').textContent=fmt(totSvc);
+    document.getElementById('svc_out_card').style.display='block';
+  }
+
+  // Totales
+  const totalTix=totLav+totAd+totSvc;
+  const totPagos=D.efe+D.tar+D.trans+totSvc;
+
+  // Conteos otros
+  const ct=parseFloat(document.getElementById('inp_cortes_taller').value)||0;
+  const ca=parseFloat(document.getElementById('inp_cortes_ayto').value)||0;
+  const seg=parseFloat(document.getElementById('inp_seguro').value)||0;
+  const lavm=parseFloat(document.getElementById('inp_lavm').value)||0;
+  const reg=parseFloat(document.getElementById('inp_regresos').value)||0;
+  document.getElementById('out_ct').value=ct||'';
+  document.getElementById('out_ca').value=ca||'';
+  document.getElementById('out_seg').value=seg||'';
+  document.getElementById('out_lavm').value=lavm||'';
+  document.getElementById('out_reg').value=reg||'';
+
+  // Control de efectivo
+  const apertura=parseFloat(document.getElementById('inp_apertura').value)||0;
+  const morralla=parseFloat(document.getElementById('inp_morralla').value)||0;
+  const billetes=parseFloat(document.getElementById('inp_billetes').value)||0;
+  const terminal=parseFloat(document.getElementById('inp_terminal').value)||0;
+  const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
+  const totalCaja=morralla+billetes+terminal+D.trans+totGastos-apertura;
+
+  
+  
+  
+  document.getElementById('out_trans_caja').textContent=fmt(D.trans);
+  document.getElementById('out_gastos_caja').textContent=fmt(totGastos);
+  
+  document.getElementById('out_total_caja').textContent=fmt(totalCaja);
+
+  // Formas de pago
+  document.getElementById('out_efe').textContent=fmt(D.efe);
+  document.getElementById('out_tar').textContent=fmt(D.tar);
+  document.getElementById('out_trans').textContent=fmt(D.trans);
+  document.getElementById('out_svc_pagos').textContent=fmt(totSvc);
+  document.getElementById('out_total_cobrado').textContent=fmt(totPagos);
+  const difCaja=totPagos-totalCaja;
+  const difEl=document.getElementById('out_dif_caja');
+  difEl.textContent=difCaja===0?'✅ Cuadra':(difCaja>0?'+':'')+fmt(difCaja);
+  difEl.style.color=difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)';
+
+  // Gastos — editable (rendered after DOM is ready)
+  // Populate caja inputs
+  document.getElementById('out_morralla_inp').value=morralla||'';
+  document.getElementById('out_billetes_inp').value=billetes||'';
+  document.getElementById('out_terminal_inp').value=terminal||'';
+  document.getElementById('out_apertura_inp').value=apertura||'';
+  // Populate otros
+  document.getElementById('out_ct').value=ct||'';
+  document.getElementById('out_ca').value=ca||'';
+  document.getElementById('out_seg').value=seg||'';
+  document.getElementById('out_lavm').value=lavm||'';
+  document.getElementById('out_reg').value=reg||'';
+
+  // Lectura máquina
+  let maqVend=0,maqMon=0;
+  const pb=document.getElementById('body_paq_out');pb.innerHTML='';
+  for(let i=1;i<=6;i++){
+    const ini=parseFloat(document.getElementById('pi_ini_'+i)?.value)||0;
+    const fin=parseFloat(document.getElementById('pi_fin_'+i)?.value)||0;
+    const mon=parseFloat(document.getElementById('pi_mon_'+i)?.value)||0;
+    const vend=Math.max(0,fin-ini);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="center">Paquete ${i}</td><td class="center">${ini}</td><td class="center">${fin}</td><td class="center">${vend}</td><td class="right">${fmt(mon)}</td>`;
+    pb.appendChild(tr);
+    maqVend+=vend;maqMon+=mon;
+  }
+  document.getElementById('tp_cant').textContent=maqVend;
+  document.getElementById('tp_mon').textContent=fmt(maqMon);
+
+  // Notas output
+  const notasLimpias=notas.filter(n=>n.trim());
+  if(notasLimpias.length){
+    const no=document.getElementById('notas_out');no.innerHTML='';
+    notasLimpias.forEach((n,i)=>{
+      const p=document.createElement('p');
+      p.style.cssText='padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)';
+      p.textContent=(i+1)+'. '+n;
+      no.appendChild(p);
+    });
+    document.getElementById('notas_out_card').style.display='block';
+  }
+
+  // Máquina esperada
+  const maqEsp=cantPagados+ct+ca+seg-lavm+reg;
+
+  // KPIs
+  document.getElementById('k_tickets').textContent=fmtK(totalTix);
+  document.getElementById('k_efe').textContent=fmtK(D.efe);
+  document.getElementById('k_tar').textContent=fmtK(D.tar);
+  document.getElementById('k_trans').textContent=fmtK(D.trans);
+  document.getElementById('k_pagados').textContent=cantPagados;
+  document.getElementById('k_pagados2').textContent=cantPagados;
+  document.getElementById('k_entraron').textContent=cantPagados+ct+ca+seg;
+  document.getElementById('k_cortes_total').textContent=ct+ca+seg;
+  document.getElementById('k_tcaja_kpi').textContent=fmtK(totalCaja);
+  document.getElementById('k_gastos_kpi').textContent=fmtK(totGastos);
+  document.getElementById('k_apertura').textContent=fmtK(apertura);
+  document.getElementById('k_morralla').textContent=fmtK(morralla);
+  document.getElementById('k_billetes').textContent=fmtK(billetes);
+  document.getElementById('k_terminal').textContent=fmtK(terminal);
+  document.getElementById('k_maq_total').textContent=maqVend;
+  document.getElementById('k_maq_esp').textContent=maqEsp;
+
+  const difDin=totPagos-totalCaja;
+  document.getElementById('k_dif').textContent=difDin===0?'$0':fmtK(Math.abs(difDin));
+  document.getElementById('k_dif_card').style.background=difDin===0?'var(--green)':Math.abs(difDin)<500?'var(--amber)':'var(--red)';
+
+  const difMaq=maqVend-maqEsp;
+  document.getElementById('k_maq_dif').textContent=difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':'');
+  document.getElementById('k_maq_card').style.background=difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)';
+
+  // Resumen inteligente
+  const resEl=document.getElementById('k_resumen_txt');
+  const resCard=document.getElementById('k_resumen_card');
+  let msgs=[], color='var(--green)';
+  if(difCaja===0 && difMaq===0){
+    msgs.push('✅ Corte exacto');
+  } else {
+    if(difMaq>0){ msgs.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina'); color='var(--amber)'; }
+    else if(difMaq<0){ msgs.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina'); color='var(--amber)'; }
+    if(difCaja>0){ msgs.push('💰 Sobra '+fmt(difCaja)+' en caja'); color='var(--amber)'; }
+    else if(difCaja<0){ msgs.push('❌ Falta '+fmt(Math.abs(difCaja))+' en caja'); color='var(--red)'; }
+  }
+  if(resEl) resEl.innerHTML=msgs.join('<br>');
+  if(resCard) resCard.style.background=color;
+
+  // Store for audit
+  D={...D,totalTix,totPagos,totalCaja,totGastos,totSvc,cantPagados,maqVend,maqEsp,difMaq,difDin,
+     ct,ca,seg,lavm,reg,apertura,morralla,billetes,terminal};
+
+  document.getElementById('inputSection').style.display='none';
+  document.getElementById('corteWrap').style.display='block';
+  document.getElementById('actions').style.display='flex';
+  // Now DOM is ready — render editable gastos and recalc
+  renderGastosOut(true);
+}
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+async function runAudit(){
+  const key=document.getElementById('apikey').value.trim();if(!key)return;
+  const notasAudit=notas.filter(n=>n.trim());
+  const prompt=`Eres el auditor del Autolavado Star Wash. Analiza este corte. Responde en español, máximo 6 líneas, usa ✅⚠️❌.
+
+DATOS:
+- Autos pagados: ${D.cantPagados} | Cortesías Taller: ${D.ct} | Cortesías Ayto: ${D.ca} | Seguro: ${D.seg}
+- Lavados a mano: ${D.lavm} (no pasan máquina) | Regresos: ${D.reg} (cuentan doble)
+- Máquina esperada: ${D.maqEsp} | Máquina real: ${D.maqVend}
+- Diferencia máquina: ${D.difMaq===0?'cuadra exacto':D.difMaq>0?D.difMaq+' de más en máquina = posible auto sin cobrar':Math.abs(D.difMaq)+' de menos en máquina = posible auto cobrado sin pasar'}
+- Total tickets: ${fmt(D.totalTix)} | Total cobrado (Odoo+svc): ${fmt(D.totPagos)}
+- Total en caja (control efectivo): ${fmt(D.totalCaja)}
+- Diferencia dinero: ${D.difDin===0?'cuadra exacto':fmt(D.difDin)}
+- Gastos: ${fmt(D.totGastos)} | Servicios manuales: ${fmt(D.totSvc)}
+${notasAudit.length?'Notas cajera: '+notasAudit.join(' | '):''}
+Regla: difMaq>0=falta cobrar, difMaq<0=cobró sin pasar máquina. Sé concreto con números.`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok)return;
+    const data=await res.json();
+    const txt=data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
+    document.getElementById('alertContent').innerHTML=txt.replace(/\n/g,'<br>');
+    document.getElementById('alertBox').style.display='block';
+  }catch(e){console.warn('Audit:',e);}
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmt(n){return'$'+(+n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function fmtK(n){if(Math.abs(n)>=1000)return'$'+(n/1000).toFixed(1)+'K';return'$'+Math.round(n);}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function renderGastosOut(doRecalc=false){
+  const el=document.getElementById('gastos_out_list');if(!el)return;
+  el.innerHTML='';
+  if(!gastos.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos.</p>';}
+  gastos.forEach((g,i)=>{
+    const d=document.createElement('div');d.className='list-row';
+    d.innerHTML=`<input class="li" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value;recalcOut()">
+      <input class="lm" type="number" value="${g.m||''}" placeholder="0.00" oninput="gastos[${i}].m=parseFloat(this.value)||0;recalcOut()">
+      <button class="del" onclick="gastos.splice(${i},1);renderGastosOut(true)">×</button>`;
+    el.appendChild(d);
+  });
+  if(doRecalc)recalcOut();
+}
+function addGastoOut(){gastos.push({c:'',m:0});renderGastosOut(true);}
+
+function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+function setStyle(id,prop,val){const el=document.getElementById(id);if(el)el.style[prop]=val;}
+function recalcOut(){
+  const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
+  set('tot_gastos_out',fmt(totGastos));
+  set('out_gastos_caja',fmt(totGastos));
+
+  const morralla=parseFloat(document.getElementById('out_morralla_inp')?.value)||0;
+  const billetes=parseFloat(document.getElementById('out_billetes_inp')?.value)||0;
+  const terminal=parseFloat(document.getElementById('out_terminal_inp')?.value)||0;
+  const apertura=parseFloat(document.getElementById('out_apertura_inp')?.value)||0;
+  const trans=D.trans||0;
+  const totalCaja=morralla+billetes+terminal+trans+totGastos-apertura;
+  set('out_total_caja',fmt(totalCaja));
+
+  const totSvc=hasSvc?svcs.reduce((s,v)=>s+(v.p||0)*(v.q||0),0):0;
+  const totPagos=(D.efe||0)+(D.tar||0)+trans+totSvc;
+  set('out_svc_pagos',fmt(totSvc));
+  set('out_total_cobrado',fmt(totPagos));
+
+  const difCaja=totPagos-totalCaja;
+  const difEl=document.getElementById('out_dif_caja');
+  if(difEl){
+    difEl.textContent=difCaja===0?'✅ Cuadra':(difCaja>0?'+':'')+fmt(difCaja);
+    difEl.style.color=difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)';
+  }
+
+  const ct=parseFloat(document.getElementById('out_ct')?.value)||0;
+  const ca=parseFloat(document.getElementById('out_ca')?.value)||0;
+  const seg=parseFloat(document.getElementById('out_seg')?.value)||0;
+  const lavm=parseFloat(document.getElementById('out_lavm')?.value)||0;
+  const reg=parseFloat(document.getElementById('out_reg')?.value)||0;
+  const cantPagados=D.cantPagados||0;
+  const maqEsp=cantPagados+ct+ca+seg-lavm+reg;
+  const maqVend=D.maqVend||0;
+  const difMaq=maqVend-maqEsp;
+  set('k_maq_esp',maqEsp);
+  set('k_maq_dif',difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':''));
+  setStyle('k_maq_card','background',difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)');
+  set('k_tcaja_kpi',fmtK(totalCaja));
+  set('k_gastos_kpi',fmtK(totGastos));
+  set('k_apertura',fmtK(apertura));
+  set('k_morralla',fmtK(morralla));
+  set('k_billetes',fmtK(billetes));
+  set('k_terminal',fmtK(terminal));
+  set('k_dif',difCaja===0?'$0':fmtK(Math.abs(difCaja)));
+  setStyle('k_dif_card','background',difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)');
+  D={...D,totGastos,totalCaja,totPagos,totSvc,morralla,billetes,terminal,apertura,difDin:difCaja,difMaq,maqEsp,ct,ca,seg,lavm,reg};
+  // Update resumen
+  const resEl2=document.getElementById('k_resumen_txt');
+  const resCard2=document.getElementById('k_resumen_card');
+  let msgs2=[], color2='var(--green)';
+  if(difCaja===0 && difMaq===0){ msgs2.push('✅ Corte exacto'); }
+  else {
+    if(difMaq>0){ msgs2.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina'); color2='var(--amber)'; }
+    else if(difMaq<0){ msgs2.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina'); color2='var(--amber)'; }
+    if(difCaja>0){ msgs2.push('💰 Sobra '+fmt(difCaja)+' en caja'); color2='var(--amber)'; }
+    else if(difCaja<0){ msgs2.push('❌ Falta '+fmt(Math.abs(difCaja))+' en caja'); color2='var(--red)'; }
+  }
+  if(resEl2) resEl2.innerHTML=msgs2.join('<br>');
+  if(resCard2) resCard2.style.background=color2;
+}
+
+function exportXLSX(){
+  const fecha=document.getElementById('inp_fecha').value||'--';
+  const rows=[
+    ['AUTOLAVADO STAR WASH — CORTE DEL DÍA'],
+    ['Fecha:',fecha,'Sesión:',D.sesion,'Responsable:',document.getElementById('inp_resp').value],
+    [],['RESUMEN'],
+    ['Autos Pagados',D.cantPagados,'Máq. Esperada',D.maqEsp,'Máq. Real',D.maqVend,'Dif. Máquina',D.difMaq],
+    ['Total Tickets',D.totalTix,'Total Cobrado',D.totPagos,'Total Caja',D.totalCaja,'Diferencia',D.difDin],
+    [],['1. VENTAS'],['Categoría','Precio','Cantidad','Total'],
+    ...VENTAS.map((v,i)=>[v.name,v.price,D.ventas[i],D.ventas[i]*v.price]),
+    [],['2. ADICIONALES'],['Adicional','Precio','Cantidad','Total'],
+    ...ADICS.map((a,i)=>[a.name,a.price,D.adics[i],D.adics[i]*a.price]),
+    [],['3. SERVICIOS MANUALES'],['Servicio','Precio','Cant','Total'],
+    ...svcs.map(s=>[s.n,s.p,s.q,(s.p||0)*(s.q||0)]),
+    [],['4. OTROS'],
+    ['Cortesías Taller',D.ct,'Cortesías Ayto',D.ca,'Seguro',D.seg,'Lavados a Mano',D.lavm,'Regresos',D.reg],
+    [],['5. CONTROL EFECTIVO'],
+    ['Morralla',D.morralla],['Billetes',D.billetes],['Terminal',D.terminal],
+    ['Transferencia',D.trans],['Gastos','-'+D.totGastos],['Apertura','-'+D.apertura],
+    ['Total en Caja',D.totalCaja],
+    [],['6. FORMAS DE PAGO'],
+    ['Efectivo',D.efe],['Tarjeta',D.tar],['Transferencia',D.trans],['Svc Manuales',D.totSvc],
+    ['Total Cobrado',D.totPagos],
+    [],['7. GASTOS'],['Concepto','Monto'],
+    ...gastos.map(g=>[g.c,g.m]),['TOTAL',D.totGastos],
+  ];
+  rows.push([],['8. LECTURA MÁQUINA'],['Paquete','Inicio','Final','Vendidos','Total $']);
+  for(let i=1;i<=6;i++){
+    const ini=parseFloat(document.getElementById('pi_ini_'+i)?.value)||0;
+    const fin=parseFloat(document.getElementById('pi_fin_'+i)?.value)||0;
+    const mon=parseFloat(document.getElementById('pi_mon_'+i)?.value)||0;
+    rows.push([`Paquete ${i}`,ini,fin,Math.max(0,fin-ini),mon]);
+  }
+  if(notas.filter(n=>n).length){rows.push([],['NOTAS']);notas.filter(n=>n).forEach((n,i)=>rows.push([i+1,n]));}
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:32},{wch:12},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'Corte');
+  XLSX.writeFile(wb,`Corte_StarWash_${fecha}.xlsx`);
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetAll(){
+  pdfFile=null;gastos=[];svcs=[];notas=[];hasSvc=false;D={};
+  document.getElementById('fileInfo').innerHTML='';
+  document.getElementById('corteWrap').style.display='none';
+  document.getElementById('actions').style.display='none';
+  document.getElementById('alertBox').style.display='none';
+  document.getElementById('svc_out_card').style.display='none';
+  document.getElementById('notas_out_card').style.display='none';
+  document.getElementById('inputSection').style.display='block';
+  ['inp_resp','inp_apertura','inp_morralla','inp_billetes','inp_terminal',
+   'inp_cortes_taller','inp_cortes_ayto','inp_seguro','inp_lavm','inp_regresos']
+    .forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inp_fecha').value=new Date().toISOString().slice(0,10);
+  toggleSvc(false);
+  renderGastos();renderSvcs();buildPaqInputs();renderNotas();
+}
+</script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, setDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBqEBzJ0cIDwE9NSqUdR7LVK-WxW8qO1xI",
+  authDomain: "starwash-cortes.firebaseapp.com",
+  projectId: "starwash-cortes",
+  storageBucket: "starwash-cortes.firebasestorage.app",
+  messagingSenderId: "426771852547",
+  appId: "1:426771852547:web:fd143b1bb798d46ddd8d36"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── HISTORIAL ──────────────────────────────────────────────────────────────
+import { getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+let historialVisible = false;
+window.toggleHistorial = function(){
+  historialVisible = !historialVisible;
+  const panel = document.getElementById('historialPanel');
+  panel.style.display = historialVisible ? 'block' : 'none';
+  if(historialVisible) window.cargarHistorial();
+};
+
+window.cargarHistorial = async function(){
+  const lista = document.getElementById('historialLista');
+  lista.innerHTML = '<p style="color:var(--muted);font-size:12px">Cargando...</p>';
+  try{
+    const q = query(collection(db,'cortes'), orderBy('timestamp','desc'), limit(30));
+    const snap = await getDocs(q);
+    if(snap.empty){ lista.innerHTML='<p style="color:var(--muted);font-size:12px">Sin cortes guardados aún.</p>'; return; }
+    lista.innerHTML='';
+    snap.forEach(doc=>{
+      const d = doc.data();
+      const fecha = d.fecha || '—';
+      const sesion = d.sesion || '—';
+      const resp = d.responsable || '—';
+      const tickets = d.totales?.total_tickets || 0;
+      const caja = d.totales?.total_caja || 0;
+      const dif = d.totales?.diferencia_din || 0;
+      const maqDif = d.maquina?.diferencia || 0;
+      const div = document.createElement('div');
+      div.className='hist-item';
+      div.innerHTML=`
+        <div class="hi-fecha">${fecha} — ${sesion}</div>
+        <div class="hi-meta">Responsable: ${resp}</div>
+        <div class="hi-kpis">
+          <span class="hist-kpi">🎫 $${(tickets/1000).toFixed(1)}K</span>
+          <span class="hist-kpi ${dif===0?'green':Math.abs(dif)<500?'amber':'red'}">${dif===0?'✅ Cuadra':'⚠️ $'+Math.abs(dif/1000).toFixed(1)+'K dif'}</span>
+          <span class="hist-kpi ${maqDif===0?'green':'amber'}">${maqDif===0?'🚗 OK':'🚗 '+Math.abs(maqDif)+' auto'}</span>
+        </div>`;
+      lista.appendChild(div);
+    });
+  }catch(e){
+    lista.innerHTML='<p style="color:var(--red);font-size:12px">Error: '+e.message+'</p>';
+  }
+};
+
+window.guardarCorte = async function(){
+  if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
+  const btn = document.getElementById('btnGuardar');
+  btn.textContent = '⏳ Guardando...';
+  btn.disabled = true;
+  try{
+    const corte = {
+      timestamp:    serverTimestamp(),
+      fecha:        document.getElementById('inp_fecha')?.value || '',
+      sesion:       D.sesion || '',
+      responsable:  document.getElementById('inp_resp')?.value || '',
+      // Ventas
+      ventas: {
+        autos:      D.ventas?.[0] || 0,
+        camionetas: D.ventas?.[1] || 0,
+        pickups:    D.ventas?.[2] || 0,
+        express:    D.ventas?.[3] || 0,
+        fiscalia:   D.ventas?.[4] || 0,
+        motos:      D.ventas?.[5] || 0,
+      },
+      adicionales: {
+        tapetes_solo:    D.adics?.[0] || 0,
+        motor:           D.adics?.[1] || 0,
+        mano:            D.adics?.[2] || 0,
+        plus_cera:       D.adics?.[3] || 0,
+        pro_cera_tapetes:D.adics?.[4] || 0,
+      },
+      pagos: {
+        efectivo:      D.efe     || 0,
+        tarjeta:       D.tar     || 0,
+        transferencia: D.trans   || 0,
+      },
+      servicios_manuales: svcs.map(s=>({nombre:s.n, precio:s.p, cantidad:s.q, total:(s.p||0)*(s.q||0)})),
+      totales: {
+        total_tickets:  D.totalTix   || 0,
+        total_cobrado:  D.totPagos   || 0,
+        total_caja:     D.totalCaja  || 0,
+        total_gastos:   D.totGastos  || 0,
+        diferencia_din: D.difDin     || 0,
+      },
+      caja: {
+        apertura:  D.apertura  || 0,
+        morralla:  D.morralla  || 0,
+        billetes:  D.billetes  || 0,
+        terminal:  D.terminal  || 0,
+      },
+      otros: {
+        cortes_taller: D.ct  || 0,
+        cortes_ayto:   D.ca  || 0,
+        seguro:        D.seg || 0,
+        lavados_mano:  D.lavm|| 0,
+        regresos:      D.reg || 0,
+      },
+      maquina: {
+        total_vendidos: D.maqVend || 0,
+        esperada:       D.maqEsp  || 0,
+        diferencia:     D.difMaq  || 0,
+      },
+      gastos: gastos.map(g=>({concepto:g.c, monto:g.m})),
+      notas:  notas.filter(n=>n.trim()),
+    };
+    const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
+    const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
+    const docId = fecha + '_' + sesion + '_v' + Date.now().toString().slice(-4);
+    const docRef = doc(db, 'cortes', docId);
+    await setDoc(docRef, corte);
+    btn.textContent = '✅ Guardado';
+    btn.style.background = 'var(--green)';
+    setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
+    console.log('Corte guardado con ID:', docRef.id);
+  } catch(e){
+    alert('Error al guardar: ' + e.message);
+    btn.textContent = '💾 Guardar Corte';
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
