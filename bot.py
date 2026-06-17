@@ -199,7 +199,12 @@ Reglas de respuesta:
 - Si te preguntan comparaciones entre fechas, calcula tú mismo los totales
 - Si no hay datos para responder, dilo claramente
 - Para montos usa formato $X,XXX.XX
-- Sé conciso: máximo 5-6 líneas salvo que el detalle sea necesario"""
+- Sé conciso: máximo 5-6 líneas salvo que el detalle sea necesario
+- SIEMPRE incluye los billetes en caja (campo caja.billetes) en cualquier resumen o corte completo que presentes. Ponlo así: 💵 Billetes: $X,XXX.XX
+- Cuando te pidan "lectura de máquina", "lecturas", "inicial y final" o similar, SIEMPRE muestra la tabla por paquete con este formato exacto (sin tabla markdown, solo texto):
+  Paq 1: 12450 → 12478 | 28 autos | $2,240
+  Paq 2: 8930 → 8952 | 22 autos | $2,200
+  (usa los datos del campo lecturas_maquina del contexto)"""
 
 async def consultar_claude(pregunta: str, cortes: list) -> str:
     """Usa Claude para responder preguntas sobre los cortes con contexto completo."""
