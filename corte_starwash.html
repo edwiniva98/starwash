@@ -206,7 +206,7 @@ table.ct tr.red-r td{background:var(--red-light)}
       <div class="fg fg-3">
         <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha" onchange="cargarInicioPaquetes()"></div>
         <div class="fl"><label>Responsable</label><input type="text" id="inp_resp" placeholder="Nombre"></div>
-        <div class="fl"><label>Apertura de Caja ($)</label><input type="number" id="inp_apertura" placeholder="0"></div>
+        <div class="fl"><label>Apertura de Caja ($)</label><input type="number" id="inp_apertura" placeholder="0" oninput="recalcFormInputs()"></div>
       </div>
     </div>
   </div>
@@ -217,9 +217,9 @@ table.ct tr.red-r td{background:var(--red-light)}
     <div class="card-body">
       <p class="hint">Apertura = morralla que quedó ayer. Billetes = total de billetes contados.</p>
       <div class="fg fg-3">
-        <div class="fl"><label>Morralla ($)</label><input type="number" id="inp_morralla" placeholder="0"></div>
-        <div class="fl"><label>Billetes ($)</label><input type="number" id="inp_billetes" placeholder="0"></div>
-        <div class="fl"><label>Corte Terminal ($)</label><input type="number" id="inp_terminal" placeholder="0"></div>
+        <div class="fl"><label>Morralla ($)</label><input type="number" id="inp_morralla" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Billetes ($)</label><input type="number" id="inp_billetes" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Corte Terminal ($)</label><input type="number" id="inp_terminal" placeholder="0" oninput="recalcFormInputs()"></div>
       </div>
     </div>
   </div>
@@ -230,12 +230,12 @@ table.ct tr.red-r td{background:var(--red-light)}
     <div class="card-body">
       <p class="hint">Cortesías y seguros pasan por máquina pero no cobran. Lavados a mano y regresos se descuentan de máquina esperada.</p>
       <div class="fg fg-3">
-        <div class="fl"><label>Cortesías Taller</label><input type="number" id="inp_cortes_taller" placeholder="0"></div>
-        <div class="fl"><label>Cortesías Ayuntamiento</label><input type="number" id="inp_cortes_ayto" placeholder="0"></div>
-        <div class="fl"><label>Cortesías Familiar</label><input type="number" id="inp_cortes_familiar" placeholder="0"></div>
-        <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seguro" placeholder="0"></div>
-        <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0"></div>
-        <div class="fl"><label>Regresos</label><input type="number" id="inp_regresos" placeholder="0"></div>
+        <div class="fl"><label>Cortesías Taller</label><input type="number" id="inp_cortes_taller" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Cortesías Ayuntamiento</label><input type="number" id="inp_cortes_ayto" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Cortesías Familiar</label><input type="number" id="inp_cortes_familiar" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seguro" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0" oninput="recalcFormInputs()"></div>
+        <div class="fl"><label>Regresos</label><input type="number" id="inp_regresos" placeholder="0" oninput="recalcFormInputs()"></div>
       </div>
     </div>
   </div>
@@ -542,6 +542,31 @@ function handleFile(f){
   pdfFile=f;
   document.getElementById('fileInfo').innerHTML=`✔ ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
 }
+function recalcFormInputs(){
+  // Only runs during input phase (before corte is generated)
+  if(document.getElementById('corteWrap').style.display==='block') return;
+  
+  const ct=parseFloat(document.getElementById('inp_cortes_taller')?.value)||0;
+  const ca=parseFloat(document.getElementById('inp_cortes_ayto')?.value)||0;
+  const cf=parseFloat(document.getElementById('inp_cortes_familiar')?.value)||0;
+  const seg=parseFloat(document.getElementById('inp_seguro')?.value)||0;
+  const lavm=parseFloat(document.getElementById('inp_lavm')?.value)||0;
+  const reg=parseFloat(document.getElementById('inp_regresos')?.value)||0;
+  const apertura=parseFloat(document.getElementById('inp_apertura')?.value)||0;
+  const morralla=parseFloat(document.getElementById('inp_morralla')?.value)||0;
+  const billetes=parseFloat(document.getElementById('inp_billetes')?.value)||0;
+  const terminal=parseFloat(document.getElementById('inp_terminal')?.value)||0;
+  const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
+  const totalCaja=morralla+billetes+terminal+(parseFloat(document.getElementById('inp_trans')?.value)||0)+totGastos-apertura;
+  
+  // Update caja KPIs
+  const setK=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  setK('k_apertura','$'+Math.round(apertura/1000*10)/10+'K');
+  setK('k_morralla','$'+Math.round(morralla/1000*10)/10+'K');
+  setK('k_billetes','$'+Math.round(billetes/1000*10)/10+'K');
+  setK('k_terminal','$'+Math.round(terminal/1000*10)/10+'K');
+}
+
 async function cargarInicioPaquetes(){
   const fecha = document.getElementById('inp_fecha').value;
   if(!fecha) return;
