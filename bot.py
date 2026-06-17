@@ -1,8 +1,8 @@
 import os
 import logging
 import json
-import base64
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 import httpx
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -25,14 +25,14 @@ async def get_cortes(limit=5, fecha=None):
     async with httpx.AsyncClient() as client:
         r = await client.get(url, params=params)
         data = r.json()
-    
+
     cortes = []
     for doc in data.get("documents", []):
         fields = doc.get("fields", {})
         corte = parse_firestore(fields)
         corte["_id"] = doc["name"].split("/")[-1]
         if fecha:
-            if fecha in corte.get("fecha",""):
+            if fecha in corte.get("fecha", ""):
                 cortes.append(corte)
         else:
             cortes.append(corte)
@@ -54,15 +54,21 @@ def parse_firestore(fields):
             result[key] = parse_firestore(val["mapValue"].get("fields", {}))
         elif "arrayValue" in val:
             items = val["arrayValue"].get("values", [])
-            result[key] = [parse_firestore(i.get("mapValue",{}).get("fields",{})) if "mapValue" in i else list(i.values())[0] for i in items]
+            result[key] = [
+                parse_firestore(i.get("mapValue", {}).get("fields", {}))
+                if "mapValue" in i else list(i.values())[0]
+                for i in items
+            ]
         elif "timestampValue" in val:
             result[key] = val["timestampValue"]
     return result
 
 # ── FORMAT ────────────────────────────────────────────────────────────────────
 def fmt(n):
-    try: return f"${float(n):,.2f}"
-    except: return "$0.00"
+    try:
+        return f"${float(n):,.2f}"
+    except:
+        return "$0.00"
 
 def generar_resumen_firebase(corte):
     """Genera resumen completo desde datos de Firebase."""
@@ -74,8 +80,8 @@ def generar_resumen_firebase(corte):
     m = corte.get("maquina", {})
     o = corte.get("otros", {})
 
-    autos_pagados = sum([v.get("autos",0), v.get("camionetas",0), v.get("pickups",0), v.get("express",0), v.get("fiscalia",0)])
-    total_entraron = autos_pagados + o.get("cortes_taller",0) + o.get("cortes_ayto",0) + o.get("seguro",0)
+    autos_pagados = sum([v.get("autos", 0), v.get("camionetas", 0), v.get("pickups", 0), v.get("express", 0), v.get("fiscalia", 0)])
+    total_entraron = autos_pagados + o.get("cortes_taller", 0) + o.get("cortes_ayto", 0) + o.get("seguro", 0)
     dif_din = t.get("diferencia_din", 0)
     dif_maq = m.get("diferencia", 0)
 
@@ -83,8 +89,8 @@ def generar_resumen_firebase(corte):
     estado_maq = "✅ Cuadra exacto" if dif_maq == 0 else (f"⚠️ +{dif_maq} en máquina (posible sin cobrar)" if dif_maq > 0 else f"⚠️ {abs(dif_maq)} menos en máquina")
 
     msg = f"⚡ *STAR WASH — CORTE DEL DÍA*\n"
-    msg += f"📅 {corte.get('fecha','—')} | 🔖 {corte.get('sesion','—')}\n"
-    msg += f"👤 {corte.get('responsable','—')}\n\n"
+    msg += f"📅 {corte.get('fecha', '—')} | 🔖 {corte.get('sesion', '—')}\n"
+    msg += f"👤 {corte.get('responsable', '—')}\n\n"
 
     msg += f"🚗 *VEHÍCULOS*\n"
     msg += f"• Autos: {v.get('autos',0)} | Camionetas: {v.get('camionetas',0)} | Pick-Ups: {v.get('pickups',0)}\n"
@@ -110,14 +116,14 @@ def generar_resumen_firebase(corte):
         total_g = t.get("total_gastos", 0)
         msg += f"💸 *GASTOS: {fmt(total_g)}*\n"
         for g in gastos:
-            if isinstance(g, dict) and g.get("concepto") and g.get("monto",0) > 0:
+            if isinstance(g, dict) and g.get("concepto") and g.get("monto", 0) > 0:
                 msg += f"• {g['concepto']}: {fmt(g['monto'])}\n"
 
     svc = corte.get("servicios_manuales", [])
     if svc:
         msg += f"\n✨ *SERVICIOS MANUALES*\n"
         for s in svc:
-            if isinstance(s, dict) and s.get("nombre") and s.get("total",0) > 0:
+            if isinstance(s, dict) and s.get("nombre") and s.get("total", 0) > 0:
                 msg += f"• {s['nombre']}: {fmt(s['total'])}\n"
 
     notas = [n for n in corte.get("notas", []) if n and str(n).strip()]
@@ -128,53 +134,205 @@ def generar_resumen_firebase(corte):
 
     return msg
 
+# ── DETECCIÓN DE FECHA EN TEXTO ───────────────────────────────────────────────
+def detectar_fecha(texto: str) -> str | None:
+    """
+    Detecta referencias de fecha en el texto del usuario.
+    Devuelve fecha en formato YYYY-MM-DD o None.
+    """
+    hoy = datetime.now()
+    texto_lower = texto.lower()
+
+    # Palabras clave relativas
+    if any(p in texto_lower for p in ["hoy", "este día", "este dia"]):
+        return hoy.strftime("%Y-%m-%d")
+    if any(p in texto_lower for p in ["ayer", "el día de ayer", "el dia de ayer"]):
+        return (hoy - timedelta(days=1)).strftime("%Y-%m-%d")
+    if any(p in texto_lower for p in ["antier", "anteayer"]):
+        return (hoy - timedelta(days=2)).strftime("%Y-%m-%d")
+
+    # Días de la semana en español
+    dias = {
+        "lunes": 0, "martes": 1, "miércoles": 2, "miercoles": 2,
+        "jueves": 3, "viernes": 4, "sábado": 5, "sabado": 5, "domingo": 6
+    }
+    for nombre, num in dias.items():
+        if nombre in texto_lower:
+            dias_atras = (hoy.weekday() - num) % 7
+            if dias_atras == 0:
+                dias_atras = 7  # la semana pasada
+            return (hoy - timedelta(days=dias_atras)).strftime("%Y-%m-%d")
+
+    # Fecha explícita YYYY-MM-DD
+    m = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", texto)
+    if m:
+        return m.group(1)
+
+    # Fecha DD/MM/YYYY o DD-MM-YYYY
+    m = re.search(r"\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b", texto)
+    if m:
+        return f"{m.group(3)}-{m.group(2).zfill(2)}-{m.group(1).zfill(2)}"
+
+    return None
+
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-async def consultar_claude(pregunta, cortes):
-    """Usa Claude para responder preguntas sobre los cortes."""
-    resumen = []
+SYSTEM_PROMPT = """Eres el asistente inteligente del *Autolavado Star Wash*, un negocio de lavado de autos en México.
+
+Tu función es responder preguntas del dueño (Edwin) sobre los cortes del día: ventas, caja, diferencias, gastos, máquina, etc.
+
+Contexto del negocio:
+- Categorías de vehículos: Autos ($110), Camionetas ($120), Pick-Ups/SUV ($140), Express ($90), Fiscalía ($80), Motos ($60)
+- Adicionales: Tapetes ($40), Motor ($60), Lavado a Mano ($20), Plus+Cera ($20), Pro Cera+Tapetes ($50)
+- La "máquina" es el contador automático de vehículos que pasan por el túnel de lavado
+- "Corte de caja" = comparar lo que dice Odoo (POS) vs lo que hay en el cajón
+- "Diferencia de máquina" = autos que contó la máquina vs autos esperados (pagados + cortesías + seguro - mano - regresos)
+- Cortesías: Taller = autos del taller Car Center, Ayuntamiento = vehículos municipales, Familiar = familiares del dueño
+- Seguro de lluvia = autos que entran gratis por garantía de lluvia
+- "Morralla" = monedas/cambio en caja
+- El corte es diario, una sesión por día normalmente
+
+Reglas de respuesta:
+- Responde siempre en español, de forma clara y directa
+- Usa emojis con moderación para hacer el mensaje legible
+- Si te preguntan comparaciones entre fechas, calcula tú mismo los totales
+- Si no hay datos para responder, dilo claramente
+- Para montos usa formato $X,XXX.XX
+- Sé conciso: máximo 5-6 líneas salvo que el detalle sea necesario"""
+
+async def consultar_claude(pregunta: str, cortes: list) -> str:
+    """Usa Claude para responder preguntas sobre los cortes con contexto completo."""
+
+    # Construir contexto rico con todo el detalle disponible
+    contexto_cortes = []
     for c in cortes:
         t = c.get("totales", {})
-        resumen.append({
+        v = c.get("ventas", {})
+        a = c.get("adicionales", {})
+        p = c.get("pagos", {})
+        m = c.get("maquina", {})
+        o = c.get("otros", {})
+        caja = c.get("caja", {})
+
+        autos_pagados = sum([v.get(k, 0) for k in ["autos", "camionetas", "pickups", "express", "fiscalia"]])
+
+        entrada = {
             "fecha": c.get("fecha"),
             "sesion": c.get("sesion"),
-            "autos_pagados": sum([c.get("ventas",{}).get(k,0) for k in ["autos","camionetas","pickups","express","fiscalia"]]),
-            "total_tickets": t.get("total_tickets",0),
-            "total_caja": t.get("total_caja",0),
-            "total_gastos": t.get("total_gastos",0),
-            "diferencia": t.get("diferencia_din",0),
-            "maquina_dif": c.get("maquina",{}).get("diferencia",0),
-        })
+            "responsable": c.get("responsable"),
+            "vehiculos": {
+                "autos": v.get("autos", 0),
+                "camionetas": v.get("camionetas", 0),
+                "pickups": v.get("pickups", 0),
+                "express": v.get("express", 0),
+                "fiscalia": v.get("fiscalia", 0),
+                "motos": v.get("motos", 0),
+                "total_pagados": autos_pagados,
+                "cortesias_taller": o.get("cortes_taller", 0),
+                "cortesias_ayto": o.get("cortes_ayto", 0),
+                "cortesias_familiar": o.get("cortes_familiar", 0),
+                "seguro_lluvia": o.get("seguro", 0),
+                "lavados_mano": o.get("lavados_mano", 0),
+                "regresos": o.get("regresos", 0),
+            },
+            "totales": {
+                "total_tickets": t.get("total_tickets", 0),
+                "total_lavados": t.get("total_lavados", 0),
+                "total_adicionales": t.get("total_adicionales", 0),
+                "total_cobrado": t.get("total_cobrado", 0),
+                "total_caja": t.get("total_caja", 0),
+                "total_gastos": t.get("total_gastos", 0),
+                "diferencia_caja": t.get("diferencia_din", 0),
+            },
+            "pagos": {
+                "efectivo": p.get("efectivo", 0),
+                "tarjeta": p.get("tarjeta", 0),
+                "transferencia": p.get("transferencia", 0),
+            },
+            "caja": {
+                "apertura": caja.get("apertura", 0),
+                "morralla": caja.get("morralla", 0),
+                "billetes": caja.get("billetes", 0),
+                "terminal": caja.get("terminal", 0),
+            },
+            "maquina": {
+                "registrada": m.get("total_vendidos", 0),
+                "esperada": m.get("esperada", 0),
+                "diferencia": m.get("diferencia", 0),
+            },
+            "gastos": [
+                {"concepto": g["concepto"], "monto": g["monto"]}
+                for g in c.get("gastos", [])
+                if isinstance(g, dict) and g.get("concepto") and g.get("monto", 0) > 0
+            ],
+            "servicios_manuales": [
+                {"nombre": s["nombre"], "precio": s.get("precio",0), "cantidad": s.get("cantidad",1), "total": s.get("total",0)}
+                for s in c.get("servicios_manuales", [])
+                if isinstance(s, dict) and s.get("nombre")
+            ],
+            "adicionales": {
+                "tapetes_solo": a.get("tapetes_solo", 0),
+                "motor": a.get("motor", 0),
+                "lavado_mano": a.get("mano", 0),
+                "plus_cera": a.get("plus_cera", 0),
+                "pro_cera_tapetes": a.get("pro_cera_tapetes", 0),
+            },
+        }
 
-    prompt = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) te hace una pregunta sobre los cortes del negocio.
+        # Incluir ventas_detalle y adicionales_detalle si existen (nuevos campos)
+        if c.get("ventas_detalle"):
+            entrada["ventas_detalle"] = c["ventas_detalle"]
+        if c.get("adicionales_detalle"):
+            entrada["adicionales_detalle"] = c["adicionales_detalle"]
 
-Datos disponibles de los últimos cortes:
-{json.dumps(resumen, ensure_ascii=False, indent=2)}
+        notas = [n for n in c.get("notas", []) if n and str(n).strip()]
+        if notas:
+            entrada["notas"] = notas
 
-Pregunta de Edwin: {pregunta}
+        contexto_cortes.append(entrada)
 
-Responde de forma concisa y directa en español. Usa emojis. Si no tienes los datos para responder dilo claramente."""
+    mensaje_usuario = f"""Datos de los últimos cortes de Star Wash:
+{json.dumps(contexto_cortes, ensure_ascii=False, indent=2)}
+
+Pregunta de Edwin: {pregunta}"""
 
     async with httpx.AsyncClient() as client:
         r = await client.post(
             "https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": CLAUDE_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
-            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 500, "messages": [{"role": "user", "content": prompt}]},
+            headers={
+                "x-api-key": CLAUDE_KEY,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 800,
+                "system": SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": mensaje_usuario}]
+            },
             timeout=30
         )
         data = r.json()
+
+    if "content" not in data:
+        logger.error(f"Claude error: {data}")
+        return "❌ No pude consultar los datos en este momento."
+
     return data["content"][0]["text"]
 
 # ── HANDLERS ──────────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Hola! Soy el bot de *Star-Wash Cortes*.\n\n"
+        "👋 Hola! Soy el bot de *Star\\-Wash Cortes*\\.\n\n"
         "Puedo hacer lo siguiente:\n"
         "📊 /ultimo — Ver el último corte guardado\n"
-        "📅 /fecha 2026-06-15 — Ver corte de una fecha\n"
+        "📅 /fecha 2026\\-06\\-15 — Ver corte de una fecha\n"
         "📋 /historial — Ver últimos 5 cortes\n"
-        "💬 O pregúntame algo: _¿cómo estuvo ayer?_\n\n"
-        "📸 También mándame foto de la lectura de máquina y te la registro.",
-        parse_mode="Markdown"
+        "💬 O pregúntame algo natural:\n"
+        "  _¿cómo estuvo ayer?_\n"
+        "  _¿cuántos autos entraron el viernes?_\n"
+        "  _¿cuánto gasté esta semana?_\n\n"
+        "📸 También mándame foto de la lectura de máquina\\.",
+        parse_mode="MarkdownV2"
     )
 
 async def cmd_ultimo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -210,7 +368,7 @@ async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
         t = c.get("totales", {})
         dif = t.get("diferencia_din", 0)
         estado = "✅" if dif == 0 else "⚠️"
-        autos = sum([c.get("ventas",{}).get(k,0) for k in ["autos","camionetas","pickups","express","fiscalia"]])
+        autos = sum([c.get("ventas", {}).get(k, 0) for k in ["autos", "camionetas", "pickups", "express", "fiscalia"]])
         texto += f"{estado} *{c.get('fecha','—')}* — {c.get('sesion','—')}\n"
         texto += f"   🚗 {autos} autos | 💰 {fmt(t.get('total_tickets',0))} | 💸 {fmt(t.get('total_gastos',0))} gastos\n\n"
     await msg.edit_text(texto, parse_mode="Markdown")
@@ -228,14 +386,33 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    texto = update.message.text.lower()
+    texto = update.message.text
     msg = await update.message.reply_text("⏳ Consultando datos...")
+
     try:
-        cortes = await get_cortes(limit=10)
-        respuesta = await consultar_claude(update.message.text, cortes)
+        # Detectar si pregunta por una fecha específica para buscar ese corte primero
+        fecha_detectada = detectar_fecha(texto)
+
+        if fecha_detectada:
+            # Buscar corte de esa fecha + últimos 5 para contexto
+            cortes_fecha = await get_cortes(limit=30, fecha=fecha_detectada)
+            cortes_recientes = await get_cortes(limit=5)
+            # Unir sin duplicar
+            ids_vistos = {c["_id"] for c in cortes_fecha}
+            cortes = cortes_fecha + [c for c in cortes_recientes if c["_id"] not in ids_vistos]
+        else:
+            # Sin fecha detectada: traer últimos 10 para contexto
+            cortes = await get_cortes(limit=10)
+
+        if not cortes:
+            await msg.edit_text("No hay cortes guardados aún para responder tu pregunta.")
+            return
+
+        respuesta = await consultar_claude(texto, cortes)
         await msg.edit_text(respuesta, parse_mode="Markdown")
+
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error en handle_text: {e}")
         await msg.edit_text(f"❌ Error consultando datos: {str(e)}")
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
