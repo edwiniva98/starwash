@@ -81,7 +81,7 @@ def generar_resumen_firebase(corte):
     o = corte.get("otros", {})
 
     autos_pagados = sum([v.get("autos", 0), v.get("camionetas", 0), v.get("pickups", 0), v.get("express", 0), v.get("fiscalia", 0)])
-    total_entraron = autos_pagados + o.get("cortes_taller", 0) + o.get("cortes_ayto", 0) + o.get("seguro", 0)
+    total_entraron = autos_pagados + o.get("cortes_taller", 0) + o.get("cortes_ayto", 0) + o.get("cortes_familiar", 0) + o.get("seguro", 0)
     dif_din = t.get("diferencia_din", 0)
     dif_maq = m.get("diferencia", 0)
 
@@ -95,7 +95,7 @@ def generar_resumen_firebase(corte):
     msg += f"🚗 *VEHÍCULOS*\n"
     msg += f"• Autos: {v.get('autos',0)} | Camionetas: {v.get('camionetas',0)} | Pick-Ups: {v.get('pickups',0)}\n"
     msg += f"• Express: {v.get('express',0)} | Fiscalía: {v.get('fiscalia',0)} | Motos: {v.get('motos',0)}\n"
-    msg += f"• *Autos pagados: {autos_pagados}* | Cortesías: {o.get('cortes_taller',0)+o.get('cortes_ayto',0)} | Seguro: {o.get('seguro',0)}\n"
+    msg += f"• *Autos pagados: {autos_pagados}* | Cortesías: {o.get('cortes_taller',0)+o.get('cortes_ayto',0)+o.get('cortes_familiar',0)} (T:{o.get('cortes_taller',0)} A:{o.get('cortes_ayto',0)} F:{o.get('cortes_familiar',0)}) | Seguro: {o.get('seguro',0)}\n"
     msg += f"• *Total entraron: {total_entraron}* | Máquina: {m.get('total_vendidos',0)}\n"
     msg += f"• {estado_maq}\n\n"
 
