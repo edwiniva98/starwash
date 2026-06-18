@@ -1378,22 +1378,49 @@ window.generarYEnviarPDF = async function(corte){
   const CHAT_ID   = '1159452620';
   
   try{
-    const elemento = document.getElementById('corteWrap');
     const fecha = corte.fecha || document.getElementById('inp_fecha')?.value || 'corte';
     const nombrePDF = `Corte_StarWash_${fecha}.pdf`;
-    
+
+    // Forzar recálculo de todos los valores antes de capturar
+    if(typeof recalcOut === 'function') recalcOut();
+    await new Promise(r => setTimeout(r, 200));
+
+    // Ocultar sección de inputs para que no aparezca en el PDF
+    const inputSection = document.getElementById('inputSection');
+    const actions = document.getElementById('actions');
+    const prevInput = inputSection ? inputSection.style.display : '';
+    const prevActions = actions ? actions.style.display : '';
+    if(inputSection) inputSection.style.display = 'none';
+    if(actions) actions.style.display = 'none';
+
+    // Pequeña espera para que el DOM se estabilice
+    await new Promise(r => setTimeout(r, 300));
+
+    const elemento = document.getElementById('corteWrap');
+
     // Opciones del PDF
     const opt = {
       margin: [8, 8, 8, 8],
       filename: nombrePDF,
-      image: { type: 'jpeg', quality: 0.92 },
-      html2canvas: { scale: 1.5, useCORS: true, logging: false },
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.scrollWidth,
+      },
       jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
     };
     
     // Generar PDF como blob
     const pdfBlob = await html2pdf().set(opt).from(elemento).outputPdf('blob');
-    
+
+    // Restaurar visibilidad
+    if(inputSection) inputSection.style.display = prevInput;
+    if(actions) actions.style.display = prevActions;
+
     // Mandar PDF por Telegram
     const formData = new FormData();
     formData.append('chat_id', CHAT_ID);
@@ -1407,6 +1434,11 @@ window.generarYEnviarPDF = async function(corte){
     console.log('PDF enviado por Telegram');
   } catch(e){
     console.warn('Error generando PDF:', e);
+    // Restaurar visibilidad en caso de error
+    const inputSection = document.getElementById('inputSection');
+    const actions = document.getElementById('actions');
+    if(inputSection) inputSection.style.display = '';
+    if(actions) actions.style.display = 'flex';
   }
 };
 
