@@ -586,11 +586,12 @@ async def handle_corte_nuevo(request):
         auditoria_msg = await auditar_corte(corte, historial)
 
         if _bot_app:
-            await _bot_app.bot.send_message(
-                chat_id=OWNER_ID,
-                text=auditoria_msg,
-                parse_mode="Markdown"
-            )
+            for uid in ALLOWED_USERS:
+                await _bot_app.bot.send_message(
+                    chat_id=uid,
+                    text=auditoria_msg,
+                    parse_mode="Markdown"
+                )
         return web.Response(text="ok")
     except Exception as e:
         logger.error(f"Error en handle_corte_nuevo: {e}")

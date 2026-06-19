@@ -1422,16 +1422,18 @@ window.generarYEnviarPDF = async function(corte){
     if(actions) actions.style.display = prevActions;
 
     // Mandar PDF por Telegram
-    const formData = new FormData();
-    formData.append('chat_id', CHAT_ID);
-    formData.append('document', pdfBlob, nombrePDF);
-    formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
-    
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-      method: 'POST',
-      body: formData
-    });
-    console.log('PDF enviado por Telegram');
+    const CHAT_IDS_PDF = ['1159452620', '8838219142']; // Edwin + papá
+    for(const cid of CHAT_IDS_PDF){
+      const formData = new FormData();
+      formData.append('chat_id', cid);
+      formData.append('document', pdfBlob, nombrePDF);
+      formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+        method: 'POST',
+        body: formData
+      });
+    }
+    console.log('PDF enviado por Telegram a todos');
   } catch(e){
     console.warn('Error generando PDF:', e);
     // Restaurar visibilidad en caso de error
@@ -1444,7 +1446,7 @@ window.generarYEnviarPDF = async function(corte){
 
 window.enviarTelegram = async function(corte){
   const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
-  const CHAT_ID   = '1159452620';
+  const CHAT_IDS  = ['1159452620', '8838219142']; // Edwin + papá
   
   const v = corte.ventas || {};
   const a = corte.adicionales || {};
@@ -1543,29 +1545,29 @@ window.enviarTelegram = async function(corte){
   }
   
   try{
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: msg,
-        parse_mode: 'Markdown'
-      })
-    });
-    console.log('Telegram notificado');
-    // Mandar foto si existe
-    if(fotoFile){
-      const b64foto = await toB64(fotoFile);
-      const mediaType = fotoFile.type;
-      const formData = new FormData();
-      formData.append('chat_id', CHAT_ID);
-      formData.append('photo', fotoFile, fotoFile.name);
-      formData.append('caption', `📸 Lectura de máquina — ${corte.fecha||'—'} ${corte.sesion||'—'}`);
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    for(const CHAT_ID of CHAT_IDS){
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: 'POST',
-        body: formData
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: msg,
+          parse_mode: 'Markdown'
+        })
       });
+      // Mandar foto si existe
+      if(fotoFile){
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('photo', fotoFile, fotoFile.name);
+        formData.append('caption', `📸 Lectura de máquina — ${corte.fecha||'—'} ${corte.sesion||'—'}`);
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: 'POST',
+          body: formData
+        });
+      }
     }
+    console.log('Telegram notificado a todos');
   } catch(e){
     console.warn('Error Telegram:', e);
   }
