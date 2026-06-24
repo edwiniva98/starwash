@@ -15,6 +15,10 @@ ALLOWED_USERS      = {OWNER_ID, 8838219142}  # Edwin + papá
 CLAUDE_KEY         = os.environ.get("ANTHROPIC_API_KEY", "")
 FIREBASE_PROJECT   = os.environ.get("FIREBASE_PROJECT_ID", "starwash-cortes")
 FIRESTORE_URL      = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT}/databases/(default)/documents"
+ODOO_URL           = os.environ.get("ODOO_URL", "https://star-wash.odoo.com")
+ODOO_DB            = os.environ.get("ODOO_DB", "star-wash")
+ODOO_USER          = os.environ.get("ODOO_USER", "starwashtexcoco@hotmail.com")
+ODOO_KEY           = os.environ.get("ODOO_KEY", "8f5c64a7d44c7ef76f99545760043dfdda89fa2a")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -574,6 +578,112 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── WEBHOOK HTTP para recibir cortes desde el HTML ────────────────────────────
 _bot_app = None  # referencia global al bot
 
+# ── ODOO PROXY ───────────────────────────────────────────────────────────────
+async def odoo_auth(client):
+    """Autentica con Odoo y devuelve las cookies de sesión."""
+    r = await client.post(
+        f"{ODOO_URL}/web/session/authenticate",
+        json={
+            "jsonrpc": "2.0", "method": "call", "id": 1,
+            "params": {"db": ODOO_DB, "login": ODOO_USER, "password": ODOO_KEY}
+        }
+    )
+    data = r.json()
+    if data.get("result", {}).get("uid"):
+        return r.cookies
+    raise Exception("Odoo auth failed")
+
+async def odoo_call(client, cookies, model, method, args=[], kwargs={}):
+    """Hace una llamada JSON-RPC a Odoo."""
+    r = await client.post(
+        f"{ODOO_URL}/web/dataset/call_kw",
+        json={
+            "jsonrpc": "2.0", "method": "call", "id": 1,
+            "params": {"model": model, "method": method, "args": args, "kwargs": kwargs}
+        },
+        cookies=cookies
+    )
+    data = r.json()
+    if "error" in data:
+        raise Exception(str(data["error"]))
+    return data["result"]
+
+async def handle_odoo_sesiones(request):
+    """Devuelve las últimas 5 sesiones POS de Odoo."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            cookies = await odoo_auth(client)
+            sesiones = await odoo_call(client, cookies, 'pos.session', 'search_read',
+                [[['state', 'in', ['closed', 'opened']]]],
+                {
+                    'fields': ['name', 'start_at', 'stop_at', 'state',
+                               'cash_register_total_entry_encoding'],
+                    'order': 'start_at desc',
+                    'limit': 5
+                }
+            )
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Content-Type': 'application/json'
+        }
+        return web.Response(text=json.dumps(sesiones), headers=headers)
+    except Exception as e:
+        logger.error(f"Error odoo_sesiones: {e}")
+        return web.Response(text=json.dumps({"error": str(e)}), status=500,
+                           headers={'Access-Control-Allow-Origin': '*'})
+
+async def handle_odoo_sesion_detalle(request):
+    """Devuelve el detalle completo de una sesión POS."""
+    try:
+        session_id = int(request.match_info['session_id'])
+        async with httpx.AsyncClient(timeout=30) as client:
+            cookies = await odoo_auth(client)
+
+            # Sesión
+            sesiones = await odoo_call(client, cookies, 'pos.session', 'search_read',
+                [[['id', '=', session_id]]],
+                {'fields': ['name', 'start_at', 'stop_at', 'state',
+                            'cash_register_total_entry_encoding'], 'limit': 1}
+            )
+            sesion = sesiones[0] if sesiones else {}
+
+            # Pagos agrupados
+            pagos = await odoo_call(client, cookies, 'pos.payment', 'search_read',
+                [[['session_id', '=', session_id]]],
+                {'fields': ['amount', 'payment_method_id'], 'limit': 1000}
+            )
+
+            # Líneas de venta
+            lineas = await odoo_call(client, cookies, 'pos.order.line', 'search_read',
+                [[['order_id.session_id', '=', session_id]]],
+                {'fields': ['product_id', 'qty', 'price_unit', 'price_subtotal_incl'], 'limit': 2000}
+            )
+
+        result = {
+            'sesion': sesion,
+            'pagos': pagos,
+            'lineas': lineas,
+        }
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Content-Type': 'application/json'
+        }
+        return web.Response(text=json.dumps(result, default=str), headers=headers)
+    except Exception as e:
+        logger.error(f"Error odoo_detalle: {e}")
+        return web.Response(text=json.dumps({"error": str(e)}), status=500,
+                           headers={'Access-Control-Allow-Origin': '*'})
+
+async def handle_options(request):
+    """Maneja preflight CORS."""
+    return web.Response(headers={
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    })
+
 async def handle_corte_nuevo(request):
     """Recibe un corte guardado desde el HTML y manda auditoría por Telegram."""
     try:
@@ -601,6 +711,9 @@ async def run_web_server():
     """Servidor HTTP para recibir notificaciones del HTML."""
     server = web.Application()
     server.router.add_post("/corte-nuevo", handle_corte_nuevo)
+    server.router.add_get("/odoo/sesiones", handle_odoo_sesiones)
+    server.router.add_get("/odoo/sesion/{session_id}", handle_odoo_sesion_detalle)
+    server.router.add_route("OPTIONS", "/{path_info:.*}", handle_options)
     runner = web.AppRunner(server)
     await runner.setup()
     port = int(os.environ.get("PORT", 8080))

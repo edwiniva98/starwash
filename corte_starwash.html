@@ -1337,50 +1337,8 @@ function resetAll(){
 }
 
 
-// ── ODOO INTEGRATION ──────────────────────────────────────────────────────────
-const ODOO_URL  = 'https://star-wash.odoo.com';
-const ODOO_DB   = 'star-wash';
-const ODOO_USER = 'starwashtexcoco@hotmail.com';
-const ODOO_KEY  = '8f5c64a7d44c7ef76f99545760043dfdda89fa2a';
-
-let odooUid = null;
-let odooCookies = null;
-
-async function odooAuth(){
-  if(odooUid) return true;
-  const r = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'include',
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'call', id: 1,
-      params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_KEY }
-    })
-  });
-  const data = await r.json();
-  if(data.result && data.result.uid){
-    odooUid = data.result.uid;
-    return true;
-  }
-  console.error('Odoo auth error:', data);
-  return false;
-}
-
-async function odooCall(model, method, args=[], kwargs={}){
-  await odooAuth();
-  const r = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'include',
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'call', id: 1,
-      params: { model, method, args, kwargs }
-    })
-  });
-  const data = await r.json();
-  if(data.error) throw new Error(JSON.stringify(data.error));
-  return data.result;
-}
+// ── ODOO INTEGRATION (vía Railway proxy) ─────────────────────────────────────
+const BOT_BASE = 'https://worker-production-d35e.up.railway.app';
 
 async function cargarSesionesOdoo(){
   const status = document.getElementById('odooStatus');
@@ -1390,22 +1348,10 @@ async function cargarSesionesOdoo(){
   status.textContent = '⏳ Conectando con Odoo...';
   
   try {
-    const auth = await odooAuth();
-    if(!auth){ status.textContent = '❌ Error de autenticación con Odoo'; return; }
-    
-    status.textContent = '⏳ Buscando sesiones de hoy...';
-    
-    // Buscar las últimas 5 sesiones (hoy o recientes)
-    const sesiones = await odooCall('pos.session', 'search_read',
-      [[['state', 'in', ['closed', 'opened']]]],
-      {
-        fields: ['name', 'start_at', 'stop_at', 'state', 
-                 'cash_register_total_entry_encoding',
-                 'cash_register_difference'],
-        order: 'start_at desc',
-        limit: 5
-      }
-    );
+    const r = await fetch(`${BOT_BASE}/odoo/sesiones`);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const sesiones = await r.json();
+    if(sesiones.error) throw new Error(sesiones.error);
     
     if(!sesiones || sesiones.length === 0){
       status.textContent = '⚠️ No hay sesiones hoy en Odoo';
