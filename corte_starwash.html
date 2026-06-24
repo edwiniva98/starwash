@@ -1335,6 +1335,229 @@ function resetAll(){
   toggleSvc(false);
   renderGastos();renderSvcs();buildPaqInputs();renderNotas();
 }
+
+
+// ── ODOO INTEGRATION ──────────────────────────────────────────────────────────
+const ODOO_URL  = 'https://star-wash.odoo.com';
+const ODOO_DB   = 'star-wash';
+const ODOO_USER = 'starwashtexcoco@hotmail.com';
+const ODOO_KEY  = '8f5c64a7d44c7ef76f99545760043dfdda89fa2a';
+
+let odooUid = null;
+let odooCookies = null;
+
+async function odooAuth(){
+  if(odooUid) return true;
+  const r = await fetch(`${ODOO_URL}/web/session/authenticate`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({
+      jsonrpc: '2.0', method: 'call', id: 1,
+      params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_KEY }
+    })
+  });
+  const data = await r.json();
+  if(data.result && data.result.uid){
+    odooUid = data.result.uid;
+    return true;
+  }
+  console.error('Odoo auth error:', data);
+  return false;
+}
+
+async function odooCall(model, method, args=[], kwargs={}){
+  await odooAuth();
+  const r = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({
+      jsonrpc: '2.0', method: 'call', id: 1,
+      params: { model, method, args, kwargs }
+    })
+  });
+  const data = await r.json();
+  if(data.error) throw new Error(JSON.stringify(data.error));
+  return data.result;
+}
+
+async function cargarSesionesOdoo(){
+  const status = document.getElementById('odooStatus');
+  const seccion = document.getElementById('odooSesiones');
+  const lista = document.getElementById('odooListaSesiones');
+  
+  status.textContent = '⏳ Conectando con Odoo...';
+  
+  try {
+    const auth = await odooAuth();
+    if(!auth){ status.textContent = '❌ Error de autenticación con Odoo'; return; }
+    
+    status.textContent = '⏳ Buscando sesiones de hoy...';
+    
+    // Buscar las últimas 5 sesiones (hoy o recientes)
+    const sesiones = await odooCall('pos.session', 'search_read',
+      [[['state', 'in', ['closed', 'opened']]]],
+      {
+        fields: ['name', 'start_at', 'stop_at', 'state', 
+                 'cash_register_total_entry_encoding',
+                 'cash_register_difference'],
+        order: 'start_at desc',
+        limit: 5
+      }
+    );
+    
+    if(!sesiones || sesiones.length === 0){
+      status.textContent = '⚠️ No hay sesiones hoy en Odoo';
+      return;
+    }
+    
+    status.textContent = `✅ ${sesiones.length} sesión(es) encontrada(s)`;
+    seccion.style.display = 'block';
+    
+    lista.innerHTML = sesiones.map(s => {
+      const total = s.cash_register_total_entry_encoding || 0;
+      const fechaObj = s.start_at ? new Date(s.start_at) : null;
+      const hora = fechaObj ? fechaObj.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '--';
+      const fechaDia = fechaObj ? fechaObj.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short'}) : '--';
+      const estado = s.state === 'closed' ? '🔒 Cerrada' : s.state === 'opened' ? '🟢 Abierta' : s.state;
+      const esZero = total === 0 ? ' style="opacity:0.5"' : '';
+      return `<div${esZero} style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:#f5f5f5;border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="cargarSesionOdoo(${s.id})">
+        <span style="font-weight:600;color:#714B67">${s.name}</span>
+        <span style="color:#333">💰 $${total.toLocaleString('es-MX')}</span>
+        <span style="color:#666;font-size:13px">${fechaDia} ${hora}</span>
+        <span style="font-size:12px;color:#999">${estado}</span>
+        ${total === 0 ? '<span style="font-size:11px;color:#e57373;margin-left:auto">⚠️ posible error</span>' : '<span style="margin-left:auto;color:#714B67;font-weight:600">→ Cargar</span>'}
+      </div>`;
+    }).join('');
+    
+  } catch(e) {
+    status.textContent = '❌ Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+async function cargarSesionOdoo(sessionId){
+  const status = document.getElementById('odooStatus');
+  status.textContent = '⏳ Cargando datos de la sesión...';
+  
+  try {
+    // Obtener detalle completo de la sesión
+    const [sesion] = await odooCall('pos.session', 'search_read',
+      [[['id', '=', sessionId]]],
+      {
+        fields: ['name', 'start_at', 'stop_at', 'state',
+                 'cash_register_total_entry_encoding',
+                 'cash_register_difference', 'cash_real_transaction'],
+        limit: 1
+      }
+    );
+    
+    // Obtener órdenes de la sesión para el desglose
+    const ordenes = await odooCall('pos.order', 'search_read',
+      [[['session_id', '=', sessionId], ['state', 'in', ['done', 'invoiced']]]],
+      {
+        fields: ['name', 'amount_total', 'amount_paid', 'payment_ids', 'lines'],
+        limit: 500
+      }
+    );
+    
+    // Obtener pagos agrupados por método
+    const pagos = await odooCall('pos.payment', 'search_read',
+      [[['session_id', '=', sessionId]]],
+      {
+        fields: ['amount', 'payment_method_id'],
+        limit: 1000
+      }
+    );
+    
+    // Agrupar pagos por método
+    const pagosPorMetodo = {};
+    pagos.forEach(p => {
+      const metodo = p.payment_method_id[1].toLowerCase();
+      pagosPorMetodo[metodo] = (pagosPorMetodo[metodo] || 0) + p.amount;
+    });
+    
+    const efectivo = Object.entries(pagosPorMetodo).find(([k]) => k.includes('efectivo') || k.includes('cash'))?.[1] || 0;
+    const tarjeta = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
+    const transferencia = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
+
+    // Obtener líneas de venta por producto para clasificar
+    const lineas = await odooCall('pos.order.line', 'search_read',
+      [[['order_id.session_id', '=', sessionId]]],
+      {
+        fields: ['product_id', 'qty', 'price_subtotal_incl', 'price_unit'],
+        limit: 2000
+      }
+    );
+
+    // Clasificar ventas por categoría según nombre de producto
+    const ventas = { autos:0, camionetas:0, pickups:0, express:0, fiscalia:0, motos:0 };
+    const adics  = { tapetes_solo:0, motor:0, mano:0, plus_cera:0, pro_cera_tapetes:0 };
+    
+    lineas.forEach(l => {
+      const nom = (l.product_id[1] || '').toLowerCase();
+      const qty = l.qty || 0;
+      if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas.autos += qty;
+      else if(nom.includes('camioneta')) ventas.camionetas += qty;
+      else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas.pickups += qty;
+      else if(nom.includes('express')) ventas.express += qty;
+      else if(nom.includes('fiscal')) ventas.fiscalia += qty;
+      else if(nom.includes('moto')) ventas.motos += qty;
+      else if(nom.includes('tapete') && !nom.includes('cera')) adics.tapetes_solo += qty;
+      else if(nom.includes('motor')) adics.motor += qty;
+      else if(nom.includes('mano')) adics.mano += qty;
+      else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics.plus_cera += qty;
+      else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics.pro_cera_tapetes += qty;
+    });
+    
+    // Obtener gastos (expense) de la sesión
+    const gastosCash = await odooCall('pos.payment', 'search_read',
+      [[['session_id', '=', sessionId], ['amount', '<', 0]]],
+      { fields: ['amount', 'payment_method_id'], limit: 100 }
+    );
+    
+    const totalTickets = sesion.cash_register_total_entry_encoding || 0;
+    const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
+    
+    // Llenar campos del formulario
+    document.getElementById('inp_fecha').value = fecha;
+    document.getElementById('inp_sesion').value = sesion.name || '';
+    
+    // Actualizar ventas en la UI
+    const ventaIds = ['autos','camionetas','pickups','express','fiscalia','motos'];
+    const adicsIds = ['tapetes_solo','motor','mano','plus_cera','pro_cera_tapetes'];
+    
+    ventaIds.forEach((k,i) => {
+      const el = document.querySelector(`[data-venta="${i}"]`) || document.getElementById(`venta_${i}`);
+      if(el){ el.value = ventas[k] || 0; el.dispatchEvent(new Event('input')); }
+    });
+    
+    // Llenar pagos
+    const efEl = document.getElementById('inp_efectivo');
+    const tarEl = document.getElementById('inp_tarjeta');
+    const traEl = document.getElementById('inp_transferencia');
+    if(efEl){ efEl.value = efectivo; efEl.dispatchEvent(new Event('input')); }
+    if(tarEl){ tarEl.value = tarjeta; tarEl.dispatchEvent(new Event('input')); }
+    if(traEl){ traEl.value = transferencia; traEl.dispatchEvent(new Event('input')); }
+    
+    // Recalcular todo
+    if(typeof recalcOut === 'function') recalcOut();
+    
+    // Ocultar sección Odoo y mostrar éxito
+    document.getElementById('odooSesiones').style.display = 'none';
+    status.textContent = `✅ Sesión ${sesion.name} cargada — $${totalTickets.toLocaleString('es-MX')} en ventas`;
+    
+    // Ocultar dropzone ya que no necesitan subir PDF
+    const dz = document.getElementById('dropzone');
+    if(dz) dz.style.display = 'none';
+    
+  } catch(e) {
+    status.textContent = '❌ Error cargando sesión: ' + e.message;
+    console.error(e);
+  }
+}
+
 </script>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -1568,226 +1791,6 @@ window.enviarTelegram = async function(corte){
 };
 
 
-// ── ODOO INTEGRATION ──────────────────────────────────────────────────────────
-const ODOO_URL  = 'https://star-wash.odoo.com';
-const ODOO_DB   = 'star-wash';
-const ODOO_USER = 'starwashtexcoco@hotmail.com';
-const ODOO_KEY  = '8f5c64a7d44c7ef76f99545760043dfdda89fa2a';
-
-let odooUid = null;
-let odooCookies = null;
-
-async function odooAuth(){
-  if(odooUid) return true;
-  const r = await fetch(`${ODOO_URL}/web/session/authenticate`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'include',
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'call', id: 1,
-      params: { db: ODOO_DB, login: ODOO_USER, password: ODOO_KEY }
-    })
-  });
-  const data = await r.json();
-  if(data.result && data.result.uid){
-    odooUid = data.result.uid;
-    return true;
-  }
-  console.error('Odoo auth error:', data);
-  return false;
-}
-
-async function odooCall(model, method, args=[], kwargs={}){
-  await odooAuth();
-  const r = await fetch(`${ODOO_URL}/web/dataset/call_kw`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    credentials: 'include',
-    body: JSON.stringify({
-      jsonrpc: '2.0', method: 'call', id: 1,
-      params: { model, method, args, kwargs }
-    })
-  });
-  const data = await r.json();
-  if(data.error) throw new Error(JSON.stringify(data.error));
-  return data.result;
-}
-
-async function cargarSesionesOdoo(){
-  const status = document.getElementById('odooStatus');
-  const seccion = document.getElementById('odooSesiones');
-  const lista = document.getElementById('odooListaSesiones');
-  
-  status.textContent = '⏳ Conectando con Odoo...';
-  
-  try {
-    const auth = await odooAuth();
-    if(!auth){ status.textContent = '❌ Error de autenticación con Odoo'; return; }
-    
-    status.textContent = '⏳ Buscando sesiones de hoy...';
-    
-    // Buscar las últimas 5 sesiones (hoy o recientes)
-    const sesiones = await odooCall('pos.session', 'search_read',
-      [[['state', 'in', ['closed', 'opened']]]],
-      {
-        fields: ['name', 'start_at', 'stop_at', 'state', 
-                 'cash_register_total_entry_encoding',
-                 'cash_register_difference'],
-        order: 'start_at desc',
-        limit: 5
-      }
-    );
-    
-    if(!sesiones || sesiones.length === 0){
-      status.textContent = '⚠️ No hay sesiones hoy en Odoo';
-      return;
-    }
-    
-    status.textContent = `✅ ${sesiones.length} sesión(es) encontrada(s)`;
-    seccion.style.display = 'block';
-    
-    lista.innerHTML = sesiones.map(s => {
-      const total = s.cash_register_total_entry_encoding || 0;
-      const fechaObj = s.start_at ? new Date(s.start_at) : null;
-      const hora = fechaObj ? fechaObj.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '--';
-      const fechaDia = fechaObj ? fechaObj.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short'}) : '--';
-      const estado = s.state === 'closed' ? '🔒 Cerrada' : s.state === 'opened' ? '🟢 Abierta' : s.state;
-      const esZero = total === 0 ? ' style="opacity:0.5"' : '';
-      return `<div${esZero} style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:#f5f5f5;border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="cargarSesionOdoo(${s.id})">
-        <span style="font-weight:600;color:#714B67">${s.name}</span>
-        <span style="color:#333">💰 $${total.toLocaleString('es-MX')}</span>
-        <span style="color:#666;font-size:13px">${fechaDia} ${hora}</span>
-        <span style="font-size:12px;color:#999">${estado}</span>
-        ${total === 0 ? '<span style="font-size:11px;color:#e57373;margin-left:auto">⚠️ posible error</span>' : '<span style="margin-left:auto;color:#714B67;font-weight:600">→ Cargar</span>'}
-      </div>`;
-    }).join('');
-    
-  } catch(e) {
-    status.textContent = '❌ Error: ' + e.message;
-    console.error(e);
-  }
-}
-
-async function cargarSesionOdoo(sessionId){
-  const status = document.getElementById('odooStatus');
-  status.textContent = '⏳ Cargando datos de la sesión...';
-  
-  try {
-    // Obtener detalle completo de la sesión
-    const [sesion] = await odooCall('pos.session', 'search_read',
-      [[['id', '=', sessionId]]],
-      {
-        fields: ['name', 'start_at', 'stop_at', 'state',
-                 'cash_register_total_entry_encoding',
-                 'cash_register_difference', 'cash_real_transaction'],
-        limit: 1
-      }
-    );
-    
-    // Obtener órdenes de la sesión para el desglose
-    const ordenes = await odooCall('pos.order', 'search_read',
-      [[['session_id', '=', sessionId], ['state', 'in', ['done', 'invoiced']]]],
-      {
-        fields: ['name', 'amount_total', 'amount_paid', 'payment_ids', 'lines'],
-        limit: 500
-      }
-    );
-    
-    // Obtener pagos agrupados por método
-    const pagos = await odooCall('pos.payment', 'search_read',
-      [[['session_id', '=', sessionId]]],
-      {
-        fields: ['amount', 'payment_method_id'],
-        limit: 1000
-      }
-    );
-    
-    // Agrupar pagos por método
-    const pagosPorMetodo = {};
-    pagos.forEach(p => {
-      const metodo = p.payment_method_id[1].toLowerCase();
-      pagosPorMetodo[metodo] = (pagosPorMetodo[metodo] || 0) + p.amount;
-    });
-    
-    const efectivo = Object.entries(pagosPorMetodo).find(([k]) => k.includes('efectivo') || k.includes('cash'))?.[1] || 0;
-    const tarjeta = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
-    const transferencia = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
-
-    // Obtener líneas de venta por producto para clasificar
-    const lineas = await odooCall('pos.order.line', 'search_read',
-      [[['order_id.session_id', '=', sessionId]]],
-      {
-        fields: ['product_id', 'qty', 'price_subtotal_incl', 'price_unit'],
-        limit: 2000
-      }
-    );
-
-    // Clasificar ventas por categoría según nombre de producto
-    const ventas = { autos:0, camionetas:0, pickups:0, express:0, fiscalia:0, motos:0 };
-    const adics  = { tapetes_solo:0, motor:0, mano:0, plus_cera:0, pro_cera_tapetes:0 };
-    
-    lineas.forEach(l => {
-      const nom = (l.product_id[1] || '').toLowerCase();
-      const qty = l.qty || 0;
-      if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas.autos += qty;
-      else if(nom.includes('camioneta')) ventas.camionetas += qty;
-      else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas.pickups += qty;
-      else if(nom.includes('express')) ventas.express += qty;
-      else if(nom.includes('fiscal')) ventas.fiscalia += qty;
-      else if(nom.includes('moto')) ventas.motos += qty;
-      else if(nom.includes('tapete') && !nom.includes('cera')) adics.tapetes_solo += qty;
-      else if(nom.includes('motor')) adics.motor += qty;
-      else if(nom.includes('mano')) adics.mano += qty;
-      else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics.plus_cera += qty;
-      else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics.pro_cera_tapetes += qty;
-    });
-    
-    // Obtener gastos (expense) de la sesión
-    const gastosCash = await odooCall('pos.payment', 'search_read',
-      [[['session_id', '=', sessionId], ['amount', '<', 0]]],
-      { fields: ['amount', 'payment_method_id'], limit: 100 }
-    );
-    
-    const totalTickets = sesion.cash_register_total_entry_encoding || 0;
-    const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
-    
-    // Llenar campos del formulario
-    document.getElementById('inp_fecha').value = fecha;
-    document.getElementById('inp_sesion').value = sesion.name || '';
-    
-    // Actualizar ventas en la UI
-    const ventaIds = ['autos','camionetas','pickups','express','fiscalia','motos'];
-    const adicsIds = ['tapetes_solo','motor','mano','plus_cera','pro_cera_tapetes'];
-    
-    ventaIds.forEach((k,i) => {
-      const el = document.querySelector(`[data-venta="${i}"]`) || document.getElementById(`venta_${i}`);
-      if(el){ el.value = ventas[k] || 0; el.dispatchEvent(new Event('input')); }
-    });
-    
-    // Llenar pagos
-    const efEl = document.getElementById('inp_efectivo');
-    const tarEl = document.getElementById('inp_tarjeta');
-    const traEl = document.getElementById('inp_transferencia');
-    if(efEl){ efEl.value = efectivo; efEl.dispatchEvent(new Event('input')); }
-    if(tarEl){ tarEl.value = tarjeta; tarEl.dispatchEvent(new Event('input')); }
-    if(traEl){ traEl.value = transferencia; traEl.dispatchEvent(new Event('input')); }
-    
-    // Recalcular todo
-    if(typeof recalcOut === 'function') recalcOut();
-    
-    // Ocultar sección Odoo y mostrar éxito
-    document.getElementById('odooSesiones').style.display = 'none';
-    status.textContent = `✅ Sesión ${sesion.name} cargada — $${totalTickets.toLocaleString('es-MX')} en ventas`;
-    
-    // Ocultar dropzone ya que no necesitan subir PDF
-    const dz = document.getElementById('dropzone');
-    if(dz) dz.style.display = 'none';
-    
-  } catch(e) {
-    status.textContent = '❌ Error cargando sesión: ' + e.message;
-    console.error(e);
-  }
-}
 
 window.dispararAuditoria = async function(corte){
   const BOT_URL = 'https://worker-production-d35e.up.railway.app/corte-nuevo';
