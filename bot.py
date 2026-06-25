@@ -579,47 +579,29 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 _bot_app = None  # referencia global al bot
 
 # ── ODOO PROXY ───────────────────────────────────────────────────────────────
-async def odoo_auth(client):
-    """Autentica con Odoo usando API key como password."""
-    # Odoo Online: autenticar con email + API key como password
-    for login in [ODOO_USER, "__api__"]:
-        r = await client.post(
-            f"{ODOO_URL}/web/session/authenticate",
-            json={
-                "jsonrpc": "2.0", "method": "call", "id": 1,
-                "params": {"db": ODOO_DB, "login": login, "password": ODOO_KEY}
-            },
-            headers={"Content-Type": "application/json"}
-        )
-        data = r.json()
-        result = data.get("result", {})
-        logger.info(f"Odoo auth login={login} uid={result.get('uid')}")
-        if result.get("uid"):
-            return r.cookies
+async def odoo_uid(client):
+    """Obtiene el UID usando XML-RPC con API key."""
+    import xmlrpc.client
+    common = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/common")
+    uid = common.authenticate(ODOO_DB, ODOO_USER, ODOO_KEY, {})
+    logger.info(f"Odoo XML-RPC uid={uid}")
+    if not uid:
+        raise Exception("Odoo XML-RPC auth failed")
+    return uid
 
-    raise Exception(f"Odoo auth failed for all methods. Last error: {data.get('error', data.get('result', {}))}")
-
-async def odoo_call(client, cookies, model, method, args=[], kwargs={}):
-    """Hace una llamada JSON-RPC a Odoo."""
-    r = await client.post(
-        f"{ODOO_URL}/web/dataset/call_kw",
-        json={
-            "jsonrpc": "2.0", "method": "call", "id": 1,
-            "params": {"model": model, "method": method, "args": args, "kwargs": kwargs}
-        },
-        cookies=cookies
-    )
-    data = r.json()
-    if "error" in data:
-        raise Exception(str(data["error"]))
-    return data["result"]
+async def odoo_call(client, uid, model, method, args=[], kwargs={}):
+    """Hace una llamada XML-RPC a Odoo."""
+    import xmlrpc.client
+    models = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/object")
+    result = models.execute_kw(ODOO_DB, uid, ODOO_KEY, model, method, args, kwargs)
+    return result
 
 async def handle_odoo_sesiones(request):
     """Devuelve las últimas 5 sesiones POS de Odoo."""
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            cookies = await odoo_auth(client)
-            sesiones = await odoo_call(client, cookies, 'pos.session', 'search_read',
+            uid = await odoo_uid(client)
+            sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['state', 'in', ['closed', 'opened']]]],
                 {
                     'fields': ['name', 'start_at', 'stop_at', 'state',
@@ -644,10 +626,10 @@ async def handle_odoo_sesion_detalle(request):
     try:
         session_id = int(request.match_info['session_id'])
         async with httpx.AsyncClient(timeout=30) as client:
-            cookies = await odoo_auth(client)
+            uid = await odoo_uid(client)
 
             # Sesión
-            sesiones = await odoo_call(client, cookies, 'pos.session', 'search_read',
+            sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['id', '=', session_id]]],
                 {'fields': ['name', 'start_at', 'stop_at', 'state',
                             'cash_register_total_entry_encoding'], 'limit': 1}
@@ -655,13 +637,13 @@ async def handle_odoo_sesion_detalle(request):
             sesion = sesiones[0] if sesiones else {}
 
             # Pagos agrupados
-            pagos = await odoo_call(client, cookies, 'pos.payment', 'search_read',
+            pagos = await odoo_call(client, uid, 'pos.payment', 'search_read',
                 [[['session_id', '=', session_id]]],
                 {'fields': ['amount', 'payment_method_id'], 'limit': 1000}
             )
 
             # Líneas de venta
-            lineas = await odoo_call(client, cookies, 'pos.order.line', 'search_read',
+            lineas = await odoo_call(client, uid, 'pos.order.line', 'search_read',
                 [[['order_id.session_id', '=', session_id]]],
                 {'fields': ['product_id', 'qty', 'price_unit', 'price_subtotal_incl'], 'limit': 2000}
             )
