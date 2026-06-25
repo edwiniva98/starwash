@@ -596,6 +596,18 @@ async def odoo_call(client, uid, model, method, args=[], kwargs={}):
     result = models.execute_kw(ODOO_DB, uid, ODOO_KEY, model, method, args, kwargs)
     return result
 
+async def handle_odoo_fields(request):
+    """Endpoint temporal para ver campos de pos.session."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            uid = await odoo_uid(client)
+            fields = await odoo_call(client, uid, 'pos.session', 'fields_get', [], {'attributes': ['string', 'type']})
+            # Filtrar campos relevantes de caja/efectivo
+            relevant = {k: v for k, v in fields.items() if any(w in k.lower() for w in ['cash', 'total', 'amount', 'register', 'balance'])}
+        return web.Response(text=json.dumps(relevant, indent=2), headers={'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'})
+    except Exception as e:
+        return web.Response(text=json.dumps({"error": str(e)}), status=500, headers={'Access-Control-Allow-Origin': '*'})
+
 async def handle_odoo_sesiones(request):
     """Devuelve las últimas 5 sesiones POS de Odoo."""
     try:
@@ -604,8 +616,7 @@ async def handle_odoo_sesiones(request):
             sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['state', 'in', ['closed', 'opened']]]],
                 {
-                    'fields': ['name', 'start_at', 'stop_at', 'state',
-                               'cash_register_total_entry_encoding'],
+                    'fields': ['name', 'start_at', 'stop_at', 'state'],
                     'order': 'start_at desc',
                     'limit': 5
                 }
@@ -631,8 +642,7 @@ async def handle_odoo_sesion_detalle(request):
             # Sesión
             sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['id', '=', session_id]]],
-                {'fields': ['name', 'start_at', 'stop_at', 'state',
-                            'cash_register_total_entry_encoding'], 'limit': 1}
+                {'fields': ['name', 'start_at', 'stop_at', 'state'], 'limit': 1}
             )
             sesion = sesiones[0] if sesiones else {}
 
@@ -700,6 +710,7 @@ async def run_web_server():
     server = web.Application()
     server.router.add_post("/corte-nuevo", handle_corte_nuevo)
     server.router.add_get("/odoo/sesiones", handle_odoo_sesiones)
+    server.router.add_get("/odoo/fields", handle_odoo_fields)
     server.router.add_get("/odoo/sesion/{session_id}", handle_odoo_sesion_detalle)
     server.router.add_route("OPTIONS", "/{path_info:.*}", handle_options)
     runner = web.AppRunner(server)
