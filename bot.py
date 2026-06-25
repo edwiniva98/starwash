@@ -616,7 +616,7 @@ async def handle_odoo_sesiones(request):
             sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['state', 'in', ['closed', 'opened']]]],
                 {
-                    'fields': ['name', 'start_at', 'stop_at', 'state'],
+                    'fields': ['name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
                     'order': 'start_at desc',
                     'limit': 5
                 }
@@ -642,7 +642,7 @@ async def handle_odoo_sesion_detalle(request):
             # Sesión
             sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
                 [[['id', '=', session_id]]],
-                {'fields': ['name', 'start_at', 'stop_at', 'state'], 'limit': 1}
+                {'fields': ['name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'], 'limit': 1}
             )
             sesion = sesiones[0] if sesiones else {}
 

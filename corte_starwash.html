@@ -1362,7 +1362,7 @@ async function cargarSesionesOdoo(){
     seccion.style.display = 'block';
     
     lista.innerHTML = sesiones.map(s => {
-      const total = s.cash_register_total_entry_encoding || 0;
+      const total = s.total_payments_amount || 0;
       const fechaObj = s.start_at ? new Date(s.start_at) : null;
       const hora = fechaObj ? fechaObj.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '--';
       const fechaDia = fechaObj ? fechaObj.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short'}) : '--';
@@ -1463,7 +1463,7 @@ async function cargarSesionOdoo(sessionId){
       { fields: ['amount', 'payment_method_id'], limit: 100 }
     );
     
-    const totalTickets = sesion.cash_register_total_entry_encoding || 0;
+    const totalTickets = sesion.total_payments_amount || 0;
     const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
     
     // Llenar campos del formulario
