@@ -1464,7 +1464,7 @@ async function cargarSesionOdoo(sessionId){
     // Construir el corte con los datos de D
     buildCorte({
       sesion: D.sesion,
-      fecha: null,
+      fecha: fecha ? fecha.split('-').reverse().join('/') : null,
       ventas: {
         autos: D.ventas[0], camionetas: D.ventas[1], pickups: D.ventas[2],
         express: D.ventas[3], fiscalia: D.ventas[4], motos: D.ventas[5]
