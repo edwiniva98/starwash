@@ -1405,68 +1405,58 @@ async function cargarSesionOdoo(sessionId){
     });
 
     const efectivo = Object.entries(pagosPorMetodo).find(([k]) => k.includes('efectivo') || k.includes('cash'))?.[1] || 0;
-    const tarjeta = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
-    const transferencia = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
+    const tarjeta  = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
+    const trans    = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
 
-    // Clasificar ventas por categoría
-    const ventas = { autos:0, camionetas:0, pickups:0, express:0, fiscalia:0, motos:0 };
-    const adics  = { tapetes_solo:0, motor:0, mano:0, plus_cera:0, pro_cera_tapetes:0 };
+    // Clasificar ventas por nombre de producto
+    const ventas = [0,0,0,0,0,0]; // autos,camionetas,pickups,express,fiscalia,motos
+    const adics  = [0,0,0,0,0];   // tapetes,motor,mano,plus_cera,pro_cera
 
     lineas.forEach(l => {
       const nom = (l.product_id[1] || '').toLowerCase();
       const qty = l.qty || 0;
-      if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas.autos += qty;
-      else if(nom.includes('camioneta')) ventas.camionetas += qty;
-      else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas.pickups += qty;
-      else if(nom.includes('express')) ventas.express += qty;
-      else if(nom.includes('fiscal')) ventas.fiscalia += qty;
-      else if(nom.includes('moto')) ventas.motos += qty;
-      else if(nom.includes('tapete') && !nom.includes('cera')) adics.tapetes_solo += qty;
-      else if(nom.includes('motor')) adics.motor += qty;
-      else if(nom.includes('mano')) adics.mano += qty;
-      else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics.plus_cera += qty;
-      else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics.pro_cera_tapetes += qty;
+      if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas[0] += qty;
+      else if(nom.includes('camioneta')) ventas[1] += qty;
+      else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas[2] += qty;
+      else if(nom.includes('express')) ventas[3] += qty;
+      else if(nom.includes('fiscal')) ventas[4] += qty;
+      else if(nom.includes('moto')) ventas[5] += qty;
+      else if(nom.includes('tapete') && !nom.includes('cera')) adics[0] += qty;
+      else if(nom.includes('motor')) adics[1] += qty;
+      else if(nom.includes('mano')) adics[2] += qty;
+      else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics[3] += qty;
+      else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics[4] += qty;
     });
 
-    const totalTickets = sesion.total_payments_amount || 0;
     const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
 
     // Llenar campos del formulario
     document.getElementById('inp_fecha').value = fecha;
-    document.getElementById('inp_sesion').value = sesion.name || '';
+    document.getElementById('inp_resp').value = '';
 
-    // Llenar ventas
-    const ventasMap = ['autos','camionetas','pickups','express','fiscalia','motos'];
-    const adicsMap  = ['tapetes_solo','motor','mano','plus_cera','pro_cera_tapetes'];
+    // Llenar D directamente (igual que hace generate())
+    D.ventas = ventas;
+    D.adics  = adics;
+    D.efe    = efectivo;
+    D.tar    = tarjeta;
+    D.trans  = trans;
+    D.sesion = sesion.name || '';
+    D.totalTix = sesion.total_payments_amount || 0;
 
-    ventasMap.forEach((k,i) => {
-      const el = document.querySelector(`input[data-venta="${i}"]`) || document.getElementById(`venta_${i}`);
-      if(el){ el.value = ventas[k] || 0; el.dispatchEvent(new Event('input')); }
-    });
-    adicsMap.forEach((k,i) => {
-      const el = document.querySelector(`input[data-adic="${i}"]`) || document.getElementById(`adic_${i}`);
-      if(el){ el.value = adics[k] || 0; el.dispatchEvent(new Event('input')); }
-    });
+    // Mostrar el corteWrap
+    document.getElementById('inputSection').style.display = 'none';
+    document.getElementById('corteWrap').style.display = 'block';
 
-    // Llenar pagos
-    const efEl = document.getElementById('inp_efectivo');
-    const tarEl = document.getElementById('inp_tarjeta');
-    const traEl = document.getElementById('inp_trans');
-    if(efEl){ efEl.value = efectivo; efEl.dispatchEvent(new Event('input')); }
-    if(tarEl){ tarEl.value = tarjeta; tarEl.dispatchEvent(new Event('input')); }
-    if(traEl){ traEl.value = transferencia; traEl.dispatchEvent(new Event('input')); }
+    // Actualizar header
+    document.getElementById('out_fecha').textContent = fecha;
+    document.getElementById('out_sesion').textContent = D.sesion;
 
     // Recalcular todo
-    if(typeof recalcFormInputs === 'function') recalcFormInputs();
-    if(typeof recalcOut === 'function') recalcOut();
+    recalcOut();
 
     // Ocultar lista de sesiones
     document.getElementById('odooSesiones').style.display = 'none';
-    status.textContent = `✅ Sesión ${sesion.name || sessionId} cargada — $${totalTickets.toLocaleString('es-MX')} en ventas`;
-
-    // Ocultar dropzone
-    const dz = document.getElementById('dropzone');
-    if(dz) dz.style.display = 'none';
+    status.textContent = `✅ Sesión ${D.sesion} cargada — $${(D.totalTix||0).toLocaleString('es-MX')} en ventas`;
 
   } catch(e) {
     status.textContent = '❌ Error cargando sesión: ' + e.message;
