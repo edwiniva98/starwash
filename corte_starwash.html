@@ -1450,8 +1450,9 @@ async function cargarSesionOdoo(sessionId){
     // Llenar inp_fecha ANTES de ocultar inputSection (buildCorte lo necesita)
     const inpFecha = document.getElementById('inp_fecha');
     inpFecha.value = fecha;
-    inpFecha.dispatchEvent(new Event('change')); // dispara cargarInicioPaquetes
     document.getElementById('inp_resp').value = '';
+    // Cargar inicios de paquetes y apertura del día anterior, luego buildCorte
+    await cargarInicioPaquetes();
 
     // Mostrar el corteWrap
     document.getElementById('inputSection').style.display = 'none';
