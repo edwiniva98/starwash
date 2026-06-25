@@ -1444,7 +1444,9 @@ async function cargarSesionOdoo(sessionId){
     D.totalTix = sesion.total_payments_amount || 0;
 
     // Llenar inp_fecha ANTES de ocultar inputSection (buildCorte lo necesita)
-    document.getElementById('inp_fecha').value = fecha;
+    const inpFecha = document.getElementById('inp_fecha');
+    inpFecha.value = fecha;
+    inpFecha.dispatchEvent(new Event('change')); // dispara cargarInicioPaquetes
     document.getElementById('inp_resp').value = '';
 
     // Mostrar el corteWrap
