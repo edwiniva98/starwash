@@ -1451,6 +1451,16 @@ async function cargarSesionOdoo(sessionId){
     document.getElementById('out_fecha').textContent = fecha;
     document.getElementById('out_sesion').textContent = D.sesion;
 
+    // Debug
+    console.log('D cargado:', JSON.stringify({
+      ventas: D.ventas,
+      adics: D.adics,
+      efe: D.efe,
+      tar: D.tar,
+      trans: D.trans,
+      totalTix: D.totalTix
+    }));
+
     // Recalcular todo
     recalcOut();
 
