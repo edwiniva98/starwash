@@ -890,7 +890,7 @@ function buildCorte(od){
   const fecha=document.getElementById('inp_fecha').value;
   document.getElementById('out_fecha').textContent=fecha||'—';
   document.getElementById('out_sesion').textContent=D.sesion;
-  document.getElementById('out_resp').textContent=document.getElementById('inp_resp').value||'—';
+  document.getElementById('out_resp').textContent=document.getElementById('inp_resp')?.value||'—';
 
   // Ventas table
   let totLav=0,cantPagados=0,cantLav=0;
@@ -1461,8 +1461,20 @@ async function cargarSesionOdoo(sessionId){
       totalTix: D.totalTix
     }));
 
-    // Recalcular todo — pequeño delay para que el DOM esté listo
-    setTimeout(() => { recalcOut(); }, 100);
+    // Construir el corte con los datos de D
+    buildCorte({
+      sesion: D.sesion,
+      fecha: null,
+      ventas: {
+        autos: D.ventas[0], camionetas: D.ventas[1], pickups: D.ventas[2],
+        express: D.ventas[3], fiscalia: D.ventas[4], motos: D.ventas[5]
+      },
+      adicionales: {
+        tapetes_solo: D.adics[0], motor: D.adics[1], mano: D.adics[2],
+        plus_cera: D.adics[3], pro_cera_tapetes: D.adics[4]
+      },
+      pagos: { efectivo: D.efe, tarjeta: D.tar, transferencia: D.trans }
+    });
 
     // Ocultar lista de sesiones
     document.getElementById('odooSesiones').style.display = 'none';
