@@ -1386,61 +1386,32 @@ async function cargarSesionesOdoo(){
 async function cargarSesionOdoo(sessionId){
   const status = document.getElementById('odooStatus');
   status.textContent = '⏳ Cargando datos de la sesión...';
-  
+
   try {
-    // Obtener detalle completo de la sesión
-    const [sesion] = await odooCall('pos.session', 'search_read',
-      [[['id', '=', sessionId]]],
-      {
-        fields: ['name', 'start_at', 'stop_at', 'state',
-                 'cash_register_total_entry_encoding',
-                 'cash_register_difference', 'cash_real_transaction'],
-        limit: 1
-      }
-    );
-    
-    // Obtener órdenes de la sesión para el desglose
-    const ordenes = await odooCall('pos.order', 'search_read',
-      [[['session_id', '=', sessionId], ['state', 'in', ['done', 'invoiced']]]],
-      {
-        fields: ['name', 'amount_total', 'amount_paid', 'payment_ids', 'lines'],
-        limit: 500
-      }
-    );
-    
-    // Obtener pagos agrupados por método
-    const pagos = await odooCall('pos.payment', 'search_read',
-      [[['session_id', '=', sessionId]]],
-      {
-        fields: ['amount', 'payment_method_id'],
-        limit: 1000
-      }
-    );
-    
+    const r = await fetch(`${BOT_BASE}/odoo/sesion/${sessionId}`);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+
+    const sesion = data.sesion;
+    const pagos = data.pagos;
+    const lineas = data.lineas;
+
     // Agrupar pagos por método
     const pagosPorMetodo = {};
     pagos.forEach(p => {
-      const metodo = p.payment_method_id[1].toLowerCase();
+      const metodo = (p.payment_method_id[1] || '').toLowerCase();
       pagosPorMetodo[metodo] = (pagosPorMetodo[metodo] || 0) + p.amount;
     });
-    
+
     const efectivo = Object.entries(pagosPorMetodo).find(([k]) => k.includes('efectivo') || k.includes('cash'))?.[1] || 0;
     const tarjeta = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
     const transferencia = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
 
-    // Obtener líneas de venta por producto para clasificar
-    const lineas = await odooCall('pos.order.line', 'search_read',
-      [[['order_id.session_id', '=', sessionId]]],
-      {
-        fields: ['product_id', 'qty', 'price_subtotal_incl', 'price_unit'],
-        limit: 2000
-      }
-    );
-
-    // Clasificar ventas por categoría según nombre de producto
+    // Clasificar ventas por categoría
     const ventas = { autos:0, camionetas:0, pickups:0, express:0, fiscalia:0, motos:0 };
     const adics  = { tapetes_solo:0, motor:0, mano:0, plus_cera:0, pro_cera_tapetes:0 };
-    
+
     lineas.forEach(l => {
       const nom = (l.product_id[1] || '').toLowerCase();
       const qty = l.qty || 0;
@@ -1456,286 +1427,52 @@ async function cargarSesionOdoo(sessionId){
       else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics.plus_cera += qty;
       else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics.pro_cera_tapetes += qty;
     });
-    
-    // Obtener gastos (expense) de la sesión
-    const gastosCash = await odooCall('pos.payment', 'search_read',
-      [[['session_id', '=', sessionId], ['amount', '<', 0]]],
-      { fields: ['amount', 'payment_method_id'], limit: 100 }
-    );
-    
+
     const totalTickets = sesion.total_payments_amount || 0;
     const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
-    
+
     // Llenar campos del formulario
     document.getElementById('inp_fecha').value = fecha;
     document.getElementById('inp_sesion').value = sesion.name || '';
-    
-    // Actualizar ventas en la UI
-    const ventaIds = ['autos','camionetas','pickups','express','fiscalia','motos'];
-    const adicsIds = ['tapetes_solo','motor','mano','plus_cera','pro_cera_tapetes'];
-    
-    ventaIds.forEach((k,i) => {
-      const el = document.querySelector(`[data-venta="${i}"]`) || document.getElementById(`venta_${i}`);
+
+    // Llenar ventas
+    const ventasMap = ['autos','camionetas','pickups','express','fiscalia','motos'];
+    const adicsMap  = ['tapetes_solo','motor','mano','plus_cera','pro_cera_tapetes'];
+
+    ventasMap.forEach((k,i) => {
+      const el = document.querySelector(`input[data-venta="${i}"]`) || document.getElementById(`venta_${i}`);
       if(el){ el.value = ventas[k] || 0; el.dispatchEvent(new Event('input')); }
     });
-    
+    adicsMap.forEach((k,i) => {
+      const el = document.querySelector(`input[data-adic="${i}"]`) || document.getElementById(`adic_${i}`);
+      if(el){ el.value = adics[k] || 0; el.dispatchEvent(new Event('input')); }
+    });
+
     // Llenar pagos
     const efEl = document.getElementById('inp_efectivo');
     const tarEl = document.getElementById('inp_tarjeta');
-    const traEl = document.getElementById('inp_transferencia');
+    const traEl = document.getElementById('inp_trans');
     if(efEl){ efEl.value = efectivo; efEl.dispatchEvent(new Event('input')); }
     if(tarEl){ tarEl.value = tarjeta; tarEl.dispatchEvent(new Event('input')); }
     if(traEl){ traEl.value = transferencia; traEl.dispatchEvent(new Event('input')); }
-    
+
     // Recalcular todo
+    if(typeof recalcFormInputs === 'function') recalcFormInputs();
     if(typeof recalcOut === 'function') recalcOut();
-    
-    // Ocultar sección Odoo y mostrar éxito
+
+    // Ocultar lista de sesiones
     document.getElementById('odooSesiones').style.display = 'none';
-    status.textContent = `✅ Sesión ${sesion.name} cargada — $${totalTickets.toLocaleString('es-MX')} en ventas`;
-    
-    // Ocultar dropzone ya que no necesitan subir PDF
+    status.textContent = `✅ Sesión ${sesion.name || sessionId} cargada — $${totalTickets.toLocaleString('es-MX')} en ventas`;
+
+    // Ocultar dropzone
     const dz = document.getElementById('dropzone');
     if(dz) dz.style.display = 'none';
-    
+
   } catch(e) {
     status.textContent = '❌ Error cargando sesión: ' + e.message;
     console.error(e);
   }
 }
-
-</script>
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, setDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBqEBzJ0cIDwE9NSqUdR7LVK-WxW8qO1xI",
-  authDomain: "starwash-cortes.firebaseapp.com",
-  projectId: "starwash-cortes",
-  storageBucket: "starwash-cortes.firebasestorage.app",
-  messagingSenderId: "426771852547",
-  appId: "1:426771852547:web:fd143b1bb798d46ddd8d36"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-// ── HISTORIAL ──────────────────────────────────────────────────────────────
-import { getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-let historialVisible = false;
-window.toggleHistorial = function(){
-  historialVisible = !historialVisible;
-  const panel = document.getElementById('historialPanel');
-  panel.style.display = historialVisible ? 'block' : 'none';
-  if(historialVisible) window.cargarHistorial();
-};
-
-window.cargarHistorial = async function(){
-  const lista = document.getElementById('historialLista');
-  lista.innerHTML = '<p style="color:var(--muted);font-size:12px">Cargando...</p>';
-  try{
-    const q = query(collection(db,'cortes'), orderBy('timestamp','desc'), limit(30));
-    const snap = await getDocs(q);
-    if(snap.empty){ lista.innerHTML='<p style="color:var(--muted);font-size:12px">Sin cortes guardados aún.</p>'; return; }
-    lista.innerHTML='';
-    snap.forEach(doc=>{
-      const d = doc.data();
-      const fecha = d.fecha || '—';
-      const sesion = d.sesion || '—';
-      const resp = d.responsable || '—';
-      const tickets = d.totales?.total_tickets || 0;
-      const caja = d.totales?.total_caja || 0;
-      const dif = d.totales?.diferencia_din || 0;
-      const maqDif = d.maquina?.diferencia || 0;
-      const corteData = doc.data();
-      const div = document.createElement('div');
-      div.className='hist-item';
-      div.style.cursor='pointer';
-      div.innerHTML=`
-        <div class="hi-fecha">${fecha} — ${sesion}</div>
-        <div class="hi-meta">Responsable: ${resp}</div>
-        <div class="hi-kpis">
-          <span class="hist-kpi">🎫 $${(tickets/1000).toFixed(1)}K</span>
-          <span class="hist-kpi ${dif===0?'green':Math.abs(dif)<500?'amber':'red'}">${dif===0?'✅ Cuadra':'⚠️ $'+Math.abs(dif/1000).toFixed(1)+'K dif'}</span>
-          <span class="hist-kpi ${maqDif===0?'green':'amber'}">${maqDif===0?'🚗 OK':'🚗 '+Math.abs(maqDif)+' auto'}</span>
-        </div>
-        <div style="font-size:11px;color:var(--sky);margin-top:4px;font-weight:600">👁 Ver corte completo</div>`;
-      div.onclick = () => abrirCorteHistorial(corteData);
-      lista.appendChild(div);
-    });
-  }catch(e){
-    lista.innerHTML='<p style="color:var(--red);font-size:12px">Error: '+e.message+'</p>';
-  }
-};
-
-window.generarYEnviarPDF = async function(corte){
-  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
-  const CHAT_ID   = '1159452620';
-  
-  try{
-    const elemento = document.getElementById('corteWrap');
-    const fecha = corte.fecha || document.getElementById('inp_fecha')?.value || 'corte';
-    const nombrePDF = `Corte_StarWash_${fecha}.pdf`;
-    
-    // Opciones del PDF
-    const opt = {
-      margin: [8, 8, 8, 8],
-      filename: nombrePDF,
-      image: { type: 'jpeg', quality: 0.92 },
-      html2canvas: { scale: 1.5, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-    };
-    
-    // Generar PDF como blob
-    const pdfBlob = await html2pdf().set(opt).from(elemento).outputPdf('blob');
-    
-    // Mandar PDF por Telegram
-    const formData = new FormData();
-    formData.append('chat_id', CHAT_ID);
-    formData.append('document', pdfBlob, nombrePDF);
-    formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
-    
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-      method: 'POST',
-      body: formData
-    });
-    console.log('PDF enviado por Telegram');
-  } catch(e){
-    console.warn('Error generando PDF:', e);
-  }
-};
-
-window.enviarTelegram = async function(corte){
-  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
-  const CHAT_ID   = '1159452620';
-  
-  const v = corte.ventas || {};
-  const a = corte.adicionales || {};
-  const p = corte.pagos || {};
-  const c = corte.caja || {};
-  const t = corte.totales || {};
-  const m = corte.maquina || {};
-  const o = corte.otros || {};
-  
-  const fmt = n => '$' + (n||0).toLocaleString('es-MX', {minimumFractionDigits:2});
-  
-  const autos_pagados = (v.autos||0)+(v.camionetas||0)+(v.pickups||0)+(v.express||0)+(v.fiscalia||0);
-  const total_entraron = autos_pagados + (o.cortes_taller||0) + (o.cortes_ayto||0) + (o.seguro||0);
-  const difDin = t.diferencia_din || 0;
-  const difMaq = m.diferencia || 0;
-  
-  const estadoDin = difDin === 0 ? '✅ Cuadra exacto' : difDin > 0 ? `⚠️ Sobra ${fmt(Math.abs(difDin))}` : `❌ Falta ${fmt(Math.abs(difDin))}`;
-  const estadoMaq = difMaq === 0 ? '✅ Cuadra exacto' : difMaq > 0 ? `⚠️ Máquina marcó ${difMaq} de más (posible sin cobrar)` : `⚠️ Máquina marcó ${Math.abs(difMaq)} de menos`;
-  
-  // Notas
-  const notasLimpias = (corte.notas||[]).filter(n=>n.trim());
-  
-  let msg = `⚡ *STAR WASH — CORTE DEL DÍA*
-`;
-  msg += `📅 ${corte.fecha||'—'} | 🔖 ${corte.sesion||'—'}
-`;
-  msg += `👤 Responsable: ${corte.responsable||'—'}
-
-`;
-  
-  msg += `🚗 *VEHÍCULOS*
-`;
-  msg += `• Autos pagados: *${autos_pagados}*
-`;
-  msg += `• Cortesías: ${(o.cortes_taller||0)+(o.cortes_ayto||0)} | Seguro: ${o.seguro||0}
-`;
-  msg += `• Total entraron: *${total_entraron}*
-`;
-  msg += `• Máquina registró: ${m.total_vendidos||0} | Esperada: ${m.esperada||0}
-`;
-  msg += `• ${estadoMaq}
-
-`;
-
-  msg += `💵 *BILLETES EN CAJA: ${fmt(c.billetes||0)}*\n\n`;
-
-  msg += `💰 *VENTAS ODOO*
-`;
-  msg += `• Total tickets: *${fmt(t.total_tickets)}*
-`;
-  msg += `• Efectivo: ${fmt(p.efectivo)} | Tarjeta: ${fmt(p.tarjeta)} | Trans: ${fmt(p.transferencia)}
-`;
-  msg += `• Total cobrado: *${fmt(t.total_cobrado)}*
-
-`;
-  
-  msg += `🏦 *CONTROL DE CAJA*
-`;
-  msg += `• Apertura: ${fmt(c.apertura)}
-`;
-  msg += `• Morralla: ${fmt(c.morralla)} | Billetes: ${fmt(c.billetes)}
-`;
-  msg += `• Terminal: ${fmt(c.terminal)}
-`;
-  msg += `• Total en caja: *${fmt(t.total_caja)}*
-
-`;
-  
-  msg += `📊 *RESULTADO: ${estadoDin}*
-
-`;
-  
-  msg += `💸 *GASTOS: ${fmt(t.total_gastos)}*
-`;
-  (corte.gastos||[]).forEach(g => {
-    if(g.concepto && g.monto > 0) msg += `• ${g.concepto}: ${fmt(g.monto)}
-`;
-  });
-  
-  if((corte.servicios_manuales||[]).length > 0){
-    msg += `
-✨ *SERVICIOS MANUALES*
-`;
-    corte.servicios_manuales.forEach(s => {
-      if(s.nombre && s.total > 0) msg += `• ${s.nombre}: ${fmt(s.total)}
-`;
-    });
-  }
-  
-  if(notasLimpias.length > 0){
-    msg += `
-📝 *NOTAS*
-`;
-    notasLimpias.forEach((n,i) => msg += `${i+1}. ${n}
-`);
-  }
-  
-  try{
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: msg,
-        parse_mode: 'Markdown'
-      })
-    });
-    console.log('Telegram notificado');
-    // Mandar foto si existe
-    if(fotoFile){
-      const b64foto = await toB64(fotoFile);
-      const mediaType = fotoFile.type;
-      const formData = new FormData();
-      formData.append('chat_id', CHAT_ID);
-      formData.append('photo', fotoFile, fotoFile.name);
-      formData.append('caption', `📸 Lectura de máquina — ${corte.fecha||'—'} ${corte.sesion||'—'}`);
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-        method: 'POST',
-        body: formData
-      });
-    }
-  } catch(e){
-    console.warn('Error Telegram:', e);
-  }
-};
-
 
 
 window.dispararAuditoria = async function(corte){
