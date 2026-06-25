@@ -613,14 +613,25 @@ async def handle_odoo_sesiones(request):
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             uid = await odoo_uid(client)
-            sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
-                [[['state', 'in', ['closed', 'opened']]]],
+            from datetime import datetime, timedelta
+            hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d 00:00:00')
+            # Buscar sesiones cerradas de los últimos 7 días + sesión abierta actual
+            sesiones_cerradas = await odoo_call(client, uid, 'pos.session', 'search_read',
+                [[['state', '=', 'closed'], ['stop_at', '>=', hace_7_dias]]],
                 {
                     'fields': ['id', 'name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
-                    'order': 'id desc',
+                    'order': 'stop_at desc',
                     'limit': 5
                 }
             )
+            sesiones_abiertas = await odoo_call(client, uid, 'pos.session', 'search_read',
+                [[['state', '=', 'opened']]],
+                {
+                    'fields': ['id', 'name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
+                    'limit': 1
+                }
+            )
+            sesiones = sesiones_abiertas + sesiones_cerradas
         headers = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
