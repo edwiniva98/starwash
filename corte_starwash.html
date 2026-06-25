@@ -1461,8 +1461,8 @@ async function cargarSesionOdoo(sessionId){
       totalTix: D.totalTix
     }));
 
-    // Recalcular todo
-    recalcOut();
+    // Recalcular todo — pequeño delay para que el DOM esté listo
+    setTimeout(() => { recalcOut(); }, 100);
 
     // Ocultar lista de sesiones
     document.getElementById('odooSesiones').style.display = 'none';
