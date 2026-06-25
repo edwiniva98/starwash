@@ -617,7 +617,7 @@ async def handle_odoo_sesiones(request):
                 [[['state', 'in', ['closed', 'opened']]]],
                 {
                     'fields': ['id', 'name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
-                    'order': 'start_at desc',
+                    'order': 'id desc',
                     'limit': 5
                 }
             )
