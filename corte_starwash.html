@@ -1443,13 +1443,13 @@ async function cargarSesionOdoo(sessionId){
     D.sesion = sesion.name || '';
     D.totalTix = sesion.total_payments_amount || 0;
 
+    // Llenar inp_fecha ANTES de ocultar inputSection (buildCorte lo necesita)
+    document.getElementById('inp_fecha').value = fecha;
+    document.getElementById('inp_resp').value = '';
+
     // Mostrar el corteWrap
     document.getElementById('inputSection').style.display = 'none';
     document.getElementById('corteWrap').style.display = 'block';
-
-    // Actualizar header
-    document.getElementById('out_fecha').textContent = fecha;
-    document.getElementById('out_sesion').textContent = D.sesion;
 
     // Debug
     console.log('D cargado:', JSON.stringify({
