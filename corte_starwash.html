@@ -1411,11 +1411,15 @@ async function cargarSesionOdoo(sessionId){
     // Clasificar ventas por nombre de producto
     const ventas = [0,0,0,0,0,0]; // autos,camionetas,pickups,express,fiscalia,motos
     const adics  = [0,0,0,0,0];   // tapetes,motor,mano,plus_cera,pro_cera
+    let cortes_taller = 0, cortes_ayto = 0, cortes_familiar = 0;
 
     lineas.forEach(l => {
       const nom = (l.product_id[1] || '').toLowerCase();
       const qty = l.qty || 0;
-      if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas[0] += qty;
+      if(nom.includes('cortesía taller') || nom.includes('cortesia taller')) cortes_taller += qty;
+      else if(nom.includes('cortesía ayuntamiento') || nom.includes('cortesia ayuntamiento') || nom.includes('ayto')) cortes_ayto += qty;
+      else if(nom.includes('cortesía familiar') || nom.includes('cortesia familiar')) cortes_familiar += qty;
+      else if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas[0] += qty;
       else if(nom.includes('camioneta')) ventas[1] += qty;
       else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas[2] += qty;
       else if(nom.includes('express')) ventas[3] += qty;
@@ -1462,6 +1466,14 @@ async function cargarSesionOdoo(sessionId){
       trans: D.trans,
       totalTix: D.totalTix
     }));
+
+    // Llenar cortesías directamente en los inputs
+    const inpCT = document.getElementById('inp_cortes_taller');
+    const inpCA = document.getElementById('inp_cortes_ayto');
+    const inpCF = document.getElementById('inp_cortes_familiar');
+    if(inpCT) inpCT.value = cortes_taller;
+    if(inpCA) inpCA.value = cortes_ayto;
+    if(inpCF) inpCF.value = cortes_familiar;
 
     // Construir el corte con los datos de D
     buildCorte({
