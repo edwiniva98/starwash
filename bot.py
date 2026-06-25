@@ -580,18 +580,24 @@ _bot_app = None  # referencia global al bot
 
 # ── ODOO PROXY ───────────────────────────────────────────────────────────────
 async def odoo_auth(client):
-    """Autentica con Odoo y devuelve las cookies de sesión."""
-    r = await client.post(
-        f"{ODOO_URL}/web/session/authenticate",
-        json={
-            "jsonrpc": "2.0", "method": "call", "id": 1,
-            "params": {"db": ODOO_DB, "login": ODOO_USER, "password": ODOO_KEY}
-        }
-    )
-    data = r.json()
-    if data.get("result", {}).get("uid"):
-        return r.cookies
-    raise Exception("Odoo auth failed")
+    """Autentica con Odoo usando API key como password."""
+    # Odoo Online: autenticar con email + API key como password
+    for login in [ODOO_USER, "__api__"]:
+        r = await client.post(
+            f"{ODOO_URL}/web/session/authenticate",
+            json={
+                "jsonrpc": "2.0", "method": "call", "id": 1,
+                "params": {"db": ODOO_DB, "login": login, "password": ODOO_KEY}
+            },
+            headers={"Content-Type": "application/json"}
+        )
+        data = r.json()
+        result = data.get("result", {})
+        logger.info(f"Odoo auth login={login} uid={result.get('uid')}")
+        if result.get("uid"):
+            return r.cookies
+
+    raise Exception(f"Odoo auth failed for all methods. Last error: {data.get('error', data.get('result', {}))}")
 
 async def odoo_call(client, cookies, model, method, args=[], kwargs={}):
     """Hace una llamada JSON-RPC a Odoo."""
