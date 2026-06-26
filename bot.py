@@ -395,6 +395,25 @@ async def cmd_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     resumen = generar_resumen_firebase(cortes[0])
     await msg.edit_text(resumen, parse_mode="Markdown")
 
+async def cmd_sincronizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Sincronizando historial de Odoo... puede tardar 1-2 minutos.")
+    try:
+        guardados, errores, total_dias = await sincronizar_historial_odoo()
+        await msg.edit_text(
+            f"✅ *Sincronización completa*
+"
+            f"📅 {total_dias} días procesados
+"
+            f"💾 {guardados} guardados en Firestore
+"
+            f"❌ {errores} errores",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.error(f"Error sincronizar: {e}")
+        await msg.edit_text(f"❌ Error: {str(e)}")
+
 async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Cargando historial...")
@@ -466,6 +485,92 @@ async def get_historial_odoo(dias=None):
         ]
         
     return resumen
+
+# ── SINCRONIZACIÓN ODOO → FIRESTORE ──────────────────────────────────────────
+async def sincronizar_historial_odoo():
+    """Descarga todas las órdenes de Odoo y las guarda en Firestore agrupadas por día."""
+    logger.info("Iniciando sincronización Odoo → Firestore...")
+    
+    async with httpx.AsyncClient(timeout=300) as client:
+        uid = await odoo_uid(client)
+        
+        # Traer todas las órdenes
+        ordenes = await odoo_call(client, uid, 'pos.order', 'search_read',
+            [[['state', 'in', ['done', 'invoiced']]]],
+            {
+                'fields': ['name', 'date_order', 'amount_total', 'session_id', 'lines'],
+                'order': 'date_order desc',
+                'limit': 50000
+            }
+        )
+        
+        logger.info(f"Órdenes obtenidas: {len(ordenes)}")
+        
+        # Agrupar por día
+        from collections import defaultdict
+        por_dia = defaultdict(lambda: {'total': 0, 'tickets': 0, 'sesion': '', 'fecha': ''})
+        
+        for o in ordenes:
+            fecha = (o.get('date_order') or '')[:10]
+            if not fecha:
+                continue
+            por_dia[fecha]['total'] += o.get('amount_total', 0)
+            por_dia[fecha]['tickets'] += 1
+            por_dia[fecha]['fecha'] = fecha
+            if o.get('session_id'):
+                por_dia[fecha]['sesion'] = o['session_id'][1] if isinstance(o['session_id'], list) else str(o['session_id'])
+        
+        # Guardar cada día en Firestore colección 'historial_odoo'
+        guardados = 0
+        errores = 0
+        for fecha, datos in por_dia.items():
+            doc_id = fecha  # YYYY-MM-DD como ID del documento
+            firestore_url = f"{FIRESTORE_URL}/historial_odoo/{doc_id}"
+            
+            body = {
+                "fields": {
+                    "fecha":        {"stringValue": fecha},
+                    "sesion":       {"stringValue": datos['sesion']},
+                    "total":        {"doubleValue": round(datos['total'], 2)},
+                    "num_tickets":  {"integerValue": str(datos['tickets'])},
+                    "fuente":       {"stringValue": "odoo"},
+                    "sincronizado": {"stringValue": datetime.now().isoformat()},
+                }
+            }
+            
+            try:
+                r = await client.patch(firestore_url, json=body)
+                if r.status_code in [200, 201]:
+                    guardados += 1
+                else:
+                    errores += 1
+                    logger.error(f"Error guardando {fecha}: {r.status_code}")
+            except Exception as e:
+                errores += 1
+                logger.error(f"Error {fecha}: {e}")
+        
+        logger.info(f"Sincronización completa: {guardados} días guardados, {errores} errores")
+        return guardados, errores, len(por_dia)
+
+async def get_historial_firestore(limite=500):
+    """Lee el historial de Firestore (más rápido que Odoo)."""
+    url = f"{FIRESTORE_URL}/historial_odoo"
+    params = {"pageSize": limite, "orderBy": "fecha desc"}
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url, params=params)
+        data = r.json()
+    
+    docs = data.get("documents", [])
+    historial = []
+    for doc in docs:
+        fields = doc.get("fields", {})
+        historial.append({
+            "fecha":       fields.get("fecha", {}).get("stringValue", ""),
+            "sesion":      fields.get("sesion", {}).get("stringValue", ""),
+            "total":       float(fields.get("total", {}).get("doubleValue", 0) or fields.get("total", {}).get("integerValue", 0) or 0),
+            "num_tickets": int(fields.get("num_tickets", {}).get("integerValue", 0) or 0),
+        })
+    return historial
 
 # ── AUDITORÍA AUTOMÁTICA ──────────────────────────────────────────────────────
 async def auditar_corte(corte: dict, historial: list) -> str:
@@ -609,7 +714,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if es_historico:
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
             try:
-                historial_odoo = await get_historial_odoo()
+                # Intentar desde Firestore primero (más rápido)
+                historial_odoo = await get_historial_firestore()
+                if len(historial_odoo) < 10:
+                    # Si no hay suficiente en Firestore, ir a Odoo
+                    historial_odoo = await get_historial_odoo()
                 prompt_hist = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) pregunta sobre el historial de ventas.
 
 Historial de los últimos 90 días ({len(historial_odoo)} sesiones):
@@ -822,6 +931,7 @@ def main():
     app.add_handler(CommandHandler("ultimo", cmd_ultimo))
     app.add_handler(CommandHandler("fecha", cmd_fecha))
     app.add_handler(CommandHandler("historial", cmd_historial))
+    app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     import asyncio
