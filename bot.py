@@ -428,41 +428,42 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── HISTORIAL ODOO ────────────────────────────────────────────────────────────
 async def get_historial_odoo(dias=None):
-    """Obtiene historial completo de sesiones POS desde Odoo."""
+    """Obtiene historial completo de ventas POS desde Odoo usando órdenes."""
     async with httpx.AsyncClient(timeout=120) as client:
         uid = await odoo_uid(client)
         
-        sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
-            [[['state', '=', 'closed']]],
+        # Usar órdenes en lugar de sesiones — tienen fecha correcta siempre
+        ordenes = await odoo_call(client, uid, 'pos.order', 'search_read',
+            [[['state', 'in', ['done', 'invoiced']]]],
             {
-                'fields': ['id', 'name', 'start_at', 'stop_at', 'total_payments_amount'],
-                'order': 'stop_at desc',
-                'limit': 1000
+                'fields': ['name', 'date_order', 'amount_total', 'session_id'],
+                'order': 'date_order desc',
+                'limit': 50000
             }
         )
         
-        # Para cada sesión obtener pagos agrupados
-        resumen = []
-        for s in sesiones:
-            pagos = await odoo_call(client, uid, 'pos.payment', 'search_read',
-                [[['session_id', '=', s['id']]]],
-                {'fields': ['amount', 'payment_method_id'], 'limit': 1000}
-            )
-            
-            efectivo = sum(p['amount'] for p in pagos if 'efectivo' in (p['payment_method_id'][1] or '').lower() or 'cash' in (p['payment_method_id'][1] or '').lower())
-            tarjeta  = sum(p['amount'] for p in pagos if 'tarjeta' in (p['payment_method_id'][1] or '').lower() or 'card' in (p['payment_method_id'][1] or '').lower())
-            trans    = sum(p['amount'] for p in pagos if 'transfer' in (p['payment_method_id'][1] or '').lower())
-            
-            fecha = s.get('stop_at', '')[:10] if s.get('stop_at') else s.get('start_at', '')[:10]
-            
-            resumen.append({
-                'sesion': s['name'],
+        # Agrupar por día
+        from collections import defaultdict
+        por_dia = defaultdict(lambda: {'total': 0, 'ordenes': 0, 'sesion': ''})
+        
+        for o in ordenes:
+            fecha = (o.get('date_order') or '')[:10]
+            if not fecha:
+                continue
+            por_dia[fecha]['total'] += o.get('amount_total', 0)
+            por_dia[fecha]['ordenes'] += 1
+            if o.get('session_id'):
+                por_dia[fecha]['sesion'] = o['session_id'][1] if isinstance(o['session_id'], list) else str(o['session_id'])
+        
+        resumen = [
+            {
                 'fecha': fecha,
-                'total': s.get('total_payments_amount', 0),
-                'efectivo': efectivo,
-                'tarjeta': tarjeta,
-                'transferencia': trans,
-            })
+                'sesion': datos['sesion'],
+                'total': round(datos['total'], 2),
+                'num_tickets': datos['ordenes'],
+            }
+            for fecha, datos in sorted(por_dia.items(), reverse=True)
+        ]
         
     return resumen
 
