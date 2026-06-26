@@ -486,17 +486,29 @@ async def sincronizar_historial_odoo():
     async with httpx.AsyncClient(timeout=300) as client:
         uid = await odoo_uid(client)
         
-        # Traer todas las órdenes
-        ordenes = await odoo_call(client, uid, 'pos.order', 'search_read',
-            [[['state', 'in', ['done', 'invoiced']]]],
-            {
-                'fields': ['name', 'date_order', 'amount_total', 'session_id', 'lines'],
-                'order': 'date_order desc',
-                'limit': 50000
-            }
-        )
+        # Traer todas las órdenes paginando
+        ordenes = []
+        offset = 0
+        batch_size = 5000
+        while True:
+            batch = await odoo_call(client, uid, 'pos.order', 'search_read',
+                [[['state', 'in', ['done', 'invoiced']]]],
+                {
+                    'fields': ['name', 'date_order', 'amount_total', 'session_id'],
+                    'order': 'date_order asc',
+                    'limit': batch_size,
+                    'offset': offset
+                }
+            )
+            if not batch:
+                break
+            ordenes.extend(batch)
+            offset += batch_size
+            logger.info(f"Batch {offset//batch_size}: {len(batch)} ordenes")
+            if len(batch) < batch_size:
+                break
         
-        logger.info(f"Órdenes obtenidas: {len(ordenes)}")
+        logger.info(f"Total ordenes: {len(ordenes)}")
         
         # Agrupar por día
         from collections import defaultdict
