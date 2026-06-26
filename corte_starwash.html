@@ -1502,6 +1502,145 @@ async function cargarSesionOdoo(sessionId){
 }
 
 
+// ── TELEGRAM ──────────────────────────────────────────────────────────────────
+window.enviarTelegram = async function(corte){
+  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
+  const CHAT_IDS  = ['1159452620', '8838219142']; // Edwin + papá
+
+  const v = corte.ventas || {};
+  const p = corte.pagos  || {};
+  const c = corte.caja   || {};
+  const t = corte.totales|| {};
+  const m = corte.maquina|| {};
+  const o = corte.otros  || {};
+
+  const autos_pagados = (v.autos||0)+(v.camionetas||0)+(v.pickups||0)+(v.express||0)+(v.fiscalia||0);
+  const total_entraron = autos_pagados+(o.cortes_taller||0)+(o.cortes_ayto||0)+(o.cortes_familiar||0)+(o.seguro||0);
+  const dif_din = t.diferencia_din||0;
+  const dif_maq = m.diferencia||0;
+  const estadoDin = dif_din===0?'✅ Cuadra exacto':(dif_din>0?`⚠️ Sobra $${Math.abs(dif_din).toLocaleString('es-MX')}`:`❌ Falta $${Math.abs(dif_din).toLocaleString('es-MX')}`);
+  const estadoMaq = dif_maq===0?'✅ Cuadra exacto':(dif_maq>0?`⚠️ +${dif_maq} en máquina`:`⚠️ ${Math.abs(dif_maq)} menos en máquina`);
+
+  const fmt = n => `$${parseFloat(n||0).toLocaleString('es-MX',{minimumFractionDigits:2})}`;
+
+  let msg = `⚡ *STAR WASH — CORTE DEL DÍA*
+`;
+  msg += `📅 ${corte.fecha||'—'} | 🔖 ${corte.sesion||'—'}
+`;
+  msg += `👤 ${corte.responsable||'—'}
+
+`;
+  msg += `🚗 *VEHÍCULOS*
+`;
+  msg += `• Autos: ${v.autos||0} | Camionetas: ${v.camionetas||0} | Pick-Ups: ${v.pickups||0}
+`;
+  msg += `• Express: ${v.express||0} | Fiscalía: ${v.fiscalia||0} | Motos: ${v.motos||0}
+`;
+  msg += `• *Autos pagados: ${autos_pagados}* | Cortesías: ${(o.cortes_taller||0)+(o.cortes_ayto||0)+(o.cortes_familiar||0)} (T:${o.cortes_taller||0} A:${o.cortes_ayto||0} F:${o.cortes_familiar||0}) | Seguro: ${o.seguro||0}
+`;
+  msg += `• *Total entraron: ${total_entraron}* | Máquina: ${m.total_vendidos||0}
+`;
+  msg += `• ${estadoMaq}
+
+`;
+  msg += `💵 *BILLETES EN CAJA: ${fmt(c.billetes)}*
+
+`;
+  msg += `💰 *VENTAS ODOO*
+`;
+  msg += `• Total tickets: *${fmt(t.total_tickets)}*
+`;
+  msg += `• Efectivo: ${fmt(p.efectivo)} | Tarjeta: ${fmt(p.tarjeta)} | Trans: ${fmt(p.transferencia)}
+`;
+  msg += `• Total cobrado: *${fmt(t.total_cobrado)}*
+
+`;
+  msg += `🏦 *CONTROL DE CAJA*
+`;
+  msg += `• Apertura: ${fmt(c.apertura)}
+`;
+  msg += `• Morralla: ${fmt(c.morralla)} | Billetes: ${fmt(c.billetes)} | Terminal: ${fmt(c.terminal)}
+`;
+  msg += `• *Total en caja: ${fmt(t.total_caja)}*
+
+`;
+  msg += `📊 *RESULTADO: ${estadoDin}*
+`;
+
+  const gastos = corte.gastos||[];
+  if(gastos.length){
+    msg += `
+💸 *GASTOS: ${fmt(t.total_gastos)}*
+`;
+    gastos.forEach(g=>{ if(g.concepto&&g.monto>0) msg+=`• ${g.concepto}: ${fmt(g.monto)}
+`; });
+  }
+  const notas = (corte.notas||[]).filter(n=>n&&n.trim());
+  if(notas.length){ msg+=`
+📝 *NOTAS*
+`; notas.forEach((n,i)=>msg+=`${i+1}. ${n}
+`); }
+
+  try{
+    for(const CHAT_ID of CHAT_IDS){
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({chat_id: CHAT_ID, text: msg, parse_mode: 'Markdown'})
+      });
+    }
+    console.log('Telegram notificado');
+  } catch(e){ console.warn('Error Telegram:', e); }
+};
+
+window.generarYEnviarPDF = async function(corte){
+  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
+  const CHAT_IDS_PDF = ['1159452620', '8838219142'];
+
+  try{
+    // Forzar recálculo
+    if(typeof recalcOut === 'function') recalcOut();
+    await new Promise(r => setTimeout(r, 200));
+
+    const inputSection = document.getElementById('inputSection');
+    const actions = document.getElementById('actions');
+    const prevInput = inputSection ? inputSection.style.display : '';
+    const prevActions = actions ? actions.style.display : '';
+    if(inputSection) inputSection.style.display = 'none';
+    if(actions) actions.style.display = 'none';
+    await new Promise(r => setTimeout(r, 300));
+
+    const fecha = corte.fecha || 'corte';
+    const nombrePDF = `Corte_StarWash_${fecha}.pdf`;
+    const elemento = document.getElementById('corteWrap');
+    const opt = {
+      margin: [8,8,8,8], filename: nombrePDF,
+      image: {type:'jpeg', quality:0.95},
+      html2canvas: {scale:2, useCORS:true, logging:false, scrollX:0, scrollY:0},
+      jsPDF: {unit:'mm', format:'letter', orientation:'portrait'}
+    };
+    const pdfBlob = await html2pdf().set(opt).from(elemento).outputPdf('blob');
+
+    if(inputSection) inputSection.style.display = prevInput;
+    if(actions) actions.style.display = prevActions;
+
+    for(const cid of CHAT_IDS_PDF){
+      const formData = new FormData();
+      formData.append('chat_id', cid);
+      formData.append('document', pdfBlob, nombrePDF);
+      formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {method:'POST', body:formData});
+    }
+    console.log('PDF enviado');
+  } catch(e){
+    console.warn('Error PDF:', e);
+    const inputSection = document.getElementById('inputSection');
+    const actions = document.getElementById('actions');
+    if(inputSection) inputSection.style.display = '';
+    if(actions) actions.style.display = 'flex';
+  }
+};
+
 window.dispararAuditoria = async function(corte){
   const BOT_URL = 'https://worker-production-d35e.up.railway.app/corte-nuevo';
   try{
