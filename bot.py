@@ -525,20 +525,32 @@ async def sincronizar_historial_odoo():
                 por_dia[fecha]['sesion'] = o['session_id'][1] if isinstance(o['session_id'], list) else str(o['session_id'])
         
         # Guardar cada día en Firestore colección 'historial_odoo'
+        from datetime import datetime as dt_sync
+        DIAS_ES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+        MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
         guardados = 0
         errores = 0
         for fecha, datos in por_dia.items():
             doc_id = fecha  # YYYY-MM-DD como ID del documento
             firestore_url = f"{FIRESTORE_URL}/historial_odoo/{doc_id}"
+            try:
+                fecha_dt = dt_sync.strptime(fecha, "%Y-%m-%d")
+                dia_semana = DIAS_ES[fecha_dt.weekday()]
+                fecha_legible = f"{dia_semana} {fecha_dt.day} de {MESES_ES[fecha_dt.month]} de {fecha_dt.year}"
+            except:
+                dia_semana = ""
+                fecha_legible = fecha
             
             body = {
                 "fields": {
-                    "fecha":        {"stringValue": fecha},
-                    "sesion":       {"stringValue": datos['sesion']},
-                    "total":        {"doubleValue": round(datos['total'], 2)},
-                    "num_tickets":  {"integerValue": str(datos['tickets'])},
-                    "fuente":       {"stringValue": "odoo"},
-                    "sincronizado": {"stringValue": datetime.now().isoformat()},
+                    "fecha":         {"stringValue": fecha},
+                    "fecha_legible": {"stringValue": fecha_legible},
+                    "dia_semana":    {"stringValue": dia_semana},
+                    "sesion":        {"stringValue": datos['sesion']},
+                    "total":         {"doubleValue": round(datos['total'], 2)},
+                    "num_tickets":   {"integerValue": str(datos['tickets'])},
+                    "fuente":        {"stringValue": "odoo"},
+                    "sincronizado":  {"stringValue": datetime.now().isoformat()},
                 }
             }
             
@@ -576,11 +588,12 @@ async def get_historial_firestore(limite=500):
         except:
             dia_sem = ""
         historial.append({
-            "fecha":       fecha_str,
-            "dia_semana":  dia_sem,
-            "sesion":      fields.get("sesion", {}).get("stringValue", ""),
-            "total":       float(fields.get("total", {}).get("doubleValue", 0) or fields.get("total", {}).get("integerValue", 0) or 0),
-            "num_tickets": int(fields.get("num_tickets", {}).get("integerValue", 0) or 0),
+            "fecha":         fecha_str,
+            "fecha_legible": fields.get("fecha_legible", {}).get("stringValue", "") or dia_sem + " " + fecha_str,
+            "dia_semana":    fields.get("dia_semana", {}).get("stringValue", "") or dia_sem,
+            "sesion":        fields.get("sesion", {}).get("stringValue", ""),
+            "total":         float(fields.get("total", {}).get("doubleValue", 0) or fields.get("total", {}).get("integerValue", 0) or 0),
+            "num_tickets":   int(fields.get("num_tickets", {}).get("integerValue", 0) or 0),
         })
     return historial
 
