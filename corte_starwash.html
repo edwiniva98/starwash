@@ -1616,7 +1616,7 @@ window.guardarCorte = async function(){
   btn.disabled = true;
   try{
     const corte = {
-      timestamp:    serverTimestamp(),
+      timestamp:    new Date().toISOString(),
       fecha:        document.getElementById('inp_fecha')?.value || '',
       sesion:       D.sesion || '',
       responsable:  document.getElementById('inp_resp')?.value || '',
