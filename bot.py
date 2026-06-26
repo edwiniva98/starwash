@@ -427,20 +427,17 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ── HISTORIAL ODOO ────────────────────────────────────────────────────────────
-async def get_historial_odoo(dias=90):
-    """Obtiene historial de sesiones POS desde Odoo."""
-    from datetime import datetime, timedelta
-    desde = (datetime.now() - timedelta(days=dias)).strftime('%Y-%m-%d 00:00:00')
-    
-    async with httpx.AsyncClient(timeout=60) as client:
+async def get_historial_odoo(dias=None):
+    """Obtiene historial completo de sesiones POS desde Odoo."""
+    async with httpx.AsyncClient(timeout=120) as client:
         uid = await odoo_uid(client)
         
         sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
-            [[['state', '=', 'closed'], ['stop_at', '>=', desde]]],
+            [[['state', '=', 'closed']]],
             {
                 'fields': ['id', 'name', 'start_at', 'stop_at', 'total_payments_amount'],
                 'order': 'stop_at desc',
-                'limit': 90
+                'limit': 1000
             }
         )
         
@@ -611,7 +608,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if es_historico:
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
             try:
-                historial_odoo = await get_historial_odoo(dias=90)
+                historial_odoo = await get_historial_odoo(dias=550)
                 prompt_hist = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) pregunta sobre el historial de ventas.
 
 Historial de los últimos 90 días ({len(historial_odoo)} sesiones):
