@@ -565,11 +565,19 @@ async def get_historial_firestore(limite=500):
         data = r.json()
     
     docs = data.get("documents", [])
+    from datetime import datetime as dt2
+    DIAS_SEM = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
     historial = []
     for doc in docs:
         fields = doc.get("fields", {})
+        fecha_str = fields.get("fecha", {}).get("stringValue", "")
+        try:
+            dia_sem = DIAS_SEM[dt2.strptime(fecha_str, "%Y-%m-%d").weekday()] if fecha_str else ""
+        except:
+            dia_sem = ""
         historial.append({
-            "fecha":       fields.get("fecha", {}).get("stringValue", ""),
+            "fecha":       fecha_str,
+            "dia_semana":  dia_sem,
             "sesion":      fields.get("sesion", {}).get("stringValue", ""),
             "total":       float(fields.get("total", {}).get("doubleValue", 0) or fields.get("total", {}).get("integerValue", 0) or 0),
             "num_tickets": int(fields.get("num_tickets", {}).get("integerValue", 0) or 0),
@@ -732,14 +740,23 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if len(historial_odoo) < 10:
                     # Si no hay suficiente en Firestore, ir a Odoo
                     historial_odoo = await get_historial_odoo()
-                prompt_hist = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) pregunta sobre el historial de ventas.
+                prompt_hist = f"""Eres el asistente del Autolavado Star Wash en Texcoco, México. El dueño (Edwin) pregunta sobre el historial de ventas.
 
-Historial de los últimos 90 días ({len(historial_odoo)} sesiones):
+Tienes acceso al historial COMPLETO del negocio con {len(historial_odoo)} días de datos desde julio 2025.
+Cada registro tiene: fecha (YYYY-MM-DD), total (ventas del día en pesos MXN), num_tickets (número de órdenes).
+
+Historial completo:
 {json.dumps(historial_odoo, ensure_ascii=False, indent=2)}
 
-Pregunta: {texto}
+Pregunta de Edwin: {texto}
 
-Responde en español con emojis. Sé específico con fechas y montos. Formato $X,XXX.XX"""
+INSTRUCCIONES:
+- Responde en español con emojis
+- Usa los datos exactos del historial — no inventes ni estimes
+- Sé específico con fechas completas (día, mes, año)
+- Formato de dinero: $XX,XXX.00
+- Si piden ranking o top, ordena correctamente por el criterio pedido
+- No digas "últimos 90 días" — tienes el historial completo"""
                 async with httpx.AsyncClient() as client_ai:
                     r = await client_ai.post(
                         "https://api.anthropic.com/v1/messages",
