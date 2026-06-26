@@ -400,16 +400,8 @@ async def cmd_sincronizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ Sincronizando historial de Odoo... puede tardar 1-2 minutos.")
     try:
         guardados, errores, total_dias = await sincronizar_historial_odoo()
-        await msg.edit_text(
-            f"✅ *Sincronización completa*
-"
-            f"📅 {total_dias} días procesados
-"
-            f"💾 {guardados} guardados en Firestore
-"
-            f"❌ {errores} errores",
-            parse_mode="Markdown"
-        )
+        texto = f"Sincronizacion completa\n{total_dias} dias procesados\n{guardados} guardados en Firestore\n{errores} errores"
+        await msg.edit_text(texto)
     except Exception as e:
         logger.error(f"Error sincronizar: {e}")
         await msg.edit_text(f"❌ Error: {str(e)}")
