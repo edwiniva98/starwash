@@ -1682,8 +1682,30 @@ window.guardarCorte = async function(){
     const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
     const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
     const docId = fecha + '_' + sesion + '_v' + Date.now().toString().slice(-4);
-    const docRef = doc(db, 'cortes', docId);
-    await setDoc(docRef, corte);
+    // Guardar en Firestore via REST API
+    const FIREBASE_PROJECT = 'starwash-cortes';
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
+    
+    // Convertir corte a formato Firestore
+    function toFirestore(obj) {
+      if(obj === null || obj === undefined) return {nullValue: null};
+      if(typeof obj === 'boolean') return {booleanValue: obj};
+      if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
+      if(typeof obj === 'string') return {stringValue: obj};
+      if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
+      if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
+      return {stringValue: String(obj)};
+    }
+    
+    const firestoreBody = {fields: Object.fromEntries(Object.entries(corte).map(([k,v]) => [k, toFirestore(v)]))};
+    
+    const saveResp = await fetch(firestoreUrl + '?updateMask.fieldPaths=' + Object.keys(corte).join('&updateMask.fieldPaths='), {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(firestoreBody)
+    });
+    if(!saveResp.ok) throw new Error('Firestore: ' + saveResp.status);
+    const docRef = {id: docId};
     btn.textContent = '✅ Guardado';
     btn.style.background = 'var(--green)';
     setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
