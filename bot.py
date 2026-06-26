@@ -395,6 +395,77 @@ async def cmd_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     resumen = generar_resumen_firebase(cortes[0])
     await msg.edit_text(resumen, parse_mode="Markdown")
 
+async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Generando Excel con historial completo...")
+    try:
+        historial = await get_historial_firestore(limite=500)
+        if not historial:
+            await msg.edit_text("No hay datos en el historial.")
+            return
+        
+        # Crear Excel en memoria
+        import io
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Historial Star Wash"
+        
+        # Encabezados
+        headers = ["Fecha", "Día", "Sesión", "Total ($)", "Tickets"]
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor="714B67")
+            cell.alignment = Alignment(horizontal="center")
+        
+        # Datos ordenados por fecha
+        historial_sorted = sorted(historial, key=lambda x: x.get("fecha", ""))
+        total_general = 0
+        for row, d in enumerate(historial_sorted, 2):
+            ws.cell(row=row, column=1, value=d.get("fecha", ""))
+            ws.cell(row=row, column=2, value=d.get("dia_semana", ""))
+            ws.cell(row=row, column=3, value=d.get("sesion", ""))
+            ws.cell(row=row, column=4, value=d.get("total", 0))
+            ws.cell(row=row, column=5, value=d.get("num_tickets", 0))
+            total_general += d.get("total", 0)
+            # Colorear sábados y domingos
+            dia = d.get("dia_semana", "")
+            if dia in ["Sábado", "Domingo"]:
+                for col in range(1, 6):
+                    ws.cell(row=row, column=col).fill = PatternFill("solid", fgColor="EAD5F5")
+        
+        # Fila de totales
+        total_row = len(historial_sorted) + 2
+        ws.cell(row=total_row, column=1, value="TOTAL").font = Font(bold=True)
+        ws.cell(row=total_row, column=4, value=total_general).font = Font(bold=True)
+        ws.cell(row=total_row, column=5, value=sum(d.get("num_tickets",0) for d in historial_sorted)).font = Font(bold=True)
+        
+        # Ajustar anchos
+        ws.column_dimensions["A"].width = 14
+        ws.column_dimensions["B"].width = 14
+        ws.column_dimensions["C"].width = 14
+        ws.column_dimensions["D"].width = 14
+        ws.column_dimensions["E"].width = 10
+        
+        # Guardar en memoria y enviar
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        await update.message.reply_document(
+            document=buffer,
+            filename="Historial_StarWash.xlsx",
+            caption=f"📊 Historial completo Star Wash\n{len(historial_sorted)} días | Total: ${total_general:,.2f}"
+        )
+        await msg.delete()
+        
+    except Exception as e:
+        logger.error(f"Error exportar: {e}")
+        await msg.edit_text(f"Error al exportar: {str(e)}")
+
 async def cmd_sincronizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Sincronizando historial de Odoo... puede tardar 1-2 minutos.")
@@ -975,6 +1046,7 @@ def main():
     app.add_handler(CommandHandler("fecha", cmd_fecha))
     app.add_handler(CommandHandler("historial", cmd_historial))
     app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
+    app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     import asyncio
