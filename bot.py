@@ -547,7 +547,7 @@ async def sincronizar_historial_odoo():
 async def get_historial_firestore(limite=500):
     """Lee el historial de Firestore (más rápido que Odoo)."""
     url = f"{FIRESTORE_URL}/historial_odoo"
-    params = {"pageSize": limite, "orderBy": "fecha desc"}
+    params = {"pageSize": limite}
     async with httpx.AsyncClient() as client:
         r = await client.get(url, params=params)
         data = r.json()
