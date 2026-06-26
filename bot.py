@@ -608,7 +608,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if es_historico:
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
             try:
-                historial_odoo = await get_historial_odoo(dias=550)
+                historial_odoo = await get_historial_odoo()
                 prompt_hist = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) pregunta sobre el historial de ventas.
 
 Historial de los últimos 90 días ({len(historial_odoo)} sesiones):
