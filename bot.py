@@ -426,6 +426,49 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# ── HISTORIAL ODOO ────────────────────────────────────────────────────────────
+async def get_historial_odoo(dias=90):
+    """Obtiene historial de sesiones POS desde Odoo."""
+    from datetime import datetime, timedelta
+    desde = (datetime.now() - timedelta(days=dias)).strftime('%Y-%m-%d 00:00:00')
+    
+    async with httpx.AsyncClient(timeout=60) as client:
+        uid = await odoo_uid(client)
+        
+        sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
+            [[['state', '=', 'closed'], ['stop_at', '>=', desde]]],
+            {
+                'fields': ['id', 'name', 'start_at', 'stop_at', 'total_payments_amount'],
+                'order': 'stop_at desc',
+                'limit': 90
+            }
+        )
+        
+        # Para cada sesión obtener pagos agrupados
+        resumen = []
+        for s in sesiones:
+            pagos = await odoo_call(client, uid, 'pos.payment', 'search_read',
+                [[['session_id', '=', s['id']]]],
+                {'fields': ['amount', 'payment_method_id'], 'limit': 1000}
+            )
+            
+            efectivo = sum(p['amount'] for p in pagos if 'efectivo' in (p['payment_method_id'][1] or '').lower() or 'cash' in (p['payment_method_id'][1] or '').lower())
+            tarjeta  = sum(p['amount'] for p in pagos if 'tarjeta' in (p['payment_method_id'][1] or '').lower() or 'card' in (p['payment_method_id'][1] or '').lower())
+            trans    = sum(p['amount'] for p in pagos if 'transfer' in (p['payment_method_id'][1] or '').lower())
+            
+            fecha = s.get('stop_at', '')[:10] if s.get('stop_at') else s.get('start_at', '')[:10]
+            
+            resumen.append({
+                'sesion': s['name'],
+                'fecha': fecha,
+                'total': s.get('total_payments_amount', 0),
+                'efectivo': efectivo,
+                'tarjeta': tarjeta,
+                'transferencia': trans,
+            })
+        
+    return resumen
+
 # ── AUDITORÍA AUTOMÁTICA ──────────────────────────────────────────────────────
 async def auditar_corte(corte: dict, historial: list) -> str:
     """Genera reporte de auditoría comparando el corte vs historial."""
@@ -520,6 +563,16 @@ async def auditar_corte(corte: dict, historial: list) -> str:
 
     return msg
 
+PALABRAS_HISTORICO = [
+    'mejor día', 'mejor dia', 'peor día', 'peor dia',
+    'más vendido', 'mas vendido', 'mayor venta', 'menor venta',
+    'semana pasada', 'mes pasado', 'último mes', 'ultimos dias',
+    'promedio', 'tendencia', 'comparar', 'histórico', 'historico',
+    'cuánto hemos vendido', 'cuanto hemos vendido',
+    'ranking', 'top', 'los mejores', 'los peores',
+    'este mes', 'esta semana', 'del mes', 'de la semana',
+]
+
 PALABRAS_CORTE_COMPLETO = [
     "dame el corte", "mándame el corte", "mandame el corte",
     "el corte de", "corte del día", "corte del dia",
@@ -551,6 +604,38 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             resumen = generar_resumen_firebase(cortes[0])
             await msg.edit_text(resumen, parse_mode="Markdown")
             return
+
+        # Preguntas históricas → Odoo completo
+        es_historico = any(p in texto_lower for p in PALABRAS_HISTORICO)
+
+        if es_historico:
+            await msg.edit_text("⏳ Consultando historial completo de Odoo...")
+            try:
+                historial_odoo = await get_historial_odoo(dias=90)
+                prompt_hist = f"""Eres el asistente del Autolavado Star Wash. El dueño (Edwin) pregunta sobre el historial de ventas.
+
+Historial de los últimos 90 días ({len(historial_odoo)} sesiones):
+{json.dumps(historial_odoo, ensure_ascii=False, indent=2)}
+
+Pregunta: {texto}
+
+Responde en español con emojis. Sé específico con fechas y montos. Formato $X,XXX.XX"""
+                async with httpx.AsyncClient() as client_ai:
+                    r = await client_ai.post(
+                        "https://api.anthropic.com/v1/messages",
+                        headers={"x-api-key": CLAUDE_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
+                        json={"model": "claude-haiku-4-5-20251001", "max_tokens": 1000, "messages": [{"role": "user", "content": prompt_hist}]},
+                        timeout=60
+                    )
+                    data = r.json()
+                respuesta = data["content"][0]["text"]
+                respuesta = respuesta.replace("# ", "").replace("## ", "").replace("### ", "")
+                await msg.edit_text(respuesta, parse_mode="Markdown")
+                return
+            except Exception as e:
+                logger.error(f"Error historial Odoo: {e}")
+                await msg.edit_text(f"❌ Error consultando historial: {str(e)}")
+                return
 
         # Preguntas analíticas → Claude con contexto completo
         if fecha_detectada:
