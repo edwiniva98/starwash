@@ -717,8 +717,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
                  'septiembre','octubre','noviembre','diciembre']
         menciona_mes = any(m in texto_lower for m in meses)
-        menciona_anio_pasado = '2025' in texto or '2024' in texto
-        es_historico = any(p in texto_lower for p in PALABRAS_HISTORICO) or menciona_mes or menciona_anio_pasado
+        menciona_anio_pasado = '2025' in texto or '2024' in texto or '2026' in texto
+        palabras_ranking = ['top ', 'mejores dias', 'mejores días', 'peores dias', 'peores días',
+                           'ranking', 'historial', 'desde siempre', 'todos los dias', 'todos los meses',
+                           'cuanto hemos', 'cuánto hemos', 'en total', 'historico', 'histórico']
+        es_ranking = any(p in texto_lower for p in palabras_ranking)
+        es_historico = any(p in texto_lower for p in PALABRAS_HISTORICO) or menciona_mes or menciona_anio_pasado or es_ranking
 
         if es_historico:
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
