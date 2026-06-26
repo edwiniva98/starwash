@@ -551,16 +551,39 @@ async def get_historial_odoo(dias=None):
 
 # ── SINCRONIZACIÓN ODOO → FIRESTORE ──────────────────────────────────────────
 async def sincronizar_historial_odoo():
-    """Descarga todas las órdenes de Odoo y las guarda en Firestore agrupadas por día."""
-    logger.info("Iniciando sincronización Odoo → Firestore...")
+    """Descarga todas las ordenes y lineas de Odoo y las guarda en Firestore agrupadas por dia."""
+    logger.info("Iniciando sincronizacion Odoo Firestore...")
     
     async with httpx.AsyncClient(timeout=300) as client:
         uid = await odoo_uid(client)
         
-        # Traer todas las órdenes paginando
-        ordenes = []
+        # Traer todas las lineas de ordenes paginando (tienen producto + cantidad + precio)
+        lineas = []
         offset = 0
         batch_size = 5000
+        while True:
+            batch = await odoo_call(client, uid, 'pos.order.line', 'search_read',
+                [[['order_id.state', 'in', ['done', 'invoiced']]]],
+                {
+                    'fields': ['order_id', 'product_id', 'qty', 'price_subtotal_incl'],
+                    'order': 'id asc',
+                    'limit': batch_size,
+                    'offset': offset
+                }
+            )
+            if not batch:
+                break
+            lineas.extend(batch)
+            offset += batch_size
+            logger.info(f"Lineas batch {offset//batch_size}: {len(batch)}")
+            if len(batch) < batch_size:
+                break
+        
+        logger.info(f"Total lineas: {len(lineas)}")
+        
+        # Traer ordenes para obtener fecha y sesion
+        ordenes = []
+        offset = 0
         while True:
             batch = await odoo_call(client, uid, 'pos.order', 'search_read',
                 [[['state', 'in', ['done', 'invoiced']]]],
@@ -575,34 +598,79 @@ async def sincronizar_historial_odoo():
                 break
             ordenes.extend(batch)
             offset += batch_size
-            logger.info(f"Batch {offset//batch_size}: {len(batch)} ordenes")
             if len(batch) < batch_size:
                 break
         
         logger.info(f"Total ordenes: {len(ordenes)}")
         
-        # Agrupar por día
-        from collections import defaultdict
-        por_dia = defaultdict(lambda: {'total': 0, 'tickets': 0, 'sesion': '', 'fecha': ''})
-        
+        # Mapa order_id -> fecha y sesion
+        orden_info = {}
         for o in ordenes:
-            fecha = (o.get('date_order') or '')[:10]
+            orden_info[o['id']] = {
+                'fecha': (o.get('date_order') or '')[:10],
+                'sesion': o['session_id'][1] if isinstance(o.get('session_id'), list) else ''
+            }
+        
+        # Clasificar productos
+        def clasificar_producto(nom):
+            n = nom.lower()
+            if 'cortesia taller' in n or 'cortesía taller' in n: return 'cortes_taller'
+            if 'cortesia ayuntamiento' in n or 'cortesía ayuntamiento' in n: return 'cortes_ayto'
+            if 'cortesia familiar' in n or 'cortesía familiar' in n: return 'cortes_familiar'
+            if 'moto' in n: return 'motos'
+            if 'fiscal' in n: return 'fiscalia'
+            if 'express' in n: return 'express'
+            if 'pick' in n or 'suv' in n or 'minivan' in n: return 'pickups'
+            if 'camioneta' in n: return 'camionetas'
+            if 'auto' in n: return 'autos'
+            if 'pro cera' in n or 'pro_cera' in n: return 'pro_cera'
+            if 'plus' in n or 'cera' in n: return 'plus_cera'
+            if 'mano' in n: return 'mano'
+            if 'motor' in n: return 'motor'
+            if 'tapete' in n: return 'tapetes'
+            return 'otros'
+        
+        # Agrupar por dia
+        from collections import defaultdict
+        VEHICULOS = ['autos','camionetas','pickups','express','fiscalia','motos']
+        SERVICIOS = ['plus_cera','pro_cera','mano','motor','tapetes']
+        CORTESIAS = ['cortes_taller','cortes_ayto','cortes_familiar']
+        
+        por_dia = defaultdict(lambda: {
+            'total': 0, 'tickets': set(), 'sesion': '', 'fecha': '',
+            'autos': 0, 'camionetas': 0, 'pickups': 0, 'express': 0,
+            'fiscalia': 0, 'motos': 0, 'plus_cera': 0, 'pro_cera': 0,
+            'mano': 0, 'motor': 0, 'tapetes': 0,
+            'cortes_taller': 0, 'cortes_ayto': 0, 'cortes_familiar': 0, 'otros': 0
+        })
+        
+        for l in lineas:
+            order_id = l['order_id'][0] if isinstance(l.get('order_id'), list) else l.get('order_id')
+            if not order_id or order_id not in orden_info:
+                continue
+            fecha = orden_info[order_id]['fecha']
             if not fecha:
                 continue
-            por_dia[fecha]['total'] += o.get('amount_total', 0)
-            por_dia[fecha]['tickets'] += 1
+            nom = l['product_id'][1] if isinstance(l.get('product_id'), list) else ''
+            cat = clasificar_producto(nom)
+            qty = int(l.get('qty') or 0)
+            precio = float(l.get('price_subtotal_incl') or 0)
+            
+            por_dia[fecha][cat] += qty
+            por_dia[fecha]['total'] += precio
+            por_dia[fecha]['tickets'].add(order_id)
             por_dia[fecha]['fecha'] = fecha
-            if o.get('session_id'):
-                por_dia[fecha]['sesion'] = o['session_id'][1] if isinstance(o['session_id'], list) else str(o['session_id'])
+            if orden_info[order_id]['sesion']:
+                por_dia[fecha]['sesion'] = orden_info[order_id]['sesion']
         
-        # Guardar cada día en Firestore colección 'historial_odoo'
+        # Guardar cada dia en Firestore coleccion historial_odoo
         from datetime import datetime as dt_sync
-        DIAS_ES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+        DIAS_ES = ['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo']
         MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
         guardados = 0
         errores = 0
         for fecha, datos in por_dia.items():
-            doc_id = fecha  # YYYY-MM-DD como ID del documento
+            doc_id = fecha
             firestore_url = f"{FIRESTORE_URL}/historial_odoo/{doc_id}"
             try:
                 fecha_dt = dt_sync.strptime(fecha, "%Y-%m-%d")
@@ -612,16 +680,41 @@ async def sincronizar_historial_odoo():
                 dia_semana = ""
                 fecha_legible = fecha
             
+            tickets_set = datos['tickets']
+            num_tickets = len(tickets_set) if isinstance(tickets_set, set) else int(tickets_set)
+            
+            # Calcular ticket promedio sin motos
+            vehiculos_pagados = (datos['autos'] + datos['camionetas'] + datos['pickups'] +
+                                 datos['express'] + datos['fiscalia'])
+            total_sin_motos = datos['total'] - (datos['motos'] * 60)  # aprox $60 por moto
+            ticket_promedio = round(total_sin_motos / vehiculos_pagados, 2) if vehiculos_pagados > 0 else 0
+            
             body = {
                 "fields": {
-                    "fecha":         {"stringValue": fecha},
-                    "fecha_legible": {"stringValue": fecha_legible},
-                    "dia_semana":    {"stringValue": dia_semana},
-                    "sesion":        {"stringValue": datos['sesion']},
-                    "total":         {"doubleValue": round(datos['total'], 2)},
-                    "num_tickets":   {"integerValue": str(datos['tickets'])},
-                    "fuente":        {"stringValue": "odoo"},
-                    "sincronizado":  {"stringValue": datetime.now().isoformat()},
+                    "fecha":            {"stringValue": fecha},
+                    "fecha_legible":    {"stringValue": fecha_legible},
+                    "dia_semana":       {"stringValue": dia_semana},
+                    "sesion":           {"stringValue": datos['sesion']},
+                    "total":            {"doubleValue": round(datos['total'], 2)},
+                    "num_tickets":      {"integerValue": str(num_tickets)},
+                    "ticket_promedio":  {"doubleValue": ticket_promedio},
+                    "autos":            {"integerValue": str(datos['autos'])},
+                    "camionetas":       {"integerValue": str(datos['camionetas'])},
+                    "pickups":          {"integerValue": str(datos['pickups'])},
+                    "express":          {"integerValue": str(datos['express'])},
+                    "fiscalia":         {"integerValue": str(datos['fiscalia'])},
+                    "motos":            {"integerValue": str(datos['motos'])},
+                    "plus_cera":        {"integerValue": str(datos['plus_cera'])},
+                    "pro_cera":         {"integerValue": str(datos['pro_cera'])},
+                    "mano":             {"integerValue": str(datos['mano'])},
+                    "motor":            {"integerValue": str(datos['motor'])},
+                    "tapetes":          {"integerValue": str(datos['tapetes'])},
+                    "cortes_taller":    {"integerValue": str(datos['cortes_taller'])},
+                    "cortes_ayto":      {"integerValue": str(datos['cortes_ayto'])},
+                    "cortes_familiar":  {"integerValue": str(datos['cortes_familiar'])},
+                    "vehiculos_pagados":{"integerValue": str(vehiculos_pagados)},
+                    "fuente":           {"stringValue": "odoo"},
+                    "sincronizado":     {"stringValue": datetime.now().isoformat()},
                 }
             }
             
