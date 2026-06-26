@@ -712,8 +712,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text(resumen, parse_mode="Markdown")
             return
 
-        # Preguntas históricas → Odoo completo
-        es_historico = any(p in texto_lower for p in PALABRAS_HISTORICO)
+        # Preguntas históricas → usar historial completo
+        # Detectar si menciona mes/año pasado o fecha antigua
+        meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+                 'septiembre','octubre','noviembre','diciembre']
+        menciona_mes = any(m in texto_lower for m in meses)
+        menciona_anio_pasado = '2025' in texto or '2024' in texto
+        es_historico = any(p in texto_lower for p in PALABRAS_HISTORICO) or menciona_mes or menciona_anio_pasado
 
         if es_historico:
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
