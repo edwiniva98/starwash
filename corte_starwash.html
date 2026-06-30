@@ -494,11 +494,18 @@ table.ct tr.red-r td{background:var(--red-light)}
 
   <!-- 8. Lectura máquina -->
   <div class="card">
-    <div class="card-head"><div class="badge">8</div>LECTURA DE LA MÁQUINA</div>
+    <div class="card-head"><div class="badge">8</div>LECTURA DE LA MÁQUINA <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
     <div class="card-body">
       <table class="ct">
         <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
-        <tbody id="body_paq_out"></tbody>
+        <tbody id="body_paq_out">
+          <tr><td>Paquete 1</td><td><input id="out_pi_ini_1" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_1" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_1" style="text-align:center">0</td><td class="right" id="out_pi_mon_1">$0</td></tr>
+          <tr><td>Paquete 2</td><td><input id="out_pi_ini_2" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_2" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_2" style="text-align:center">0</td><td class="right" id="out_pi_mon_2">$0</td></tr>
+          <tr><td>Paquete 3</td><td><input id="out_pi_ini_3" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_3" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_3" style="text-align:center">0</td><td class="right" id="out_pi_mon_3">$0</td></tr>
+          <tr><td>Paquete 4</td><td><input id="out_pi_ini_4" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_4" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_4" style="text-align:center">0</td><td class="right" id="out_pi_mon_4">$0</td></tr>
+          <tr><td>Paquete 5</td><td><input id="out_pi_ini_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_5" style="text-align:center">0</td><td class="right" id="out_pi_mon_5">$0</td></tr>
+          <tr><td>Paquete 6</td><td><input id="out_pi_ini_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_6" style="text-align:center">0</td><td class="right" id="out_pi_mon_6">$0</td></tr>
+        </tbody>
         <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL MÁQUINA</td><td class="center" id="tp_cant">0</td><td class="right" id="tp_mon">$0.00</td></tr></tfoot>
       </table>
     </div>
@@ -645,11 +652,12 @@ async function cargarInicioPaquetes(){
       paquetes.forEach((p, i)=>{
         const fields_p = p.mapValue?.fields || {};
         const finalVal = fields_p.final?.integerValue || fields_p.final?.doubleValue || 0;
+        // Llenar tanto el input original como el nuevo out_pi_ini_
         const inp = document.getElementById(`pi_ini_${i+1}`);
-        if(inp && finalVal) {
-          inp.value = finalVal;
-          inp.style.background = 'var(--teal-light)';
-          inp.title = `Cargado del corte del ${fechaAyer}`;
+        const inpOut = document.getElementById(`out_pi_ini_${i+1}`);
+        if(finalVal) {
+          if(inp){ inp.value = finalVal; inp.style.background = 'var(--teal-light)'; }
+          if(inpOut){ inpOut.value = finalVal; inpOut.style.background = 'var(--teal-light)'; inpOut.title = `Cargado del corte del ${fechaAyer}`; }
         }
       });
       // Update vendidos
@@ -1748,6 +1756,43 @@ window.abrirCorteHistorial = function(d){
   window.scrollTo(0,0);
 };
 
+function recalcPaqOut(){
+  // Precios de paquetes (igual que en recalcOut)
+  const precios = D.paqPrecios || [0,0,0,0,0,0];
+  let totalVend = 0, totalMon = 0;
+  for(let i=1;i<=6;i++){
+    const ini = parseFloat(document.getElementById(`out_pi_ini_${i}`)?.value)||0;
+    const fin = parseFloat(document.getElementById(`out_pi_fin_${i}`)?.value)||0;
+    const vend = Math.max(0, fin-ini);
+    const mon = vend * (precios[i-1]||0);
+    const vendEl = document.getElementById(`out_pi_vend_${i}`);
+    const monEl  = document.getElementById(`out_pi_mon_${i}`);
+    if(vendEl) vendEl.textContent = vend;
+    if(monEl)  monEl.textContent  = '$'+mon.toLocaleString('es-MX');
+    totalVend += vend;
+    totalMon  += mon;
+    // Sincronizar con los inputs originales del inputSection
+    const iniOrig = document.getElementById(`pi_ini_${i}`);
+    const finOrig = document.getElementById(`pi_fin_${i}`);
+    if(iniOrig) iniOrig.value = ini;
+    if(finOrig) finOrig.value = fin;
+  }
+  const tpCant = document.getElementById('tp_cant');
+  const tpMon  = document.getElementById('tp_mon');
+  if(tpCant) tpCant.textContent = totalVend;
+  if(tpMon)  tpMon.textContent  = '$'+totalMon.toLocaleString('es-MX');
+  // Actualizar D
+  D.maqVend = totalVend;
+  D.maqEsp  = D.maqEsp || totalVend;
+  D.difMaq  = totalVend - (D.maqEsp||totalVend);
+  // Actualizar KPIs de máquina en el corte
+  const difMaqEl = document.getElementById('dif_maq');
+  if(difMaqEl){
+    if(D.difMaq===0) difMaqEl.innerHTML='<span style="color:var(--green)">✅ OK</span>';
+    else difMaqEl.innerHTML=`<span style="color:var(--amber)">${D.difMaq>0?'+':''}${D.difMaq} autos</span>`;
+  }
+}
+
 window.guardarCorte = async function(){
   if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
   const btn = document.getElementById('btnGuardar');
@@ -1812,9 +1857,9 @@ window.guardarCorte = async function(){
       tiene_foto: fotoFile !== null,
       paquetes_finales: Array.from({length:6},(_,i)=>({
         num: i+1,
-        inicio: parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0,
-        final: parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0,
-        vendidos: Math.max(0,(parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0)),
+        inicio: parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value || document.getElementById(`pi_ini_${i+1}`)?.value)||0,
+        final:  parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value || document.getElementById(`pi_fin_${i+1}`)?.value)||0,
+        vendidos: Math.max(0,(parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value || document.getElementById(`pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value || document.getElementById(`pi_ini_${i+1}`)?.value)||0)),
         monto: parseFloat(document.getElementById(`pi_mon_${i+1}`)?.value)||0,
       })),
     };
