@@ -506,7 +506,7 @@ table.ct tr.red-r td{background:var(--red-light)}
           <tr><td>Paquete 5</td><td><input id="out_pi_ini_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_5" style="text-align:center">0</td><td class="right" id="out_pi_mon_5">$0</td></tr>
           <tr><td>Paquete 6</td><td><input id="out_pi_ini_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_6" style="text-align:center">0</td><td class="right" id="out_pi_mon_6">$0</td></tr>
         </tbody>
-        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL MÁQUINA</td><td class="center" id="tp_cant">0</td><td class="right" id="tp_mon">$0.00</td></tr></tfoot>
+        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL MÁQUINA</td><td class="center" id="tp_cant">0</td><td class="right" id="tp_mon"></td></tr></tfoot>
       </table>
     </div>
   </div>
@@ -519,6 +519,7 @@ table.ct tr.red-r td{background:var(--red-light)}
 
   <!-- Actions -->
   <div id="actions">
+    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
     <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
     <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
     <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
@@ -1793,8 +1794,53 @@ function recalcPaqOut(){
   }
 }
 
+window.guardarSoloLecturas = async function(){
+  recalcPaqOut();
+  const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
+  const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
+  const docId = fecha + '_' + sesion + '_v' + Date.now().toString().slice(-4);
+  
+  const paquetes = Array.from({length:6},(_,i)=>({
+    num: i+1,
+    inicio: parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value)||0,
+    final:  parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value)||0,
+    vendidos: Math.max(0,(parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value)||0)),
+    monto: 0,
+  }));
+  
+  const FIREBASE_PROJECT = 'starwash-cortes';
+  const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
+  
+  function toFirestore(obj) {
+    if(obj === null || obj === undefined) return {nullValue: null};
+    if(typeof obj === 'boolean') return {booleanValue: obj};
+    if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
+    if(typeof obj === 'string') return {stringValue: obj};
+    if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
+    if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
+    return {stringValue: String(obj)};
+  }
+  
+  const data = { fecha, sesion: D.sesion||'', paquetes_finales: paquetes };
+  const body = {fields: Object.fromEntries(Object.entries(data).map(([k,v]) => [k, toFirestore(v)]))};
+  
+  try {
+    const r = await fetch(firestoreUrl, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    if(r.ok) alert('✅ Lecturas guardadas en Firestore: ' + docId);
+    else alert('❌ Error: ' + r.status);
+  } catch(e) {
+    alert('❌ Error: ' + e.message);
+  }
+};
+
 window.guardarCorte = async function(){
   if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
+  // Asegurar que los paquetes estén sincronizados antes de guardar
+  recalcPaqOut();
   const btn = document.getElementById('btnGuardar');
   btn.textContent = '⏳ Guardando...';
   btn.disabled = true;
