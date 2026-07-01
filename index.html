@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Star Wash — Panel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand:    #714B67;
+    --brand-dk: #4A2F47;
+    --gold:     #E8B84B;
+    --teal:     #00A99D;
+    --ink:      #1a1a2e;
+    --muted:    #6b6b80;
+    --surface:  #F7F5FA;
+    --white:    #ffffff;
+    --border:   #E4DFF0;
+    --radius:   14px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--surface);
+    min-height: 100vh;
+    color: var(--ink);
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, var(--brand-dk) 0%, var(--brand) 60%, #9B6E96 100%);
+    padding: 32px 24px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -20px;
+    width: 220px; height: 220px;
+    background: rgba(232,184,75,0.08);
+    border-radius: 50%;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+  }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: var(--gold);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .logo-name {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.5px;
+  }
+  .logo-name span { color: var(--gold); }
+  .header-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 24px 20px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 18px 18px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(113,75,103,.13);
+    border-color: var(--brand);
+  }
+  .card::after {
+    content: '›';
+    position: absolute;
+    bottom: 16px; right: 18px;
+    font-size: 20px;
+    color: var(--border);
+    transition: color .15s, right .15s;
+  }
+  .card:hover::after {
+    color: var(--brand);
+    right: 14px;
+  }
+
+  .card-icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    padding-right: 16px;
+  }
+
+  /* Accent bar */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--brand);
+    opacity: 0;
+    transition: opacity .15s;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .card:hover::before { opacity: 1; }
+
+  /* Color variants */
+  .card.teal::before  { background: var(--teal); }
+  .card.gold::before  { background: var(--gold); }
+  .card.ink::before   { background: var(--ink); }
+
+  .card.teal:hover  { border-color: var(--teal);  box-shadow: 0 8px 24px rgba(0,169,157,.13); }
+  .card.gold:hover  { border-color: var(--gold);  box-shadow: 0 8px 24px rgba(232,184,75,.15); }
+  .card.ink:hover   { border-color: var(--ink);   box-shadow: 0 8px 24px rgba(26,26,46,.12); }
+
+  /* ── COMING SOON badge ── */
+  .badge-soon {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    background: #FEF3CD;
+    color: #92640A;
+    border-radius: 20px;
+    padding: 2px 8px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: 1fr; }
+    .card { padding: 18px 16px 16px; }
+  }
+
+  /* Modal contraseña */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    width: 90%;
+    max-width: 320px;
+    text-align: center;
+  }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .modal p  { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .modal input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    text-align: center;
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .modal input:focus { border-color: var(--brand); }
+  .modal-error { color: #c0392b; font-size: 12px; margin-bottom: 8px; display: none; }
+  .modal-btns { display: flex; gap: 8px; }
+  .modal-btns button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-confirm { background: var(--brand); color: #fff; }
+  .btn-cancel  { background: var(--surface); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-name">Star<span>Wash</span></div>
+  </div>
+  <div class="header-sub">Panel de operaciones · Texcoco</div>
+</header>
+
+<div class="grid">
+
+  <!-- Corte de Caja -->
+  <a class="card" href="corte_starwash.html">
+    <div class="card-icon">💵</div>
+    <div class="card-label">Caja diaria</div>
+    <div class="card-title">Corte del Día</div>
+    <div class="card-desc">Carga la sesión de Odoo y genera el corte de caja.</div>
+  </a>
+
+  <!-- Nómina -->
+  <a class="card teal" href="nomina.html">
+    <div class="card-icon">👷</div>
+    <div class="card-label">Personal</div>
+    <div class="card-title">Nómina Diaria</div>
+    <div class="card-desc">Registra asistencia y calcula pago por día.</div>
+    <span class="badge-soon">Próximamente</span>
+  </a>
+
+  <!-- Bot Telegram -->
+  <a class="card gold" href="#" onclick="pedirPassword('https://t.me/starwash_cortes_bot', 'Acceso al Bot de Análisis');return false;">
+    <div class="card-icon">🤖</div>
+    <div class="card-label">Asistente</div>
+    <div class="card-title">Bot de Análisis</div>
+    <div class="card-desc">Consulta ventas, historial y análisis por Telegram.</div>
+  </a>
+
+  <!-- Historial -->
+  <a class="card ink" href="#" onclick="pedirPassword('historial.html', 'Acceso al Historial');return false;">
+    <div class="card-icon">📊</div>
+    <div class="card-label">Reportes</div>
+    <div class="card-title">Historial</div>
+    <div class="card-desc">Consulta cortes anteriores guardados en Firestore.</div>
+  </a>
+
+</div>
+
+<!-- Modal contraseña -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>🔒 Acceso restringido</h3>
+    <p id="modalDesc">Ingresa la contraseña para continuar</p>
+    <input type="password" id="modalInput" placeholder="••••" onkeydown="if(event.key==='Enter') confirmarPassword()">
+    <div class="modal-error" id="modalError">Contraseña incorrecta</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarPassword()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<footer>Star Wash · Autolavado Texcoco</footer>
+
+<script>
+const PASS = '3098';
+let destino = '';
+
+function pedirPassword(url, descripcion) {
+  destino = url;
+  document.getElementById('modalDesc').textContent = descripcion;
+  document.getElementById('modalInput').value = '';
+  document.getElementById('modalError').style.display = 'none';
+  document.getElementById('modalOverlay').classList.add('active');
+  setTimeout(() => document.getElementById('modalInput').focus(), 100);
+}
+
+function confirmarPassword() {
+  const val = document.getElementById('modalInput').value;
+  if(val === PASS) {
+    cerrarModal();
+    if(destino.startsWith('http')) window.open(destino, '_blank');
+    else window.location.href = destino;
+  } else {
+    document.getElementById('modalError').style.display = 'block';
+    document.getElementById('modalInput').value = '';
+    document.getElementById('modalInput').focus();
+  }
+}
+
+function cerrarModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  destino = '';
+}
+</script>
+</body>
+</html>
