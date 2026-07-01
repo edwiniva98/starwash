@@ -2112,7 +2112,7 @@ window.guardarCorte = async function(){
     };
     const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
     const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
-    const docId = fecha + '_' + sesion + '_v' + Date.now().toString().slice(-4);
+    const docId = fecha + '_' + sesion; // ID fijo por sesión — sobreescribe el mismo
     // Guardar en Firestore via REST API
     const FIREBASE_PROJECT = 'starwash-cortes';
     const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
