@@ -1797,8 +1797,8 @@ function recalcPaqOut(){
 window.guardarSoloLecturas = async function(){
   recalcPaqOut();
   const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
-  const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
-  const docId = fecha + '_' + sesion + '_v' + Date.now().toString().slice(-4);
+  // Usar el docId existente de D si ya se guardó, si no crear uno nuevo
+  const docId = D.docId || (fecha + '_' + (D.sesion||'sin-sesion').replace(/\//g,'-') + '_v' + Date.now().toString().slice(-4));
   
   const paquetes = Array.from({length:6},(_,i)=>({
     num: i+1,
@@ -1936,6 +1936,7 @@ window.guardarCorte = async function(){
     });
     if(!saveResp.ok) throw new Error('Firestore: ' + saveResp.status);
     const docRef = {id: docId};
+    D.docId = docId; // Guardar para actualizaciones
     btn.textContent = '✅ Guardado';
     btn.style.background = 'var(--green)';
     setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
