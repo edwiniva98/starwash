@@ -512,10 +512,34 @@ table.ct tr.red-r td{background:var(--red-light)}
     </div>
   </div>
 
-  <!-- 9. Notas -->
-  <div class="card" id="notas_out_card" style="display:none">
-    <div class="card-head"><div class="badge">📝</div>NOTAS</div>
-    <div class="card-body"><div id="notas_out"></div></div>
+  <!-- 9. Foto de lectura (editable en corteWrap) -->
+  <div class="card">
+    <div class="card-head"><div class="badge">📸</div>FOTO DE LECTURA <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
+    <div class="card-body">
+      <div id="foto_dropzone_out" onclick="document.getElementById('foto_input_out').click()"
+        style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--gray)"
+        ondragover="event.preventDefault()"
+        ondrop="handleFotoDropOut(event)">
+        <div id="foto_preview_out" style="display:none">
+          <img id="foto_img_out" style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:6px">
+          <div style="font-size:12px;color:var(--teal);font-weight:600" id="foto_name_out"></div>
+        </div>
+        <div id="foto_placeholder_out">
+          <div style="font-size:24px">📸</div>
+          <div style="font-size:12px;color:var(--muted)">Toca para subir foto de la lectura</div>
+        </div>
+      </div>
+      <input type="file" id="foto_input_out" accept="image/*" capture="environment" style="display:none" onchange="handleFotoFileOut(this.files[0])">
+    </div>
+  </div>
+
+  <!-- 10. Notas -->
+  <div class="card" id="notas_out_card">
+    <div class="card-head"><div class="badge">📝</div>NOTAS <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
+    <div class="card-body">
+      <div id="notas_out"></div>
+      <button onclick="notas.push('');recalcOut()" style="background:none;border:1px dashed var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px">+ Agregar nota</button>
+    </div>
   </div>
 
   <!-- Actions -->
@@ -852,6 +876,29 @@ function mostrarAvisoInicios(fecha){
     }
   }
   banner.innerHTML = `✅ Se encontró corte del ${fecha} — captura los Finales de hoy y los Inicios se tomarán del día anterior al guardar.`;
+}
+
+function handleFotoDropOut(ev){
+  ev.preventDefault();
+  handleFotoFileOut(ev.dataTransfer.files[0]);
+}
+function handleFotoFileOut(f){
+  if(!f||!f.type.startsWith('image/')) return;
+  fotoFile = f;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('foto_img_out').src = e.target.result;
+    document.getElementById('foto_name_out').textContent = f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)';
+    document.getElementById('foto_preview_out').style.display = 'block';
+    document.getElementById('foto_placeholder_out').style.display = 'none';
+    document.getElementById('foto_dropzone_out').style.borderColor = 'var(--teal)';
+    // Sincronizar con la foto del inputSection
+    document.getElementById('foto_img').src = e.target.result;
+    document.getElementById('foto_name').textContent = f.name;
+    document.getElementById('foto_preview').style.display = 'block';
+    document.getElementById('foto_placeholder').style.display = 'none';
+  };
+  r.readAsDataURL(f);
 }
 
 function handleFotoDrop(ev){
