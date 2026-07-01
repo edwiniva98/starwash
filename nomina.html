@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Star Wash · Nómina</title>
+<style>
+  :root{
+    --morado:#714B67; --morado-d:#5b3c53; --morado-l:#f3eef2;
+    --verde:#2e7d32; --rojo:#c62828; --azul:#1565c0;
+    --gris:#6b6b6b; --linea:#e2e0e4; --bg:#eceaee; --card:#fff;
+  }
+  *{ box-sizing:border-box; }
+  body{ font-family:Arial,Helvetica,sans-serif; margin:0; background:var(--bg); color:#1c1c1c; }
+  h1,h2,h3{ margin:0; }
+
+  /* ---------- Header + tabs ---------- */
+  header{ background:var(--morado); color:#fff; padding:12px 16px 0; position:sticky; top:0; z-index:50; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+  .htop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .htop h1{ font-size:17px; letter-spacing:.5px; }
+  .htop .estado{ font-size:11px; opacity:.85; }
+  .tabs{ display:flex; gap:2px; margin-top:10px; flex-wrap:wrap; }
+  .tab{ background:transparent; color:#fff; border:none; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; border-radius:8px 8px 0 0; opacity:.7; }
+  .tab.on{ background:var(--bg); color:var(--morado); opacity:1; }
+
+  main{ max-width:1000px; margin:0 auto; padding:16px; }
+  section{ display:none; }
+  section.on{ display:block; }
+
+  .card{ background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:14px; }
+  .card h2{ font-size:15px; color:var(--morado); margin-bottom:12px; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  label.f{ display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--gris); }
+  input,select{ padding:8px 10px; border:1px solid var(--linea); border-radius:8px; font-size:14px; font-family:inherit; }
+  input:focus,select:focus{ outline:2px solid var(--morado-l); border-color:var(--morado); }
+
+  .btn{ background:var(--morado); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; }
+  .btn:hover{ background:var(--morado-d); }
+  .btn.sec{ background:#fff; color:var(--morado); border:1.5px solid var(--morado); }
+  .btn.gris{ background:#eee; color:#333; }
+  .btn.chico{ padding:5px 10px; font-size:12px; }
+  .btn.rojo{ background:var(--rojo); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .muted{ color:var(--gris); font-size:12px; }
+  .pill{ display:inline-block; background:var(--morado-l); color:var(--morado); font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .pill.extra{ background:#fff3e0; color:#e65100; }
+  .pill.prop{ background:#e3f2fd; color:var(--azul); }
+  .pill.amt{ background:#e8f5e9; color:var(--verde); }
+
+  /* ---------- Armador de islas ---------- */
+  .areas{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .area{ border:1.5px solid var(--linea); border-radius:10px; padding:10px; background:#fafafa; }
+  .area.cover{ border-color:#ffcc80; background:#fff8ef; }
+  .area h3{ font-size:13px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .area h3 .lbl{ color:var(--morado); }
+  .area.cover h3 .lbl{ color:#e65100; }
+  .chip{ display:flex; align-items:center; justify-content:space-between; gap:6px; background:#fff; border:1px solid var(--linea); border-radius:8px; padding:6px 8px; margin-bottom:6px; }
+  .chip .nm{ font-size:13px; font-weight:600; }
+  .chip .ctrl{ display:flex; gap:4px; align-items:center; }
+  .chip select{ padding:3px 5px; font-size:11px; border-radius:6px; }
+  .chip .x{ color:var(--rojo); cursor:pointer; font-weight:700; padding:0 4px; }
+  .addsel{ width:100%; margin-top:4px; }
+
+  /* ---------- Tablas ---------- */
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ border-bottom:1px solid var(--linea); padding:7px 8px; text-align:right; }
+  th{ background:var(--morado-l); color:var(--morado); font-size:11px; text-transform:uppercase; letter-spacing:.3px; text-align:right; }
+  th:first-child,td:first-child{ text-align:left; }
+  td.nom{ text-align:left; font-weight:600; }
+  tr.total td{ font-weight:800; border-top:2px solid var(--morado); background:#faf7f9; }
+  tbody tr:hover{ background:#fbfafc; }
+  .money{ font-variant-numeric:tabular-nums; }
+  .neg{ color:var(--rojo); }
+  input.abono{ width:80px; text-align:right; }
+
+  /* ---------- Toast ---------- */
+  #toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 18px; border-radius:24px; font-size:13px; z-index:200; opacity:0; transition:.3s; pointer-events:none; }
+  #toast.show{ opacity:1; }
+  #toast.err{ background:var(--rojo); } #toast.ok{ background:var(--verde); }
+
+  .empfila{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 4px; border-bottom:1px solid var(--linea); }
+  .empfila .info{ font-size:13px; } .empfila .info small{ color:var(--gris); }
+  details.inact summary{ cursor:pointer; color:var(--gris); font-size:13px; font-weight:700; padding:8px 0; }
+  .banner{ background:#fff8ef; border:1px solid #ffcc80; color:#e65100; padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htop">
+    <h1>STAR WASH · Nómina</h1>
+    <span class="estado" id="estadoConn">conectando…</span>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-t="dia">📋 Día</button>
+    <button class="tab" data-t="corte">💵 Corte</button>
+    <button class="tab" data-t="empleados">👤 Empleados</button>
+    <button class="tab" data-t="historial">📈 Historial</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= DÍA ================= -->
+  <section id="dia" class="on">
+    <div class="card">
+      <div class="row">
+        <label class="f">Fecha del día
+          <input type="date" id="diaFecha">
+        </label>
+        <div style="flex:1"></div>
+        <button class="btn sec chico" id="btnAddIsla">+ Agregar isla</button>
+        <button class="btn" id="btnGuardarDia">Guardar día</button>
+      </div>
+      <p class="muted" id="diaInfo" style="margin:10px 0 0">—</p>
+    </div>
+
+    <div class="banner" id="avisoPuestos" style="display:none"></div>
+
+    <div class="card">
+      <h2>Armar el día · coloca a cada quien en su lugar</h2>
+      <p class="muted" style="margin-bottom:12px">Solo cobra quien coloques. El que no pongas en ningún lado, no trabajó ese día. El <b>+$200</b> se pone solo cuando un lavador cubre Caja, Máquina o Encargado.</p>
+      <div class="areas" id="areasWrap"></div>
+    </div>
+
+    <div class="card">
+      <h2>Adelantos de hoy</h2>
+      <div class="row">
+        <label class="f">Empleado
+          <select id="adEmp"></select>
+        </label>
+        <label class="f">Monto
+          <input type="number" id="adMonto" placeholder="$" style="width:100px">
+        </label>
+        <label class="f">Nota (opcional)
+          <input type="text" id="adNota" placeholder="ej. para el pasaje" style="width:160px">
+        </label>
+        <button class="btn sec chico" id="btnAddAdel">+ Registrar adelanto</button>
+      </div>
+      <div id="adelListaHoy" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ================= CORTE ================= -->
+  <section id="corte">
+    <div class="card">
+      <div class="row">
+        <label class="f">Semana (elige cualquier día)
+          <input type="date" id="corteFecha">
+        </label>
+        <div style="flex:1"></div>
+        <button class="btn sec chico" id="btnImprimirResp">🖨️ Imprimir respaldo</button>
+        <button class="btn" id="btnGuardarCorte">Guardar corte</button>
+      </div>
+      <p class="muted" id="corteInfo" style="margin:10px 0 0">—</p>
+    </div>
+    <div class="card">
+      <h2>Nómina de la semana</h2>
+      <div style="overflow-x:auto">
+        <table id="tablaCorte">
+          <thead>
+            <tr>
+              <th>Empleado</th><th>Días</th><th>Sueldo</th><th>Extras</th>
+              <th>Especial</th><th>Adelantos</th><th>Abono préstamo</th>
+              <th>A pagar</th><th>Saldo préstamo</th>
+            </tr>
+          </thead>
+          <tbody id="corteBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= EMPLEADOS ================= -->
+  <section id="empleados">
+    <div class="card">
+      <h2>+ Nuevo empleado</h2>
+      <div class="row">
+        <label class="f">Nombre* <input type="text" id="eNombre"></label>
+        <label class="f">Apellido* <input type="text" id="eApellido"></label>
+        <label class="f">Apodo <input type="text" id="eApodo"></label>
+        <label class="f">Puesto
+          <select id="ePuesto">
+            <option value="lavador">Lavador ($250)</option>
+            <option value="cera">Cera ($250)</option>
+            <option value="rines">Rines ($250)</option>
+            <option value="encargado">Encargado ($400)</option>
+            <option value="maquinista">Maquinista ($400)</option>
+            <option value="caja">Caja ($416.67)</option>
+          </select>
+        </label>
+        <label class="f">Sueldo/día <input type="number" id="eSueldo" style="width:90px"></label>
+        <button class="btn" id="btnAddEmp">Agregar</button>
+      </div>
+      <div id="dupAviso" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Activos (<span id="numAct">0</span>)</h2>
+      <div id="listaActivos"></div>
+      <details class="inact" style="margin-top:14px">
+        <summary>Inactivos (<span id="numInact">0</span>)</summary>
+        <div id="listaInactivos"></div>
+      </details>
+    </div>
+
+    <div class="card" id="cardSeed" style="display:none">
+      <h2>Primera vez</h2>
+      <p class="muted">No hay empleados todavía. ¿Importo tu catálogo actual (30 personas del Excel, con Eder de encargado, Pedro maquinista y Tania caja)?</p>
+      <button class="btn" id="btnSeed" style="margin-top:8px">Importar catálogo inicial</button>
+    </div>
+  </section>
+
+  <!-- ================= HISTORIAL ================= -->
+  <section id="historial">
+    <div class="card">
+      <label class="f" style="max-width:280px">Empleado
+        <select id="histEmp"></select>
+      </label>
+      <div id="histResumen" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Semanas</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Semana</th><th>Días</th><th>Sueldo</th><th>Extras</th><th>Adelantos</th><th>Abono</th><th>Pagado</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   Star Wash · Nómina  —  HTML puro + Firestore REST
+   Proyecto: starwash-cortes
+   ========================================================= */
+const PROJECT='starwash-cortes';
+const BASE=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+
+/* ---------- Firestore: encode / decode ---------- */
+function encV(v){
+  if(v===null||v===undefined) return {nullValue:null};
+  if(typeof v==='boolean') return {booleanValue:v};
+  if(typeof v==='number') return {doubleValue:v};
+  if(typeof v==='string') return {stringValue:v};
+  if(Array.isArray(v)) return {arrayValue:{values:v.map(encV)}};
+  if(typeof v==='object') return {mapValue:{fields:encF(v)}};
+  return {stringValue:String(v)};
+}
+function encF(o){const f={};for(const k in o)f[k]=encV(o[k]);return f;}
+function decV(val){
+  if(!val) return null;
+  if('nullValue' in val) return null;
+  if('booleanValue' in val) return val.booleanValue;
+  if('integerValue' in val) return Number(val.integerValue);
+  if('doubleValue' in val) return val.doubleValue;
+  if('stringValue' in val) return val.stringValue;
+  if('timestampValue' in val) return val.timestampValue;
+  if('arrayValue' in val) return (val.arrayValue.values||[]).map(decV);
+  if('mapValue' in val) return decF(val.mapValue.fields||{});
+  return null;
+}
+function decF(fields){const o={};for(const k in fields)o[k]=decV(fields[k]);return o;}
+
+async function fsList(coll){
+  const r=await fetch(`${BASE}/${coll}?pageSize=1000`);
+  if(!r.ok){ if(r.status===404) return []; throw new Error('list '+coll+' '+r.status); }
+  const j=await r.json();
+  return (j.documents||[]).map(d=>({id:d.name.split('/').pop(),...decF(d.fields||{})}));
+}
+async function fsGet(coll,id){
+  const r=await fetch(`${BASE}/${coll}/${encodeURIComponent(id)}`);
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error('get '+r.status);
+  const d=await r.json();
+  return {id:d.name.split('/').pop(),...decF(d.fields||{})};
+}
+async function fsSet(coll,id,obj){
+  const r=await fetch(`${BASE}/${coll}/${encodeURIComponent(id)}`,{method:'PATCH',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:encF(obj)})});
+  if(!r.ok) throw new Error('set '+r.status+' '+await r.text());
+  return await r.json();
+}
+async function fsAdd(coll,obj){
+  const r=await fetch(`${BASE}/${coll}`,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:encF(obj)})});
+  if(!r.ok) throw new Error('add '+r.status);
+  const j=await r.json(); return j.name.split('/').pop();
+}
+async function fsDelete(coll,id){
+  const r=await fetch(`${BASE}/${coll}/${encodeURIComponent(id)}`,{method:'DELETE'});
+  if(!r.ok && r.status!==404) throw new Error('del '+r.status);
+}
+
+/* ---------- Utilidades ---------- */
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DIAS_C=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const SUELDO_PUESTO={lavador:250,cera:250,rines:250,encargado:400,maquinista:400,caja:416.67};
+const PUESTO_LBL={lavador:"Lavador",cera:"Cera",rines:"Rines",encargado:"Encargado",maquinista:"Maquinista",caja:"Caja"};
+
+function money(n){ return '$'+(Math.round((n||0)*100)/100).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ return new Date(s+'T12:00:00'); }
+function lunesDe(d){ const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(12,0,0,0); return x; }
+function nombreCompleto(e){ return (e.apodo&&e.apodo.trim()) ? e.apodo : ((e.nombre||'')+' '+(e.apellido||'')).trim(); }
+function toast(msg,tipo){ const t=document.getElementById('toast'); t.textContent=msg; t.className='show '+(tipo||''); setTimeout(()=>t.className='',2600); }
+
+/* ---------- Estado global ---------- */
+const STATE={ empleados:[], semana:null, semanas:[] };
+
+/* ---------- Lógica de pago (probada) ---------- */
+function esPuesto250(p){ return p==='lavador'||p==='cera'||p==='rines'; }
+function areaCover(a){ return a==='caja'||a==='maquina'||a==='encargado'; }
+function factorMode(m){ return m==='full'?1:m==='half'?0.5:0; }
+function pagoCelda(c,e){
+  if(!c||!c.area) return {dias:0,base:0,extra:0,especial:0};
+  if(c.mode==='amount') return {dias:0,base:0,extra:0,especial:(c.monto||0)};
+  if(c.mode==='prop')   return {dias:0,base:0,extra:0,especial:0};
+  const f=factorMode(c.mode);
+  const base=(e.sueldoDia||SUELDO_PUESTO[e.puesto]||250)*f;
+  let extra=0;
+  if(areaCover(c.area)&&esPuesto250(e.puesto)) extra=200*f;
+  return {dias:f,base,extra,especial:0};
+}
+function corteEmp(e,semana){
+  const cells=(semana.dias&&semana.dias[e.id])||[];
+  let D=0,S=0,X=0,ES=0;
+  cells.forEach(c=>{const p=pagoCelda(c,e);D+=p.dias;S+=p.base;X+=p.extra;ES+=p.especial;});
+  const adel=((semana.adelantos&&semana.adelantos[e.id])||[]).reduce((s,a)=>s+(a.monto||0),0);
+  return {dias:D,sueldo:S,extra:X,especial:ES,adelantos:adel,bruto:S+X+ES};
+}
+
+/* ---------- Semana: cargar / crear en memoria ---------- */
+function semanaVacia(lun){
+  const dom=new Date(lun); dom.setDate(lun.getDate()+6);
+  return { id:isoLocal(lun), inicio:isoLocal(lun), fin:isoLocal(dom),
+    dias:{}, adelantos:{}, islas:[4,4,4,4,4,5,5], cortes:null };
+}
+function parseSemanaDoc(doc){
+  if(!doc) return null;
+  const s={ id:doc.id, inicio:doc.inicio, fin:doc.fin };
+  try{ s.dias=JSON.parse(doc.dias||'{}'); }catch{ s.dias={}; }
+  try{ s.adelantos=JSON.parse(doc.adelantos||'{}'); }catch{ s.adelantos={}; }
+  try{ s.islas=JSON.parse(doc.islas||'[4,4,4,4,4,5,5]'); }catch{ s.islas=[4,4,4,4,4,5,5]; }
+  try{ s.cortes=doc.cortes?JSON.parse(doc.cortes):null; }catch{ s.cortes=null; }
+  return s;
+}
+async function cargarSemana(lun){
+  const id=isoLocal(lun);
+  const doc=await fsGet('nomina_semanas',id);
+  return doc ? parseSemanaDoc(doc) : semanaVacia(lun);
+}
+async function guardarSemana(s){
+  await fsSet('nomina_semanas', s.id, {
+    inicio:s.inicio, fin:s.fin,
+    dias:JSON.stringify(s.dias||{}),
+    adelantos:JSON.stringify(s.adelantos||{}),
+    islas:JSON.stringify(s.islas||[4,4,4,4,4,5,5]),
+    cortes:s.cortes?JSON.stringify(s.cortes):'',
+    actualizado:new Date().toISOString()
+  });
+}
+
+/* =========================================================
+   TABS
+   ========================================================= */
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('section').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById(b.dataset.t).classList.add('on');
+  if(b.dataset.t==='corte') refrescarCorte();
+  if(b.dataset.t==='historial') refrescarHistorial();
+});
+
+/* =========================================================
+   EMPLEADOS
+   ========================================================= */
+document.getElementById('ePuesto').onchange=e=>{
+  document.getElementById('eSueldo').value=SUELDO_PUESTO[e.target.value];
+};
+document.getElementById('eSueldo').value=250;
+
+document.getElementById('eNombre').addEventListener('input',chequeoDuplicado);
+document.getElementById('eApellido').addEventListener('input',chequeoDuplicado);
+function chequeoDuplicado(){
+  const nom=(document.getElementById('eNombre').value||'').trim().toLowerCase();
+  const ape=(document.getElementById('eApellido').value||'').trim().toLowerCase();
+  const box=document.getElementById('dupAviso');
+  if(nom.length<2){ box.innerHTML=''; return; }
+  const cand=STATE.empleados.filter(e=>{
+    const en=(e.nombre||'').toLowerCase(), ea=(e.apellido||'').toLowerCase(), ap=(e.apodo||'').toLowerCase();
+    return en.includes(nom)||ap.includes(nom)||(ape&&ea.includes(ape));
+  });
+  if(!cand.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="banner">Puede que ya exista: '+
+    cand.map(c=>`<button class="btn sec chico" style="margin:2px" onclick="reactivar('${c.id}')">${nombreCompleto(c)}${c.estado==='inactivo'?' (inactivo)':''}</button>`).join('')+
+    ' <span class="muted">— o sigue si es uno nuevo.</span></div>';
+}
+window.reactivar=async function(id){
+  const e=STATE.empleados.find(x=>x.id===id); if(!e) return;
+  e.estado='activo';
+  await fsSet('nomina_empleados',id,limpiaEmp(e));
+  toast('Reactivado: '+nombreCompleto(e),'ok');
+  document.getElementById('eNombre').value=''; document.getElementById('eApellido').value='';
+  document.getElementById('dupAviso').innerHTML='';
+  await recargarEmpleados();
+};
+
+function limpiaEmp(e){
+  return { nombre:e.nombre||'', apellido:e.apellido||'', apodo:e.apodo||'',
+    puesto:e.puesto||'lavador', sueldoDia:Number(e.sueldoDia)||250,
+    estado:e.estado||'activo', saldoPrestamo:Number(e.saldoPrestamo)||0,
+    fechaAlta:e.fechaAlta||new Date().toISOString() };
+}
+
+document.getElementById('btnAddEmp').onclick=async()=>{
+  const nombre=document.getElementById('eNombre').value.trim();
+  const apellido=document.getElementById('eApellido').value.trim();
+  if(!nombre||!apellido){ toast('Nombre y apellido son obligatorios','err'); return; }
+  const emp={ nombre, apellido,
+    apodo:document.getElementById('eApodo').value.trim(),
+    puesto:document.getElementById('ePuesto').value,
+    sueldoDia:Number(document.getElementById('eSueldo').value)||250,
+    estado:'activo', saldoPrestamo:0, fechaAlta:new Date().toISOString() };
+  try{
+    await fsAdd('nomina_empleados',emp);
+    ['eNombre','eApellido','eApodo'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('dupAviso').innerHTML='';
+    toast('Empleado agregado','ok');
+    await recargarEmpleados();
+  }catch(err){ toast('Error al guardar: '+err.message,'err'); }
+};
+
+async function recargarEmpleados(){
+  STATE.empleados=await fsList('nomina_empleados');
+  STATE.empleados.sort((a,b)=>nombreCompleto(a).localeCompare(nombreCompleto(b)));
+  pintarEmpleados(); pintarSelectAdel(); pintarSelectHist();
+  document.getElementById('cardSeed').style.display=STATE.empleados.length?'none':'block';
+  if(STATE.semana) pintarAreas();
+}
+
+function pintarEmpleados(){
+  const act=STATE.empleados.filter(e=>e.estado!=='inactivo');
+  const ina=STATE.empleados.filter(e=>e.estado==='inactivo');
+  document.getElementById('numAct').textContent=act.length;
+  document.getElementById('numInact').textContent=ina.length;
+  document.getElementById('listaActivos').innerHTML=act.map(filaEmp).join('')||'<p class="muted">Sin activos.</p>';
+  document.getElementById('listaInactivos').innerHTML=ina.map(filaEmp).join('')||'<p class="muted">Ninguno.</p>';
+}
+function filaEmp(e){
+  const deuda=Number(e.saldoPrestamo)||0;
+  const puedeBorrar=deuda<=0;
+  return `<div class="empfila">
+    <div class="info"><b>${nombreCompleto(e)}</b> <span class="pill">${PUESTO_LBL[e.puesto]||e.puesto} · ${money(e.sueldoDia)}</span>
+      ${deuda>0?`<span class="pill extra">Préstamo: ${money(deuda)}</span>`:''}
+      <br><small>${e.nombre} ${e.apellido}</small>
+    </div>
+    <div class="ctrl">
+      <button class="btn gris chico" onclick="prestamo('${e.id}')">+ Préstamo</button>
+      ${e.estado==='inactivo'
+        ? `<button class="btn sec chico" onclick="cambiarEstado('${e.id}','activo')">Reactivar</button>`
+        : `<button class="btn gris chico" onclick="cambiarEstado('${e.id}','inactivo')">Inactivar</button>`}
+      <button class="btn rojo chico" ${puedeBorrar?'':'disabled title="Debe préstamo"'} onclick="borrarEmp('${e.id}')">🗑</button>
+    </div>
+  </div>`;
+}
+window.cambiarEstado=async(id,est)=>{
+  const e=STATE.empleados.find(x=>x.id===id); if(!e) return;
+  e.estado=est; await fsSet('nomina_empleados',id,limpiaEmp(e));
+  toast(est==='activo'?'Reactivado':'Pasó a inactivos','ok'); await recargarEmpleados();
+};
+window.borrarEmp=async(id)=>{
+  const e=STATE.empleados.find(x=>x.id===id); if(!e) return;
+  if((Number(e.saldoPrestamo)||0)>0){ toast('No se puede: debe préstamo','err'); return; }
+  if(!confirm('¿Borrar a '+nombreCompleto(e)+' por completo?')) return;
+  await fsDelete('nomina_empleados',id); toast('Borrado','ok'); await recargarEmpleados();
+};
+window.prestamo=async(id)=>{
+  const e=STATE.empleados.find(x=>x.id===id); if(!e) return;
+  const m=Number(prompt('Monto del préstamo nuevo para '+nombreCompleto(e)+':','')); 
+  if(!m||m<=0) return;
+  e.saldoPrestamo=(Number(e.saldoPrestamo)||0)+m;
+  await fsSet('nomina_empleados',id,limpiaEmp(e));
+  await fsAdd('nomina_movimientos',{empId:id,tipo:'prestamo',monto:m,fecha:new Date().toISOString(),nota:''});
+  toast('Préstamo registrado','ok'); await recargarEmpleados();
+};
+
+/* ---- Seed catálogo inicial ---- */
+document.getElementById('btnSeed').onclick=async()=>{
+  const base=[["Alejandro","","lavador"],["Alex","Chivo","lavador","Alex Chivo"],["Alonso","","lavador"],
+    ["Arturo","","lavador"],["Brayan","Tucán","lavador","Brayan Tucán"],["César","","lavador"],
+    ["Dainier","","lavador"],["Derek","","lavador"],["Eder","Ramírez","encargado"],["Emanuel","","lavador"],
+    ["Fernando","","lavador"],["Francisco","","lavador"],["Frank","","lavador"],["Gabriel","","lavador"],
+    ["Hugo","","lavador"],["Jesús","Piña","lavador","Jesús Piña"],["Jorge","","lavador"],["Lalo","","lavador"],
+    ["Luis","","lavador"],["Michel","","lavador"],["Miguel","","lavador"],["Misael","Panda","lavador","Misael Panda"],
+    ["Natanael","","lavador"],["Omar","","lavador"],["Pedro","","maquinista"],["Piña","","lavador"],
+    ["Salvador","","lavador"],["Santiago","","lavador"],["Tania","","caja"],["Toncho","","lavador"]];
+  document.getElementById('btnSeed').disabled=true;
+  try{
+    for(const b of base){
+      await fsAdd('nomina_empleados',{nombre:b[0],apellido:b[1],apodo:b[3]||'',
+        puesto:b[2],sueldoDia:SUELDO_PUESTO[b[2]],estado:'activo',saldoPrestamo:0,
+        fechaAlta:new Date().toISOString()});
+    }
+    toast('Catálogo importado','ok'); await recargarEmpleados();
+  }catch(err){ toast('Error: '+err.message,'err'); }
+  document.getElementById('btnSeed').disabled=false;
+};
+
+/* =========================================================
+   DÍA · armador de islas
+   ========================================================= */
+document.getElementById('diaFecha').value=isoLocal(new Date());
+document.getElementById('diaFecha').onchange=cargarDia;
+document.getElementById('btnAddIsla').onclick=()=>{
+  const di=diaIndex(); STATE.semana.islas[di]=(STATE.semana.islas[di]||4)+1; pintarAreas();
+};
+document.getElementById('btnGuardarDia').onclick=async()=>{
+  try{ await guardarSemana(STATE.semana); toast('Día guardado','ok'); }
+  catch(err){ toast('Error: '+err.message,'err'); }
+};
+
+function diaIndex(){ // 0=lun .. 6=dom respecto a la semana cargada
+  const f=parseISO(document.getElementById('diaFecha').value);
+  const lun=lunesDe(f); return Math.round((f-lun)/86400000);
+}
+async function cargarDia(){
+  const f=parseISO(document.getElementById('diaFecha').value);
+  const lun=lunesDe(f);
+  if(!STATE.semana || STATE.semana.id!==isoLocal(lun)){
+    STATE.semana=await cargarSemana(lun);
+  }
+  const di=diaIndex();
+  document.getElementById('diaInfo').innerHTML=
+    `<b>${DIAS[di]}</b> · ${f.getDate()} de ${MESES[f.getMonth()]} ${f.getFullYear()} · <span class="muted">Semana ${STATE.semana.inicio} → ${STATE.semana.fin}</span>`;
+  // aviso de puestos fijos
+  const fijos=STATE.empleados.filter(e=>e.estado!=='inactivo'&&['encargado','maquinista','caja'].includes(e.puesto));
+  document.getElementById('avisoPuestos').style.display=fijos.length?'block':'none';
+  document.getElementById('avisoPuestos').innerHTML='¿Siguen igual los puestos fijos? '+
+    fijos.map(e=>`<b>${nombreCompleto(e)}</b>=${PUESTO_LBL[e.puesto]}`).join(' · ')+'. Si cambió alguno, ajústalo en la pestaña Empleados.';
+  pintarAreas(); pintarAdelHoy();
+}
+
+const AREAS_FIJAS=[['rines','Rines',false],['cera','Cera',false],['maquina','Máquina',true],['caja','Caja',true],['encargado','Encargado',true]];
+function pintarAreas(){
+  if(!STATE.semana) return;
+  const di=diaIndex();
+  const nIslas=STATE.semana.islas[di]||4;
+  const dias=STATE.semana.dias;
+  // asignación actual: empId -> cell (de este día)
+  const asignados={}; // area+isla -> [empIds]
+  STATE.empleados.forEach(e=>{
+    const c=(dias[e.id]||[])[di];
+    if(c&&c.area){ const key=c.area==='isla'?('isla'+(c.isla||1)):c.area; (asignados[key]=asignados[key]||[]).push(e); }
+  });
+  const placedIds=new Set();
+  STATE.empleados.forEach(e=>{ const c=(dias[e.id]||[])[di]; if(c&&c.area) placedIds.add(e.id); });
+  const disponibles=STATE.empleados.filter(e=>e.estado!=='inactivo'&&!placedIds.has(e.id));
+
+  let html='';
+  // Islas
+  for(let i=1;i<=nIslas;i++){
+    const key='isla'+i;
+    html+=cardArea(key,'Isla '+i,false,asignados[key]||[],disponibles,di);
+  }
+  // Áreas fijas
+  AREAS_FIJAS.forEach(a=>{ html+=cardArea(a[0],a[1],a[2],asignados[a[0]]||[],disponibles,di); });
+  document.getElementById('areasWrap').innerHTML=html;
+}
+function cardArea(key,label,cover,gente,disponibles,di){
+  const chips=gente.map(e=>chipEmp(e,di)).join('');
+  const opts='<option value="">+ agregar…</option>'+disponibles.map(e=>`<option value="${e.id}">${nombreCompleto(e)}</option>`).join('');
+  return `<div class="area ${cover?'cover':''}">
+    <h3><span class="lbl">${label}</span>${cover?'<span class="pill extra">+$200 si cubre</span>':''}</h3>
+    ${chips}
+    <select class="addsel" onchange="asignar('${key}',this.value,${di});this.value=''">${opts}</select>
+  </div>`;
+}
+function chipEmp(e,di){
+  const c=(STATE.semana.dias[e.id]||[])[di]||{};
+  const cover=areaCover(c.area)&&esPuesto250(e.puesto);
+  const badge = c.mode==='prop'?'<span class="pill prop">Propinas</span>'
+    : c.mode==='amount'?`<span class="pill amt">${money(c.monto||0)}</span>`
+    : (cover?'<span class="pill extra">+$200</span>':'');
+  return `<div class="chip">
+    <span class="nm">${nombreCompleto(e)} ${badge}</span>
+    <span class="ctrl">
+      <select onchange="setModo('${e.id}',${di},this.value)">
+        <option value="full" ${c.mode==='full'?'selected':''}>Completo</option>
+        <option value="half" ${c.mode==='half'?'selected':''}>Medio</option>
+        <option value="prop" ${c.mode==='prop'?'selected':''}>Propinas</option>
+        <option value="amount" ${c.mode==='amount'?'selected':''}>Monto $</option>
+      </select>
+      <span class="x" onclick="quitar('${e.id}',${di})">✕</span>
+    </span>
+  </div>`;
+}
+window.asignar=(key,empId,di)=>{
+  if(!empId) return;
+  const area=key.startsWith('isla')?'isla':key;
+  const isla=key.startsWith('isla')?Number(key.replace('isla','')):null;
+  const arr=STATE.semana.dias[empId]||new Array(7).fill(null);
+  arr[di]={area,isla,mode:'full',monto:null};
+  STATE.semana.dias[empId]=arr;
+  pintarAreas();
+};
+window.quitar=(empId,di)=>{
+  const arr=STATE.semana.dias[empId]; if(arr){ arr[di]=null; if(arr.every(x=>!x)) delete STATE.semana.dias[empId]; }
+  pintarAreas();
+};
+window.setModo=(empId,di,mode)=>{
+  const arr=STATE.semana.dias[empId]; if(!arr||!arr[di]) return;
+  arr[di].mode=mode;
+  if(mode==='amount'){ const m=Number(prompt('Monto especial para ese día:',arr[di].monto||'')); arr[di].monto=(m>0?m:0); }
+  else arr[di].monto=null;
+  pintarAreas();
+};
+
+/* ---- Adelantos del día ---- */
+function pintarSelectAdel(){
+  const sel=document.getElementById('adEmp');
+  const act=STATE.empleados.filter(e=>e.estado!=='inactivo');
+  sel.innerHTML=act.map(e=>`<option value="${e.id}">${nombreCompleto(e)}</option>`).join('');
+}
+document.getElementById('btnAddAdel').onclick=()=>{
+  if(!STATE.semana){ toast('Primero elige el día','err'); return; }
+  const id=document.getElementById('adEmp').value;
+  const monto=Number(document.getElementById('adMonto').value);
+  if(!id||!monto||monto<=0){ toast('Elige empleado y monto','err'); return; }
+  const nota=document.getElementById('adNota').value.trim();
+  const f=document.getElementById('diaFecha').value;
+  (STATE.semana.adelantos[id]=STATE.semana.adelantos[id]||[]).push({fecha:f,monto,nota});
+  document.getElementById('adMonto').value=''; document.getElementById('adNota').value='';
+  guardarSemana(STATE.semana).then(()=>toast('Adelanto registrado','ok')).catch(e=>toast('Error: '+e.message,'err'));
+  pintarAdelHoy();
+};
+function pintarAdelHoy(){
+  if(!STATE.semana) return;
+  const f=document.getElementById('diaFecha').value;
+  const filas=[];
+  for(const id in STATE.semana.adelantos){
+    STATE.semana.adelantos[id].forEach((a,idx)=>{
+      if(a.fecha===f){ const e=STATE.empleados.find(x=>x.id===id);
+        filas.push(`<div class="empfila"><div class="info"><b>${e?nombreCompleto(e):id}</b> ${money(a.monto)} <small>${a.nota||''}</small></div>
+          <button class="btn rojo chico" onclick="quitarAdel('${id}',${idx})">✕</button></div>`); }
+    });
+  }
+  document.getElementById('adelListaHoy').innerHTML=filas.join('')||'<p class="muted">Sin adelantos hoy.</p>';
+}
+window.quitarAdel=(id,idx)=>{
+  STATE.semana.adelantos[id].splice(idx,1);
+  if(!STATE.semana.adelantos[id].length) delete STATE.semana.adelantos[id];
+  guardarSemana(STATE.semana); pintarAdelHoy();
+};
+
+/* =========================================================
+   CORTE
+   ========================================================= */
+document.getElementById('corteFecha').value=isoLocal(new Date());
+document.getElementById('corteFecha').onchange=refrescarCorte;
+async function refrescarCorte(){
+  const f=parseISO(document.getElementById('corteFecha').value);
+  const lun=lunesDe(f);
+  const sem=await cargarSemana(lun);
+  STATE.corteSem=sem;
+  document.getElementById('corteInfo').innerHTML=`Semana del <b>${sem.inicio}</b> al <b>${sem.fin}</b>`;
+  const activos=STATE.empleados.filter(e=>{ const ce=corteEmp(e,sem); return ce.bruto>0||ce.adelantos>0||(sem.dias[e.id]&&sem.dias[e.id].some(c=>c)); });
+  let tB=0,tS=0,tX=0,tES=0,tA=0,tAb=0,tPag=0;
+  const rows=activos.map(e=>{
+    const c=corteEmp(e,sem);
+    const abonoPrev=(sem.cortes&&sem.cortes[e.id]&&sem.cortes[e.id].abono)||0;
+    const saldo=Number(e.saldoPrestamo)||0;
+    const aPagar=c.bruto-c.adelantos-abonoPrev;
+    tB+=c.sueldo;tX+=c.extra;tES+=c.especial;tA+=c.adelantos;tAb+=abonoPrev;tPag+=aPagar;
+    return `<tr>
+      <td class="nom">${nombreCompleto(e)}</td>
+      <td>${c.dias}</td>
+      <td class="money">${money(c.sueldo)}</td>
+      <td class="money">${c.extra?money(c.extra):'—'}</td>
+      <td class="money">${c.especial?money(c.especial):'—'}</td>
+      <td class="money neg">${c.adelantos?'-'+money(c.adelantos):'—'}</td>
+      <td><input class="abono" type="number" min="0" max="${saldo}" value="${abonoPrev||''}" placeholder="0"
+           ${saldo<=0?'disabled':''} onchange="setAbono('${e.id}',this.value)"></td>
+      <td class="money"><b>${money(aPagar)}</b></td>
+      <td class="money">${saldo>0?money(Math.max(0,saldo-abonoPrev)):'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('corteBody').innerHTML=rows+
+    `<tr class="total"><td>TOTAL</td><td></td><td class="money">${money(tS)}</td><td class="money">${money(tX)}</td>
+     <td class="money">${money(tES)}</td><td class="money neg">-${money(tA)}</td><td class="money">-${money(tAb)}</td>
+     <td class="money">${money(tPag)}</td><td></td></tr>`;
+}
+window.setAbono=(id,val)=>{
+  const s=STATE.corteSem; s.cortes=s.cortes||{};
+  s.cortes[id]=s.cortes[id]||{}; s.cortes[id].abono=Number(val)||0;
+  refrescarCorte();
+};
+document.getElementById('btnGuardarCorte').onclick=async()=>{
+  const s=STATE.corteSem; if(!s){ return; }
+  try{
+    // aplica abonos al saldo de préstamo de cada empleado
+    if(s.cortes){
+      for(const id in s.cortes){
+        const ab=s.cortes[id].abono||0; if(ab<=0) continue;
+        const e=STATE.empleados.find(x=>x.id===id); if(!e) continue;
+        e.saldoPrestamo=Math.max(0,(Number(e.saldoPrestamo)||0)-ab);
+        await fsSet('nomina_empleados',id,limpiaEmp(e));
+        await fsAdd('nomina_movimientos',{empId:id,tipo:'abono',monto:ab,fecha:s.fin,nota:'corte '+s.id});
+      }
+    }
+    await guardarSemana(s);
+    toast('Corte guardado y saldos actualizados','ok');
+    await recargarEmpleados(); refrescarCorte();
+  }catch(err){ toast('Error: '+err.message,'err'); }
+};
+
+/* ---- Imprimir hoja de respaldo (nueva ventana) ---- */
+document.getElementById('btnImprimirResp').onclick=()=>{
+  const f=parseISO(document.getElementById('corteFecha').value); const lun=lunesDe(f);
+  const fechas=[]; for(let i=0;i<7;i++){ const x=new Date(lun); x.setDate(lun.getDate()+i); fechas.push(x); }
+  const fmt=x=>`${x.getDate()} de ${MESES[x.getMonth()]} de ${x.getFullYear()}`;
+  const dom=fechas[6];
+  const act=STATE.empleados.filter(e=>e.estado!=='inactivo');
+  const filas=act.map((e,i)=>`<tr><td>${i+1}</td><td class="nm">${nombreCompleto(e)}</td>${'<td></td>'.repeat(7)}<td></td></tr>`).join('')+
+    '<tr><td></td><td class="nm"></td>'+'<td></td>'.repeat(8)+'</tr>'.repeat(3);
+  const cols=fechas.map((x,i)=>`<th class="d"><div class="v"><span class="dd">${DIAS_C[i].toLowerCase()}.</span> ${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}</div></th>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Asistencia</title>
+    <style>
+      @page{size:letter portrait;margin:9mm}
+      body{font-family:Arial;margin:0;color:#000}
+      .enc{text-align:center;margin-bottom:8px}.enc .m{font-size:19px;font-weight:800;letter-spacing:1px}
+      .enc .t{font-size:13px;font-weight:700;text-transform:uppercase}.enc .s{font-size:11px}
+      .enc .w{font-size:12px;font-weight:600;border-bottom:1px solid #000;display:inline-block;padding:0 6px 1px}
+      table{width:100%;border-collapse:collapse;table-layout:fixed}
+      th,td{border:1px solid #000}
+      th.n{text-align:left;padding-left:6px;font-size:12px;vertical-align:middle;width:auto}
+      th.d{width:34px;height:78px;vertical-align:bottom;padding:3px 0}
+      th.a{width:52px;vertical-align:middle;font-size:10px}
+      .v{writing-mode:vertical-rl;transform:rotate(180deg);margin:0 auto;white-space:nowrap;font-size:9px}
+      .v .dd{font-size:11px;font-weight:700}
+      td{height:20px;text-align:center;font-size:11px}
+      td.nm{text-align:left;padding-left:6px;font-size:11px}
+      td:first-child{width:24px}
+    </style></head><body>
+    <div class="enc"><div class="m">STAR WASH</div><div class="t">Lista de asistencia</div>
+      <div class="s">Correspondiente a la semana</div><div class="w">del ${fmt(lun)} al ${fmt(dom)}</div></div>
+    <table><thead><tr><th style="width:24px">#</th><th class="n">NOMBRE</th>${cols}<th class="a">ASIST.</th></tr></thead>
+    <tbody>${filas}</tbody></table>
+    <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+};
+
+/* =========================================================
+   HISTORIAL
+   ========================================================= */
+function pintarSelectHist(){
+  const sel=document.getElementById('histEmp');
+  sel.innerHTML='<option value="">— elige —</option>'+
+    STATE.empleados.map(e=>`<option value="${e.id}">${nombreCompleto(e)}</option>`).join('');
+}
+document.getElementById('histEmp').onchange=refrescarHistorial;
+async function refrescarHistorial(){
+  const id=document.getElementById('histEmp').value;
+  const cont=document.getElementById('histResumen'), body=document.getElementById('histBody');
+  if(!id){ cont.innerHTML='<p class="muted">Elige un empleado.</p>'; body.innerHTML=''; return; }
+  const e=STATE.empleados.find(x=>x.id===id);
+  if(!STATE.semanas.length) STATE.semanas=(await fsList('nomina_semanas')).map(parseSemanaDoc).filter(Boolean);
+  const sems=STATE.semanas.sort((a,b)=>a.id<b.id?1:-1);
+  let totalPagado=0, rows='';
+  sems.forEach(s=>{
+    const c=corteEmp(e,s);
+    if(c.bruto<=0&&c.adelantos<=0) return;
+    const ab=(s.cortes&&s.cortes[id]&&s.cortes[id].abono)||0;
+    const pag=c.bruto-c.adelantos-ab; totalPagado+=pag;
+    rows+=`<tr><td class="nom">${s.inicio} → ${s.fin}</td><td>${c.dias}</td>
+      <td class="money">${money(c.sueldo)}</td><td class="money">${c.extra?money(c.extra):'—'}</td>
+      <td class="money neg">${c.adelantos?'-'+money(c.adelantos):'—'}</td>
+      <td class="money">${ab?money(ab):'—'}</td><td class="money"><b>${money(pag)}</b></td></tr>`;
+  });
+  cont.innerHTML=`<b>${nombreCompleto(e)}</b> <span class="pill">${PUESTO_LBL[e.puesto]} · ${money(e.sueldoDia)}</span>
+    ${(Number(e.saldoPrestamo)||0)>0?`<span class="pill extra">Préstamo vivo: ${money(e.saldoPrestamo)}</span>`:''}
+    <br><span class="muted">Total pagado en el historial: <b>${money(totalPagado)}</b></span>`;
+  body.innerHTML=rows||'<tr><td colspan="7" class="muted">Sin movimientos.</td></tr>';
+}
+
+/* =========================================================
+   ARRANQUE
+   ========================================================= */
+(async function init(){
+  try{
+    await recargarEmpleados();
+    document.getElementById('estadoConn').textContent='● conectado';
+    await cargarDia();
+  }catch(err){
+    document.getElementById('estadoConn').textContent='● sin conexión';
+    toast('No se pudo conectar a Firestore: '+err.message,'err');
+  }
+})();
+</script>
+</body>
+</html>
