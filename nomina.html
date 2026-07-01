@@ -140,6 +140,21 @@
       </div>
       <div id="adelListaHoy" style="margin-top:10px"></div>
     </div>
+
+    <div class="card">
+      <h2>Préstamos de hoy</h2>
+      <p class="muted" style="margin-bottom:10px">Se suma a lo que ya debe. El abono (lo que te va pagando) se define después, en el corte.</p>
+      <div class="row">
+        <label class="f">Empleado
+          <select id="prEmp"></select>
+        </label>
+        <label class="f">Monto
+          <input type="number" id="prMonto" placeholder="$" style="width:100px">
+        </label>
+        <button class="btn sec chico" id="btnAddPrest">+ Registrar préstamo</button>
+      </div>
+      <div id="prestListaHoy" style="margin-top:10px"></div>
+    </div>
   </section>
 
   <!-- ================= CORTE ================= -->
@@ -341,13 +356,14 @@ function corteEmp(e,semana){
 function semanaVacia(lun){
   const dom=new Date(lun); dom.setDate(lun.getDate()+6);
   return { id:isoLocal(lun), inicio:isoLocal(lun), fin:isoLocal(dom),
-    dias:{}, adelantos:{}, islas:[4,4,4,4,4,5,5], cortes:null };
+    dias:{}, adelantos:{}, prestamos:{}, islas:[4,4,4,4,4,5,5], cortes:null };
 }
 function parseSemanaDoc(doc){
   if(!doc) return null;
   const s={ id:doc.id, inicio:doc.inicio, fin:doc.fin };
   try{ s.dias=JSON.parse(doc.dias||'{}'); }catch{ s.dias={}; }
   try{ s.adelantos=JSON.parse(doc.adelantos||'{}'); }catch{ s.adelantos={}; }
+  try{ s.prestamos=JSON.parse(doc.prestamos||'{}'); }catch{ s.prestamos={}; }
   try{ s.islas=JSON.parse(doc.islas||'[4,4,4,4,4,5,5]'); }catch{ s.islas=[4,4,4,4,4,5,5]; }
   try{ s.cortes=doc.cortes?JSON.parse(doc.cortes):null; }catch{ s.cortes=null; }
   return s;
@@ -362,6 +378,7 @@ async function guardarSemana(s){
     inicio:s.inicio, fin:s.fin,
     dias:JSON.stringify(s.dias||{}),
     adelantos:JSON.stringify(s.adelantos||{}),
+    prestamos:JSON.stringify(s.prestamos||{}),
     islas:JSON.stringify(s.islas||[4,4,4,4,4,5,5]),
     cortes:s.cortes?JSON.stringify(s.cortes):'',
     actualizado:new Date().toISOString()
@@ -442,7 +459,7 @@ document.getElementById('btnAddEmp').onclick=async()=>{
 async function recargarEmpleados(){
   STATE.empleados=await fsList('nomina_empleados');
   STATE.empleados.sort((a,b)=>nombreCompleto(a).localeCompare(nombreCompleto(b)));
-  pintarEmpleados(); pintarSelectAdel(); pintarSelectHist();
+  pintarEmpleados(); pintarSelectAdel(); pintarSelectPrest(); pintarSelectHist();
   document.getElementById('cardSeed').style.display=STATE.empleados.length?'none':'block';
   if(STATE.semana) pintarAreas();
 }
@@ -546,7 +563,7 @@ async function cargarDia(){
   document.getElementById('avisoPuestos').style.display=fijos.length?'block':'none';
   document.getElementById('avisoPuestos').innerHTML='¿Siguen igual los puestos fijos? '+
     fijos.map(e=>`<b>${nombreCompleto(e)}</b>=${PUESTO_LBL[e.puesto]}`).join(' · ')+'. Si cambió alguno, ajústalo en la pestaña Empleados.';
-  pintarAreas(); pintarAdelHoy();
+  pintarAreas(); pintarAdelHoy(); pintarPrestHoy();
 }
 
 const AREAS_FIJAS=[['rines','Rines',false],['cera','Cera',false],['maquina','Máquina',true],['caja','Caja',true],['encargado','Encargado',true]];
@@ -659,6 +676,63 @@ window.quitarAdel=(id,idx)=>{
   STATE.semana.adelantos[id].splice(idx,1);
   if(!STATE.semana.adelantos[id].length) delete STATE.semana.adelantos[id];
   guardarSemana(STATE.semana); pintarAdelHoy();
+};
+
+/* ---- Préstamos del día ---- */
+function pintarSelectPrest(){
+  const sel=document.getElementById('prEmp');
+  const act=STATE.empleados.filter(e=>e.estado!=='inactivo');
+  sel.innerHTML=act.map(e=>{
+    const d=Number(e.saldoPrestamo)||0;
+    return `<option value="${e.id}">${nombreCompleto(e)}${d>0?' (debe '+money(d)+')':''}</option>`;
+  }).join('');
+}
+document.getElementById('btnAddPrest').onclick=async()=>{
+  if(!STATE.semana){ toast('Primero elige el día','err'); return; }
+  const id=document.getElementById('prEmp').value;
+  const monto=Number(document.getElementById('prMonto').value);
+  if(!id||!monto||monto<=0){ toast('Elige empleado y monto','err'); return; }
+  const e=STATE.empleados.find(x=>x.id===id); if(!e) return;
+  const prev=Number(e.saldoPrestamo)||0, nuevo=prev+monto;
+  if(!confirm(`${nombreCompleto(e)}\n\nDebía ${money(prev)} → ahora debe ${money(nuevo)}\n\n¿Registrar el préstamo?`)) return;
+  try{
+    e.saldoPrestamo=nuevo;
+    await fsSet('nomina_empleados',id,limpiaEmp(e));
+    const f=document.getElementById('diaFecha').value;
+    (STATE.semana.prestamos[id]=STATE.semana.prestamos[id]||[]).push({fecha:f,monto,prev,nuevo});
+    await guardarSemana(STATE.semana);
+    await fsAdd('nomina_movimientos',{empId:id,tipo:'prestamo',monto,fecha:new Date().toISOString(),nota:'día '+f});
+    document.getElementById('prMonto').value='';
+    toast('Préstamo registrado · ahora debe '+money(nuevo),'ok');
+    pintarSelectPrest(); pintarSelectAdel(); pintarPrestHoy(); pintarEmpleados();
+  }catch(err){ toast('Error: '+err.message,'err'); }
+};
+function pintarPrestHoy(){
+  if(!STATE.semana) return;
+  const f=document.getElementById('diaFecha').value;
+  const filas=[];
+  for(const id in (STATE.semana.prestamos||{})){
+    STATE.semana.prestamos[id].forEach((p,idx)=>{
+      if(p.fecha===f){ const e=STATE.empleados.find(x=>x.id===id);
+        filas.push(`<div class="empfila"><div class="info"><b>${e?nombreCompleto(e):id}</b> ${money(p.monto)}
+          <small>debía ${money(p.prev)} → debe ${money(p.nuevo)}</small></div>
+          <button class="btn rojo chico" onclick="quitarPrest('${id}',${idx})">✕</button></div>`); }
+    });
+  }
+  document.getElementById('prestListaHoy').innerHTML=filas.join('')||'<p class="muted">Sin préstamos hoy.</p>';
+}
+window.quitarPrest=async(id,idx)=>{
+  const arr=STATE.semana.prestamos[id]; if(!arr||!arr[idx]) return;
+  const p=arr[idx];
+  const e=STATE.empleados.find(x=>x.id===id);
+  if(!confirm('¿Deshacer este préstamo de '+money(p.monto)+'? Se le resta de lo que debe.')) return;
+  try{
+    if(e){ e.saldoPrestamo=Math.max(0,(Number(e.saldoPrestamo)||0)-p.monto); await fsSet('nomina_empleados',id,limpiaEmp(e)); }
+    arr.splice(idx,1); if(!arr.length) delete STATE.semana.prestamos[id];
+    await guardarSemana(STATE.semana);
+    toast('Préstamo deshecho','ok');
+    pintarSelectPrest(); pintarSelectAdel(); pintarPrestHoy(); pintarEmpleados();
+  }catch(err){ toast('Error: '+err.message,'err'); }
 };
 
 /* =========================================================
