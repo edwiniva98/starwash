@@ -327,9 +327,12 @@ function pedirPassword(url, descripcion) {
 function confirmarPassword() {
   const val = document.getElementById('modalInput').value;
   if(val === PASS) {
+    const url = destino;
     cerrarModal();
-    if(destino.startsWith('http')) window.open(destino, '_blank');
-    else window.location.href = destino;
+    setTimeout(() => {
+      if(url.startsWith('http')) window.open(url, '_blank');
+      else window.location.href = url;
+    }, 100);
   } else {
     document.getElementById('modalError').style.display = 'block';
     document.getElementById('modalInput').value = '';
