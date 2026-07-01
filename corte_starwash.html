@@ -545,8 +545,28 @@ table.ct tr.red-r td{background:var(--red-light)}
 
   <!-- Actions -->
   <div id="actions">
-    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
+    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.enviarReporte = async function(){
+  const corte = D.corteGuardado;
+  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
+  const btn = document.getElementById('btnEnviarReporte');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+  try {
+    await enviarTelegram(corte);
+    await generarYEnviarPDF(corte);
+    btn.textContent = '✅ Enviado';
+    btn.style.background = 'var(--green)';
+    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
+  } catch(e) {
+    alert('Error al enviar: ' + e.message);
+    btn.textContent = '📤 Enviar Reporte';
+    btn.disabled = false;
+  }
+};
+
+window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
     <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
+    <button class="btn-sec" id="btnEnviarReporte" style="background:#25D366;color:#fff" onclick="window.enviarReporte()">📤 Enviar Reporte</button>
     <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
     <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
     <button class="btn-sec b-excel" onclick="exportXLSX()">📥 Descargar Excel</button>
@@ -2033,6 +2053,25 @@ window.guardarEdicionLecturas = async function(){
 };
 
 
+window.enviarReporte = async function(){
+  const corte = D.corteGuardado;
+  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
+  const btn = document.getElementById('btnEnviarReporte');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+  try {
+    await enviarTelegram(corte);
+    await generarYEnviarPDF(corte);
+    btn.textContent = '✅ Enviado';
+    btn.style.background = 'var(--green)';
+    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
+  } catch(e) {
+    alert('Error al enviar: ' + e.message);
+    btn.textContent = '📤 Enviar Reporte';
+    btn.disabled = false;
+  }
+};
+
 window.guardarSoloLecturas = async function(){
   recalcPaqOut();
   const fecha = document.getElementById('inp_fecha')?.value || new Date().toLocaleDateString('en-CA', {timeZone: 'America/Mexico_City'});
@@ -2194,11 +2233,8 @@ window.guardarCorte = async function(){
     btn.style.background = 'var(--green)';
     setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
     console.log('Corte guardado con ID:', docRef.id);
-    // Mandar resumen a Telegram
-    await enviarTelegram(corte);
-    // Generar y mandar PDF del corte
-    await generarYEnviarPDF(corte);
-    // Auditoría manual disponible con /auditoria en el bot
+    // Reporte se envía manualmente con el botón "Enviar Reporte"
+    D.corteGuardado = corte; // Guardar para envío posterior
   } catch(e){
     alert('Error al guardar: ' + e.message);
     btn.textContent = '💾 Guardar Corte';
