@@ -420,15 +420,16 @@ table.ct tr.red-r td{background:var(--red-light)}
     </div>
   </div>
 
-  <!-- 3. Servicios manuales (solo si hay) -->
-  <div class="card" id="svc_out_card" style="display:none">
-    <div class="card-head"><div class="badge">3</div>SERVICIOS MANUALES</div>
+  <!-- 3. Servicios manuales (editable) -->
+  <div class="card" id="svc_out_card">
+    <div class="card-head"><div class="badge">3</div>SERVICIOS MANUALES <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
     <div class="card-body">
       <table class="ct">
         <thead><tr><th>Servicio</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
         <tbody id="body_svc_out"></tbody>
         <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL SERVICIOS MANUALES</td><td class="right" id="tot_svc_out">$0.00</td></tr></tfoot>
       </table>
+      <button onclick="svcs.push({n:'',p:0,q:1});recalcSvcOut()" style="background:none;border:1px dashed var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px">+ Agregar servicio</button>
     </div>
   </div>
 
@@ -1070,28 +1071,23 @@ function buildCorte(od){
   document.getElementById('tp_cant').textContent=maqVend;
 
   // Notas output
-  const notasLimpias=notas.filter(n=>n.trim());
-  if(notasLimpias.length){
-    const no=document.getElementById('notas_out');no.innerHTML='';
-    notasLimpias.forEach((n,i)=>{
+  // Renderizar TODAS las notas (incluyendo vacías recién agregadas)
+  const no=document.getElementById('notas_out');
+  if(no){
+    no.innerHTML='';
+    notas.forEach((n,i)=>{
       const row=document.createElement('div');
       row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
       row.innerHTML=`<span style="color:var(--muted);font-size:11px;min-width:16px">${i+1}.</span>
-        <input type="text" value="${n.replace(/"/g,'&quot;')}" 
+        <input type="text" value="${(n||'').replace(/"/g,'&quot;')}" 
           style="flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:13px;background:var(--gray)"
           oninput="notas[${i}]=this.value"
-          placeholder="Nota...">
+          placeholder="Escribe una nota...">
         <button onclick="notas.splice(${i},1);recalcOut()" 
           style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>`;
       no.appendChild(row);
     });
-    // Botón agregar nota directamente en el output
-    const btnAdd=document.createElement('button');
-    btnAdd.className='btn-add';
-    btnAdd.textContent='+ Agregar nota';
-    btnAdd.onclick=()=>{notas.push('');recalcOut();setTimeout(()=>{const ins=no.querySelectorAll('input');if(ins.length)ins[ins.length-1].focus();},50);};
-    no.appendChild(btnAdd);
-    document.getElementById('notas_out_card').style.display='block';
+    setTimeout(()=>{const ins=no.querySelectorAll('input');if(ins.length)ins[ins.length-1]?.focus();},50);
   }
 
   // Máquina esperada
@@ -1220,6 +1216,37 @@ function recalcSvcOut(){
   set('k_tickets',fmtK((D.totalTix||0)-((D.totSvc||0))+totSvc));
   // Recalc diff
   recalcOut();
+}
+
+function recalcSvcOut(){
+  const tbody = document.getElementById('body_svc_out');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  let total = 0;
+  svcs.forEach((s,i)=>{
+    const t = (s.p||0)*(s.q||1);
+    total += t;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${(s.n||'').replace(/"/g,'&quot;')}" placeholder="Servicio" 
+        style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px"
+        oninput="svcs[${i}].n=this.value"></td>
+      <td><input type="number" value="${s.p||''}" placeholder="$0"
+        style="width:80px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:right"
+        oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
+      <td><input type="number" value="${s.q||1}" min="1"
+        style="width:60px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:center"
+        oninput="svcs[${i}].q=parseFloat(this.value)||1;recalcSvcOut()"></td>
+      <td style="text-align:right;padding:4px 8px">${fmt(t)}
+        <button onclick="svcs.splice(${i},1);recalcSvcOut()" 
+          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+  const totEl = document.getElementById('tot_svc_out');
+  if(totEl) totEl.textContent = fmt(total);
+  D.totSvc = total;
+  // Sincronizar con inputSection
+  renderSvcs();
 }
 
 function recalcPaqOut(){
@@ -1800,6 +1827,37 @@ window.abrirCorteHistorial = function(d){
   // Scroll to top
   window.scrollTo(0,0);
 };
+
+function recalcSvcOut(){
+  const tbody = document.getElementById('body_svc_out');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  let total = 0;
+  svcs.forEach((s,i)=>{
+    const t = (s.p||0)*(s.q||1);
+    total += t;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" value="${(s.n||'').replace(/"/g,'&quot;')}" placeholder="Servicio" 
+        style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px"
+        oninput="svcs[${i}].n=this.value"></td>
+      <td><input type="number" value="${s.p||''}" placeholder="$0"
+        style="width:80px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:right"
+        oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
+      <td><input type="number" value="${s.q||1}" min="1"
+        style="width:60px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:center"
+        oninput="svcs[${i}].q=parseFloat(this.value)||1;recalcSvcOut()"></td>
+      <td style="text-align:right;padding:4px 8px">${fmt(t)}
+        <button onclick="svcs.splice(${i},1);recalcSvcOut()" 
+          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+  const totEl = document.getElementById('tot_svc_out');
+  if(totEl) totEl.textContent = fmt(total);
+  D.totSvc = total;
+  // Sincronizar con inputSection
+  renderSvcs();
+}
 
 function recalcPaqOut(){
   // Precios de paquetes (igual que en recalcOut)
