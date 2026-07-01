@@ -576,7 +576,7 @@ const ADICS=[
 
 let gastos=[], svcs=[], notas=[], pdfFile=null, fotoFile=null, hasSvc=false;
 let D={}; // all data after generate
-const FIREBASE_PROJECT = 'starwash-cortes'; // global
+var FIREBASE_PROJECT = 'starwash-cortes'; // global
 
 window.onload=()=>{
   const k=localStorage.getItem('sw_key'); if(k) document.getElementById('apikey').value=k;
@@ -626,7 +626,6 @@ async function cargarInicioPaquetes(){
   d.setDate(d.getDate() - 1);
   const fechaAyer = d.toISOString().slice(0,10);
   
-  FIREBASE_PROJECT = 'starwash-cortes';
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
   
   try{
@@ -1854,7 +1853,6 @@ window.abrirEditorCorte = async function(){
   lista.innerHTML = '<p style="color:#999">Cargando cortes...</p>';
   
   try {
-    FIREBASE_PROJECT = 'starwash-cortes';
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=15&orderBy=timestamp%20desc`;
     const r = await fetch(url);
     const data = await r.json();
@@ -1895,7 +1893,6 @@ window.verificarContrasenaEditor = async function(){
   
   // Cargar datos del corte
   try {
-    FIREBASE_PROJECT = 'starwash-cortes';
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
     const r = await fetch(url);
     const doc = await r.json();
@@ -1951,7 +1948,6 @@ window.guardarEdicionLecturas = async function(){
     return {stringValue: String(obj)};
   }
   
-  FIREBASE_PROJECT = 'starwash-cortes';
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
   
   const body = {
@@ -1985,7 +1981,6 @@ window.guardarSoloLecturas = async function(){
   if(!D || !D.sesion){ alert('Primero carga una sesión de Odoo.'); return; }
   // Buscar el documento existente con esta fecha y sesión
   const sesionId = D.sesion.replace(/\//g,'-');
-  FIREBASE_PROJECT = 'starwash-cortes';
   const urlBuscar = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=50`;
   let docId = D.docId;
   if(!docId){
@@ -2114,7 +2109,6 @@ window.guardarCorte = async function(){
     const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
     const docId = fecha + '_' + sesion; // ID fijo por sesión — sobreescribe el mismo
     // Guardar en Firestore via REST API
-    FIREBASE_PROJECT = 'starwash-cortes';
     const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
     
     // Convertir corte a formato Firestore
