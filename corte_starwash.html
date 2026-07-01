@@ -1095,7 +1095,7 @@ function buildCorte(od){
   }
 
   // Máquina esperada
-  const maqEsp=cantPagados+ct+ca+seg-lavm+reg;
+  const maqEsp=cantPagados+ct+ca+cf+seg-lavm+reg;
 
   // KPIs
   document.getElementById('k_tickets').textContent=fmtK(totalTix);
@@ -1297,7 +1297,7 @@ function recalcOut(){
   const lavm=parseFloat(document.getElementById('out_lavm')?.value)||0;
   const reg=parseFloat(document.getElementById('out_reg')?.value)||0;
   const cantPagados=D.cantPagados||0;
-  const maqEsp=cantPagados+ct+ca+seg-lavm+reg;
+  const maqEsp=cantPagados+ct+ca+cf+seg-lavm+reg;
   const maqVend=D.maqVend||0;
   const difMaq=maqVend-maqEsp;
   set('k_maq_esp',maqEsp);
