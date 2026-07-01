@@ -1985,7 +1985,7 @@ window.guardarSoloLecturas = async function(){
   // Buscar el documento existente con esta fecha y sesión
   const sesionId = D.sesion.replace(/\//g,'-');
   const FIREBASE_PROJECT = 'starwash-cortes';
-  const urlBuscar = \`https://firestore.googleapis.com/v1/projects/\${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=50\`;
+  const urlBuscar = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=50`;
   let docId = D.docId;
   if(!docId){
     try {
