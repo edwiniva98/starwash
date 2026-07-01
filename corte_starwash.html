@@ -1052,25 +1052,22 @@ function buildCorte(od){
   document.getElementById('out_lavm').value=lavm||'';
   document.getElementById('out_reg').value=reg||'';
 
-  // Lectura máquina
-  let maqVend=0,maqMon=0;
-  const pb=document.getElementById('body_paq_out');pb.innerHTML='';
+  // Lectura máquina - llenar los inputs fijos de la tabla (out_pi_ini_/out_pi_fin_)
+  let maqVend=0;
   for(let i=1;i<=6;i++){
     const ini=parseFloat(document.getElementById('pi_ini_'+i)?.value)||0;
     const fin=parseFloat(document.getElementById('pi_fin_'+i)?.value)||0;
-    const mon=parseFloat(document.getElementById('pi_mon_'+i)?.value)||0;
     const vend=Math.max(0,fin-ini);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="center" style="font-weight:600">Paquete ${i}</td>
-      <td><input class="ei center" id="out_paq_ini_${i}" type="number" value="${ini}" oninput="recalcPaqOut()"></td>
-      <td><input class="ei center" id="out_paq_fin_${i}" type="number" value="${fin}" oninput="recalcPaqOut()"></td>
-      <td class="center" id="out_paq_vend_${i}">${vend}</td>
-      <td><input class="ei" id="out_paq_mon_${i}" type="number" value="${mon||''}" placeholder="$0" oninput="recalcPaqOut()"></td>`;
-    pb.appendChild(tr);
-    maqVend+=vend;maqMon+=mon;
+    // Llenar inputs fijos del corteWrap
+    const iniEl=document.getElementById('out_pi_ini_'+i);
+    const finEl=document.getElementById('out_pi_fin_'+i);
+    const vendEl=document.getElementById('out_pi_vend_'+i);
+    if(iniEl) iniEl.value=ini;
+    if(finEl) finEl.value=fin;
+    if(vendEl) vendEl.textContent=vend;
+    maqVend+=vend;
   }
   document.getElementById('tp_cant').textContent=maqVend;
-  document.getElementById('tp_mon').textContent=fmt(maqMon);
 
   // Notas output
   const notasLimpias=notas.filter(n=>n.trim());
@@ -1228,14 +1225,12 @@ function recalcSvcOut(){
 function recalcPaqOut(){
   let ct=0,mt=0;
   for(let i=1;i<=6;i++){
-    // Soporta ambos IDs (out_pi_ es la tabla HTML, out_paq_ es el inputSection)
-    const ini=parseFloat(document.getElementById('out_pi_ini_'+i)?.value||document.getElementById('out_paq_ini_'+i)?.value)||0;
-    const fin=parseFloat(document.getElementById('out_pi_fin_'+i)?.value||document.getElementById('out_paq_fin_'+i)?.value)||0;
-    const mon=parseFloat(document.getElementById('out_pi_mon_'+i)?.value||document.getElementById('out_paq_mon_'+i)?.value)||0;
+    const ini=parseFloat(document.getElementById('out_pi_ini_'+i)?.value)||0;
+    const fin=parseFloat(document.getElementById('out_pi_fin_'+i)?.value)||0;
     const vend=Math.max(0,fin-ini);
-    const el=document.getElementById('out_pi_vend_'+i)||document.getElementById('out_paq_vend_'+i);
+    const el=document.getElementById('out_pi_vend_'+i);
     if(el) el.textContent=vend;
-    ct+=vend; mt+=mon;
+    ct+=vend;
   }
   set('tp_cant',ct); set('tp_mon',fmt(mt));
   set('k_maq_total',ct);
@@ -1985,9 +1980,26 @@ window.guardarEdicionLecturas = async function(){
 
 window.guardarSoloLecturas = async function(){
   recalcPaqOut();
-  const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
-  // Usar el docId existente de D si ya se guardó, si no crear uno nuevo
-  const docId = D.docId || (fecha + '_' + (D.sesion||'sin-sesion').replace(/\//g,'-') + '_v' + Date.now().toString().slice(-4));
+  const fecha = document.getElementById('inp_fecha')?.value || new Date().toLocaleDateString('en-CA', {timeZone: 'America/Mexico_City'});
+  if(!D || !D.sesion){ alert('Primero carga una sesión de Odoo.'); return; }
+  // Buscar el documento existente con esta fecha y sesión
+  const sesionId = D.sesion.replace(/\//g,'-');
+  const FIREBASE_PROJECT = 'starwash-cortes';
+  const urlBuscar = \`https://firestore.googleapis.com/v1/projects/\${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=50\`;
+  let docId = D.docId;
+  if(!docId){
+    try {
+      const rb = await fetch(urlBuscar);
+      const db = await rb.json();
+      const docs = db.documents || [];
+      const match = docs.find(d => {
+        const f = d.fields;
+        return f?.fecha?.stringValue === fecha && f?.sesion?.stringValue === D.sesion;
+      });
+      if(match) docId = match.name.split('/').pop();
+    } catch(e){}
+  }
+  if(!docId){ alert('No se encontró el corte en Firestore. Primero guarda el corte completo.'); return; }
   
   const paquetes = Array.from({length:6},(_,i)=>({
     num: i+1,
