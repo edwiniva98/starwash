@@ -2198,8 +2198,7 @@ window.guardarCorte = async function(){
     await enviarTelegram(corte);
     // Generar y mandar PDF del corte
     await generarYEnviarPDF(corte);
-    // Disparar auditoría automática en el bot
-    await dispararAuditoria(corte);
+    // Auditoría manual disponible con /auditoria en el bot
   } catch(e){
     alert('Error al guardar: ' + e.message);
     btn.textContent = '💾 Guardar Corte';
