@@ -544,147 +544,7 @@ table.ct tr.red-r td{background:var(--red-light)}
 
   <!-- Actions -->
   <div id="actions">
-    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="
-// ── EDITOR DE CORTES ──────────────────────────────────────────────────────────
-const EDITOR_PASSWORD = '1234'; // Cambiar por tu contraseña
-let editorDocId = null;
-
-window.abrirEditorCorte = async function(){
-  document.getElementById('modalEditarCorte').style.display = 'block';
-  document.getElementById('editorCorteStep1').style.display = 'block';
-  document.getElementById('editorCorteStep2').style.display = 'none';
-  document.getElementById('editorCorteStep3').style.display = 'none';
-  
-  const lista = document.getElementById('editorCorteList');
-  lista.innerHTML = '<p style="color:#999">Cargando cortes...</p>';
-  
-  try {
-    const FIREBASE_PROJECT = 'starwash-cortes';
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=15&orderBy=timestamp%20desc`;
-    const r = await fetch(url);
-    const data = await r.json();
-    const docs = data.documents || [];
-    
-    lista.innerHTML = docs.map(doc => {
-      const docId = doc.name.split('/').pop();
-      const fields = doc.fields || {};
-      const fecha = fields.fecha?.stringValue || '';
-      const sesion = fields.sesion?.stringValue || '';
-      const total = fields.totales?.mapValue?.fields?.total_tickets?.integerValue || '0';
-      const paqFin = fields.paquetes_finales?.arrayValue?.values || [];
-      const tieneLecturas = paqFin.some(p => parseInt(p.mapValue?.fields?.final?.integerValue||0) > 0);
-      
-      return `<div onclick="window.seleccionarCorteEditor('${docId}','${fecha}','${sesion}')" 
-        style="padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;cursor:pointer;background:${tieneLecturas?'#e8f5e9':'#fff8e1'}">
-        <b>${fecha}</b> — ${sesion}<br>
-        <span style="font-size:12px;color:#666">$${parseInt(total).toLocaleString('es-MX')} ${tieneLecturas?'✅ Con lecturas':'⚠️ Sin lecturas'}</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    lista.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
-  }
-};
-
-window.seleccionarCorteEditor = function(docId, fecha, sesion){
-  editorDocId = docId;
-  document.getElementById('editorCorteInfo').textContent = fecha + ' — ' + sesion;
-  document.getElementById('editorCorteStep1').style.display = 'none';
-  document.getElementById('editorCorteStep2').style.display = 'block';
-  document.getElementById('editorContrasena').value = '';
-  setTimeout(()=>document.getElementById('editorContrasena').focus(), 100);
-};
-
-window.verificarContrasenaEditor = async function(){
-  const pass = document.getElementById('editorContrasena').value;
-  if(pass !== EDITOR_PASSWORD){ alert('Contraseña incorrecta'); return; }
-  
-  // Cargar datos del corte
-  try {
-    const FIREBASE_PROJECT = 'starwash-cortes';
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
-    const r = await fetch(url);
-    const doc = await r.json();
-    const paqFin = doc.fields?.paquetes_finales?.arrayValue?.values || [];
-    
-    const body = document.getElementById('editorPaqBody');
-    body.innerHTML = Array.from({length:6},(_,i)=>{
-      const paq = paqFin[i]?.mapValue?.fields || {};
-      const ini = paq.inicio?.integerValue || 0;
-      const fin = paq.final?.integerValue || 0;
-      const vend = Math.max(0, fin-ini);
-      return `<tr>
-        <td style="padding:8px">Paquete ${i+1}</td>
-        <td style="padding:4px"><input id="edit_ini_${i+1}" type="number" value="${ini}" style="width:70px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:center"></td>
-        <td style="padding:4px"><input id="edit_fin_${i+1}" type="number" value="${fin}" oninput="actualizarVendidosEditor(${i+1})" style="width:70px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:center"></td>
-        <td id="edit_vend_${i+1}" style="padding:8px;text-align:center;font-weight:600">${vend}</td>
-      </tr>`;
-    }).join('');
-    
-    document.getElementById('editorCorteInfo2').textContent = document.getElementById('editorCorteInfo').textContent;
-    document.getElementById('editorCorteStep2').style.display = 'none';
-    document.getElementById('editorCorteStep3').style.display = 'block';
-  } catch(e) {
-    alert('Error cargando corte: ' + e.message);
-  }
-};
-
-window.actualizarVendidosEditor = function(i){
-  const ini = parseFloat(document.getElementById(`edit_ini_${i}`)?.value)||0;
-  const fin = parseFloat(document.getElementById(`edit_fin_${i}`)?.value)||0;
-  const el = document.getElementById(`edit_vend_${i}`);
-  if(el) el.textContent = Math.max(0, fin-ini);
-};
-
-window.guardarEdicionLecturas = async function(){
-  const paquetes = Array.from({length:6},(_,i)=>({
-    num: i+1,
-    inicio: parseFloat(document.getElementById(`edit_ini_${i+1}`)?.value)||0,
-    final:  parseFloat(document.getElementById(`edit_fin_${i+1}`)?.value)||0,
-    vendidos: Math.max(0,(parseFloat(document.getElementById(`edit_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`edit_ini_${i+1}`)?.value)||0)),
-    monto: 0,
-  }));
-  
-  const totalVend = paquetes.reduce((s,p)=>s+p.vendidos,0);
-  
-  function toFirestore(obj) {
-    if(obj === null || obj === undefined) return {nullValue: null};
-    if(typeof obj === 'boolean') return {booleanValue: obj};
-    if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
-    if(typeof obj === 'string') return {stringValue: obj};
-    if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
-    if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
-    return {stringValue: String(obj)};
-  }
-  
-  const FIREBASE_PROJECT = 'starwash-cortes';
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
-  
-  const body = {
-    fields: {
-      paquetes_finales: toFirestore(paquetes),
-      maquina: toFirestore({ total_vendidos: totalVend, esperada: totalVend, diferencia: 0 })
-    }
-  };
-  
-  try {
-    const r = await fetch(url + '?updateMask.fieldPaths=paquetes_finales&updateMask.fieldPaths=maquina', {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    });
-    if(r.ok){
-      alert('✅ Lecturas guardadas correctamente');
-      document.getElementById('modalEditarCorte').style.display = 'none';
-    } else {
-      alert('❌ Error: ' + r.status);
-    }
-  } catch(e) {
-    alert('❌ Error: ' + e.message);
-  }
-};
-
-
-window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
+    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
     <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
     <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
     <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
@@ -1368,11 +1228,12 @@ function recalcSvcOut(){
 function recalcPaqOut(){
   let ct=0,mt=0;
   for(let i=1;i<=6;i++){
-    const ini=parseFloat(document.getElementById('out_paq_ini_'+i)?.value)||0;
-    const fin=parseFloat(document.getElementById('out_paq_fin_'+i)?.value)||0;
-    const mon=parseFloat(document.getElementById('out_paq_mon_'+i)?.value)||0;
+    // Soporta ambos IDs (out_pi_ es la tabla HTML, out_paq_ es el inputSection)
+    const ini=parseFloat(document.getElementById('out_pi_ini_'+i)?.value||document.getElementById('out_paq_ini_'+i)?.value)||0;
+    const fin=parseFloat(document.getElementById('out_pi_fin_'+i)?.value||document.getElementById('out_paq_fin_'+i)?.value)||0;
+    const mon=parseFloat(document.getElementById('out_pi_mon_'+i)?.value||document.getElementById('out_paq_mon_'+i)?.value)||0;
     const vend=Math.max(0,fin-ini);
-    const el=document.getElementById('out_paq_vend_'+i);
+    const el=document.getElementById('out_pi_vend_'+i)||document.getElementById('out_paq_vend_'+i);
     if(el) el.textContent=vend;
     ct+=vend; mt+=mon;
   }
@@ -1984,7 +1845,7 @@ function recalcPaqOut(){
 
 
 // ── EDITOR DE CORTES ──────────────────────────────────────────────────────────
-const EDITOR_PASSWORD = '1234'; // Cambiar por tu contraseña
+const EDITOR_PASSWORD = '3098'; // Cambiar por tu contraseña
 let editorDocId = null;
 
 window.abrirEditorCorte = async function(){
