@@ -358,17 +358,18 @@ async def check_allowed(update: Update) -> bool:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
     await update.message.reply_text(
-        "👋 Hola! Soy el bot de *Star\\-Wash Cortes*\\.\n\n"
+        "👋 Hola Edwin! Soy el bot de Star Wash Cortes.\n\n"
         "Puedo hacer lo siguiente:\n"
         "📊 /ultimo — Ver el último corte guardado\n"
-        "📅 /fecha 2026\\-06\\-15 — Ver corte de una fecha\n"
+        "📅 /fecha 2026-06-15 — Ver corte de una fecha\n"
         "📋 /historial — Ver últimos 5 cortes\n"
+        "🔄 /sincronizar — Actualizar historial de Odoo\n"
+        "📥 /exportar — Descargar Excel con historial\n\n"
         "💬 O pregúntame algo natural:\n"
-        "  _¿cómo estuvo ayer?_\n"
-        "  _¿cuántos autos entraron el viernes?_\n"
-        "  _¿cuánto gasté esta semana?_\n\n"
-        "📸 También mándame foto de la lectura de máquina\\.",
-        parse_mode="MarkdownV2"
+        "  ¿cómo estuvo ayer?\n"
+        "  ¿cuántos autos entraron el viernes?\n"
+        "  ¿cuánto vendimos en diciembre?\n"
+        "  ¿cuál fue el mejor día del mes?"
     )
 
 async def cmd_ultimo(update: Update, context: ContextTypes.DEFAULT_TYPE):
