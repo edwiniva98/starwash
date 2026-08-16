@@ -852,20 +852,45 @@ async def comparar_corte_vs_odoo(fecha):
     
     # 6. Detectar gastos de tickets no impresos
     PRECIOS_VEH = {'autos': 110, 'camionetas': 120, 'pickups': 140, 'express': 90, 'fiscalia': 80, 'motos': 60}
+    ADICIONALES = [0, 20, 50, 30]  # sin adicional, plus cera, pro cera, tapetes
     
-    def es_gasto_ticket(concepto):
+    # Generar todos los precios válidos: vehículo + adicional, simple y doble
+    PRECIOS_VALIDOS = set()
+    for precio_veh in PRECIOS_VEH.values():
+        for adicional in ADICIONALES:
+            precio = precio_veh + adicional
+            PRECIOS_VALIDOS.add(precio)       # simple
+            PRECIOS_VALIDOS.add(precio * 2)   # doble (2 tickets en uno)
+    
+    def es_gasto_ticket(concepto, monto):
         c = (concepto or '').lower()
-        return any(w in c for w in ['ticket', 'tiket', 'ticet', 'tike', 'boleto', 'no imprimio', 'no imprimo'])
+        es_ticket = any(w in c for w in ['ticket', 'tiket', 'ticet'])
+        m = float(monto or 0)
+        # Monto válido: múltiplo de $10, entre $60 y $600
+        monto_valido = m > 0 and m % 10 == 0 and 60 <= m <= 600
+        return es_ticket and monto_valido
     
-    gastos_tickets = [g for g in gastos_fc if isinstance(g, dict) and es_gasto_ticket(g.get('concepto', ''))]
+    def autos_justificados_por_ticket(gasto):
+        """Devuelve cuántos autos justifica: 2 si el monto es doble de algún precio válido, 1 si es simple."""
+        monto = float(gasto.get('monto', 0))
+        # Verificar si es doble de algún precio simple
+        for precio_veh in PRECIOS_VEH.values():
+            for adicional in ADICIONALES:
+                precio_simple = precio_veh + adicional
+                if monto == precio_simple * 2: return 2
+                if monto == precio_simple: return 1
+        return 1  # por defecto justifica 1
+    
+    gastos_tickets = [g for g in gastos_fc if isinstance(g, dict) and es_gasto_ticket(g.get('concepto', ''), g.get('monto', 0))]
     monto_tickets_gastados = sum(float(g.get('monto', 0)) for g in gastos_tickets)
+    autos_justificados = sum(autos_justificados_por_ticket(g) for g in gastos_tickets)
     
     # 7. Generar reporte de discrepancias
     discrepancias = []
     justificados = []
     ok = []
     
-    def chk(label, val_odoo, val_fc, es_dinero=False, precio_unitario=None):
+    def chk(label, val_odoo, val_fc, es_dinero=False):
         diff = val_fc - val_odoo  # negativo = menos en corte que en Odoo
         diff_abs = abs(diff)
         umbral = 1 if es_dinero else 0
@@ -875,21 +900,20 @@ async def comparar_corte_vs_odoo(fecha):
             return
         
         # Verificar si la discrepancia está justificada por gastos de ticket
-        if not es_dinero and precio_unitario and diff < 0:
-            # Faltan vehículos en el corte — verificar si hay gastos de ticket que lo justifiquen
-            monto_esperado = diff_abs * precio_unitario
-            if abs(monto_tickets_gastados - monto_esperado) <= 10:  # $10 de tolerancia
-                justificados.append("🎫 " + label + ": " + str(int(diff_abs)) + " menos, justificado por gasto ticket $" + "{:,.0f}".format(monto_tickets_gastados))
+        if not es_dinero and diff < 0:
+            # Faltan vehículos — ver si los tickets registrados los justifican
+            if autos_justificados >= diff_abs:
+                justificados.append("🎫 " + label + ": " + str(int(diff_abs)) + " menos, justificado por " + str(len(gastos_tickets)) + " ticket(s) en gastos ($" + "{:,.0f}".format(monto_tickets_gastados) + ")")
                 return
         
         signo = "+" if diff > 0 else ""
         val_fmt = lambda v: "${:,.0f}".format(v) if es_dinero else str(int(v))
         discrepancias.append("⚠️ " + label + ": Odoo=" + val_fmt(val_odoo) + " vs Corte=" + val_fmt(val_fc) + " (" + signo + val_fmt(diff) + ")")
     
-    chk("Autos", veh_odoo['autos'], autos_fc, precio_unitario=PRECIOS_VEH['autos'])
-    chk("Camionetas", veh_odoo['camionetas'], cam_fc, precio_unitario=PRECIOS_VEH['camionetas'])
-    chk("Pick-Ups/SUV", veh_odoo['pickups'], pick_fc, precio_unitario=PRECIOS_VEH['pickups'])
-    chk("Express", veh_odoo['express'], exp_fc, precio_unitario=PRECIOS_VEH['express'])
+    chk("Autos", veh_odoo['autos'], autos_fc)
+    chk("Camionetas", veh_odoo['camionetas'], cam_fc)
+    chk("Pick-Ups/SUV", veh_odoo['pickups'], pick_fc)
+    chk("Express", veh_odoo['express'], exp_fc)
     chk("Total vehículos", total_veh_odoo, total_veh_fc)
     chk("Efectivo", efe_odoo, efe_fc, es_dinero=True)
     chk("Tarjeta", tar_odoo, tar_fc, es_dinero=True)
