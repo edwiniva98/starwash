@@ -1005,6 +1005,96 @@ async def cmd_comparar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error comparar: {e}")
         await msg.edit_text(f"Error: {str(e)}")
 
+# ── ACTUALIZAR CORTES CON MOTOS Y FISCALIA ───────────────────────────────────
+async def cmd_actualizar_cortes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Actualiza cortes de Firestore agregando motos y fiscalia desde Odoo."""
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Actualizando cortes con motos y fiscalía... puede tardar unos minutos.")
+    
+    try:
+        # Obtener todos los cortes de Firestore
+        cortes = await get_cortes(limit=100)
+        actualizados = 0
+        errores = 0
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            uid = await odoo_uid(client)
+            
+            for corte in cortes:
+                fecha = corte.get('fecha', '')
+                sesion_nombre = corte.get('sesion', '')
+                if not fecha or not sesion_nombre:
+                    continue
+                
+                # Buscar sesión en Odoo por nombre
+                try:
+                    sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
+                        [[['name', '=', sesion_nombre]]],
+                        {'fields': ['id', 'name'], 'limit': 1}
+                    )
+                    if not sesiones:
+                        continue
+                    
+                    sesion_id = sesiones[0]['id']
+                    
+                    # Obtener líneas de órdenes
+                    lineas = await odoo_call(client, uid, 'pos.order.line', 'search_read',
+                        [[['order_id.session_id', '=', sesion_id]]],
+                        {'fields': ['product_id', 'qty'], 'limit': 2000}
+                    )
+                    
+                    # Contar motos y fiscalía
+                    motos = 0
+                    fiscalia = 0
+                    for l in lineas:
+                        nom = (l['product_id'][1] or '').lower()
+                        qty = int(l.get('qty') or 0)
+                        if 'moto' in nom: motos += qty
+                        elif 'fiscal' in nom: fiscalia += qty
+                    
+                    # Actualizar en Firestore solo si hay datos
+                    if motos > 0 or fiscalia > 0:
+                        doc_id = corte.get('_id', '')
+                        if not doc_id:
+                            continue
+                        
+                        url = f"{FIRESTORE_URL}/cortes/{doc_id}"
+                        body = {
+                            "fields": {
+                                "ventas": {"mapValue": {"fields": {
+                                    "autos":      {"integerValue": str(corte.get('ventas', {}).get('autos', 0))},
+                                    "camionetas": {"integerValue": str(corte.get('ventas', {}).get('camionetas', 0))},
+                                    "pickups":    {"integerValue": str(corte.get('ventas', {}).get('pickups', 0))},
+                                    "express":    {"integerValue": str(corte.get('ventas', {}).get('express', 0))},
+                                    "fiscalia":   {"integerValue": str(fiscalia)},
+                                    "motos":      {"integerValue": str(motos)},
+                                }}}
+                            }
+                        }
+                        
+                        r = await client.patch(
+                            url + "?updateMask.fieldPaths=ventas",
+                            json=body
+                        )
+                        if r.status_code in [200, 201]:
+                            actualizados += 1
+                        else:
+                            errores += 1
+                            
+                except Exception as e:
+                    logger.error(f"Error actualizando {sesion_nombre}: {e}")
+                    errores += 1
+        
+        await msg.edit_text(
+            f"Actualizacion completa\n"
+            f"{actualizados} cortes actualizados con motos/fiscalia\n"
+            f"{errores} errores"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error cmd_actualizar_cortes: {e}")
+        await msg.edit_text(f"Error: {str(e)}")
+
 # ── AUDITORÍA AUTOMÁTICA ──────────────────────────────────────────────────────
 async def auditar_corte(corte: dict, historial: list) -> str:
     """Genera reporte de auditoría comparando el corte vs historial."""
@@ -1385,6 +1475,7 @@ def main():
     app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
     app.add_handler(CommandHandler("comparar", cmd_comparar))
     app.add_handler(CommandHandler("comparar_semana", cmd_comparar_semana))
+    app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
