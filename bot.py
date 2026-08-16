@@ -893,6 +893,47 @@ async def comparar_corte_vs_odoo(fecha):
     
     return reporte, None
 
+async def cmd_comparar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Compara todos los cortes de la semana vs Odoo."""
+    if not await check_allowed(update): return
+    
+    from datetime import datetime, timedelta
+    msg = await update.message.reply_text("⏳ Comparando cortes de los últimos 7 días...")
+    
+    resumen = []
+    hoy = datetime.now()
+    
+    for dias_atras in range(1, 8):
+        fecha = (hoy - timedelta(days=dias_atras)).strftime('%Y-%m-%d')
+        try:
+            reporte, error = await comparar_corte_vs_odoo(fecha)
+            if error:
+                resumen.append(f"📅 {fecha}: Sin corte guardado")
+            else:
+                # Contar discrepancias
+                n_disc = reporte.count('⚠️')
+                if n_disc == 0:
+                    resumen.append(f"✅ {fecha}: Todo cuadra")
+                else:
+                    # Extraer solo las líneas de discrepancia
+                    lineas_disc = [l for l in reporte.split("\n") if "discrepan" in l.lower() or "⚠️" in l]
+                    resumen.append("❌ " + fecha + ": " + str(n_disc) + " discrepancia(s)\n  " + "\n  ".join(lineas_disc))
+        except Exception as e:
+            resumen.append(f"📅 {fecha}: Error — {str(e)[:50]}")
+    
+    texto = "Comparacion semanal Corte vs Odoo\n\n"
+    texto += "\n\n".join(resumen)
+
+    
+    # Dividir si es muy largo
+    if len(texto) > 4000:
+        partes = [texto[i:i+4000] for i in range(0, len(texto), 4000)]
+        await msg.edit_text(partes[0])
+        for parte in partes[1:]:
+            await update.message.reply_text(parte)
+    else:
+        await msg.edit_text(texto)
+
 async def cmd_comparar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Compara corte vs Odoo. Uso: /comparar o /comparar 2026-08-15"""
     if not await check_allowed(update): return
@@ -1298,6 +1339,7 @@ def main():
     app.add_handler(CommandHandler("historial", cmd_historial))
     app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
     app.add_handler(CommandHandler("comparar", cmd_comparar))
+    app.add_handler(CommandHandler("comparar_semana", cmd_comparar_semana))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
