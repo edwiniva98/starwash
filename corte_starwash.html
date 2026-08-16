@@ -545,26 +545,7 @@ table.ct tr.red-r td{background:var(--red-light)}
 
   <!-- Actions -->
   <div id="actions">
-    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.enviarReporte = async function(){
-  const corte = D.corteGuardado;
-  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
-  const btn = document.getElementById('btnEnviarReporte');
-  btn.textContent = '⏳ Enviando...';
-  btn.disabled = true;
-  try {
-    await enviarTelegram(corte);
-    await generarYEnviarPDF(corte);
-    btn.textContent = '✅ Enviado';
-    btn.style.background = 'var(--green)';
-    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
-  } catch(e) {
-    alert('Error al enviar: ' + e.message);
-    btn.textContent = '📤 Enviar Reporte';
-    btn.disabled = false;
-  }
-};
-
-window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
+    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
     <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
     <button class="btn-sec" id="btnEnviarReporte" style="background:#25D366;color:#fff" onclick="window.enviarReporte()">📤 Enviar Reporte</button>
     <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
@@ -1568,6 +1549,15 @@ async function cargarSesionOdoo(sessionId){
       totalTix: D.totalTix
     }));
 
+    // Guardar valores originales de Odoo como referencia inmutable
+    D.odoo_original = {
+      autos: ventas[0], camionetas: ventas[1], pickups: ventas[2],
+      express: ventas[3], fiscalia: ventas[4], motos: ventas[5],
+      cortes_taller: cortes_taller, cortes_ayto: cortes_ayto, cortes_familiar: cortes_familiar,
+      efectivo: efectivo, tarjeta: tarjeta, transferencia: trans,
+      total: sesion.total_payments_amount || 0
+    };
+
     // Llenar cortesías directamente en los inputs
     const inpCT = document.getElementById('inp_cortes_taller');
     const inpCA = document.getElementById('inp_cortes_ayto');
@@ -2072,6 +2062,25 @@ window.enviarReporte = async function(){
   }
 };
 
+window.enviarReporte = async function(){
+  const corte = D.corteGuardado;
+  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
+  const btn = document.getElementById('btnEnviarReporte');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+  try {
+    await enviarTelegram(corte);
+    await generarYEnviarPDF(corte);
+    btn.textContent = '✅ Enviado';
+    btn.style.background = 'var(--green)';
+    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
+  } catch(e) {
+    alert('Error al enviar: ' + e.message);
+    btn.textContent = '📤 Enviar Reporte';
+    btn.disabled = false;
+  }
+};
+
 window.guardarSoloLecturas = async function(){
   recalcPaqOut();
   const fecha = document.getElementById('inp_fecha')?.value || new Date().toLocaleDateString('en-CA', {timeZone: 'America/Mexico_City'});
@@ -2229,6 +2238,20 @@ window.guardarCorte = async function(){
     if(!saveResp.ok) throw new Error('Firestore: ' + saveResp.status);
     const docRef = {id: docId};
     D.docId = docId; // Guardar para actualizaciones
+
+    // Detectar discrepancias con Odoo
+    if(D.odoo_original){
+      const orig = D.odoo_original;
+      const alertas = [];
+      const ct_cap = parseInt(document.getElementById('inp_cortes_taller')?.value)||0;
+      const ca_cap = parseInt(document.getElementById('inp_cortes_ayto')?.value)||0;
+      const cf_cap = parseInt(document.getElementById('inp_cortes_familiar')?.value)||0;
+      if(ct_cap !== orig.cortes_taller) alertas.push(`⚠️ Cortesía Taller: Odoo=${orig.cortes_taller} vs Capturado=${ct_cap}`);
+      if(ca_cap !== orig.cortes_ayto)   alertas.push(`⚠️ Cortesía Ayto: Odoo=${orig.cortes_ayto} vs Capturado=${ca_cap}`);
+      if(cf_cap !== orig.cortes_familiar) alertas.push(`⚠️ Cortesía Familiar: Odoo=${orig.cortes_familiar} vs Capturado=${cf_cap}`);
+      if(alertas.length > 0){ corte.alertas_odoo = alertas; D.corteGuardado = corte; }
+    }
+
     btn.textContent = '✅ Guardado';
     btn.style.background = 'var(--green)';
     setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
