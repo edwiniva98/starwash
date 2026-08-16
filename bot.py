@@ -850,25 +850,46 @@ async def comparar_corte_vs_odoo(fecha):
     gastos_fc = corte.get('gastos', [])
     total_gastos_fc = sum(float(g.get('monto', 0)) for g in gastos_fc if isinstance(g, dict))
     
-    # 6. Generar reporte de discrepancias
+    # 6. Detectar gastos de tickets no impresos
+    PRECIOS_VEH = {'autos': 110, 'camionetas': 120, 'pickups': 140, 'express': 90, 'fiscalia': 80, 'motos': 60}
+    
+    def es_gasto_ticket(concepto):
+        c = (concepto or '').lower()
+        return any(w in c for w in ['ticket', 'tiket', 'ticet', 'tike', 'boleto', 'no imprimio', 'no imprimo'])
+    
+    gastos_tickets = [g for g in gastos_fc if isinstance(g, dict) and es_gasto_ticket(g.get('concepto', ''))]
+    monto_tickets_gastados = sum(float(g.get('monto', 0)) for g in gastos_tickets)
+    
+    # 7. Generar reporte de discrepancias
     discrepancias = []
+    justificados = []
     ok = []
     
-    def chk(label, val_odoo, val_fc, es_dinero=False):
-        diff = abs(val_odoo - val_fc)
-        if es_dinero:
-            umbral = 1  # $1 de tolerancia
-        else:
-            umbral = 0
-        if diff > umbral:
-            discrepancias.append(f"⚠️ {label}: Odoo={('${:,.0f}'.format(val_odoo)) if es_dinero else int(val_odoo)} vs Corte={('${:,.0f}'.format(val_fc)) if es_dinero else int(val_fc)} (diff: {'+' if val_fc>val_odoo else ''}{('${:,.0f}'.format(val_fc-val_odoo)) if es_dinero else int(val_fc-val_odoo)})")
-        else:
-            ok.append(f"✅ {label}: {'${:,.0f}'.format(val_odoo) if es_dinero else int(val_odoo)}")
+    def chk(label, val_odoo, val_fc, es_dinero=False, precio_unitario=None):
+        diff = val_fc - val_odoo  # negativo = menos en corte que en Odoo
+        diff_abs = abs(diff)
+        umbral = 1 if es_dinero else 0
+        
+        if diff_abs <= umbral:
+            ok.append("✅ " + label + ": " + ("${:,.0f}".format(val_odoo) if es_dinero else str(int(val_odoo))))
+            return
+        
+        # Verificar si la discrepancia está justificada por gastos de ticket
+        if not es_dinero and precio_unitario and diff < 0:
+            # Faltan vehículos en el corte — verificar si hay gastos de ticket que lo justifiquen
+            monto_esperado = diff_abs * precio_unitario
+            if abs(monto_tickets_gastados - monto_esperado) <= 10:  # $10 de tolerancia
+                justificados.append("🎫 " + label + ": " + str(int(diff_abs)) + " menos, justificado por gasto ticket $" + "{:,.0f}".format(monto_tickets_gastados))
+                return
+        
+        signo = "+" if diff > 0 else ""
+        val_fmt = lambda v: "${:,.0f}".format(v) if es_dinero else str(int(v))
+        discrepancias.append("⚠️ " + label + ": Odoo=" + val_fmt(val_odoo) + " vs Corte=" + val_fmt(val_fc) + " (" + signo + val_fmt(diff) + ")")
     
-    chk("Autos", veh_odoo['autos'], autos_fc)
-    chk("Camionetas", veh_odoo['camionetas'], cam_fc)
-    chk("Pick-Ups/SUV", veh_odoo['pickups'], pick_fc)
-    chk("Express", veh_odoo['express'], exp_fc)
+    chk("Autos", veh_odoo['autos'], autos_fc, precio_unitario=PRECIOS_VEH['autos'])
+    chk("Camionetas", veh_odoo['camionetas'], cam_fc, precio_unitario=PRECIOS_VEH['camionetas'])
+    chk("Pick-Ups/SUV", veh_odoo['pickups'], pick_fc, precio_unitario=PRECIOS_VEH['pickups'])
+    chk("Express", veh_odoo['express'], exp_fc, precio_unitario=PRECIOS_VEH['express'])
     chk("Total vehículos", total_veh_odoo, total_veh_fc)
     chk("Efectivo", efe_odoo, efe_fc, es_dinero=True)
     chk("Tarjeta", tar_odoo, tar_fc, es_dinero=True)
