@@ -762,6 +762,163 @@ async def get_historial_firestore(limite=500):
         })
     return historial
 
+# ── COMPARACIÓN CORTE vs ODOO ────────────────────────────────────────────────
+async def comparar_corte_vs_odoo(fecha):
+    """Compara un corte de Firestore contra los datos reales de Odoo para esa fecha."""
+    
+    # 1. Obtener corte de Firestore
+    cortes = await get_cortes(limit=50, fecha=fecha)
+    if not cortes:
+        return None, f"No encontré corte guardado para {fecha}"
+    corte = cortes[0]
+    
+    # 2. Obtener sesión de Odoo para esa fecha
+    async with httpx.AsyncClient(timeout=60) as client:
+        uid = await odoo_uid(client)
+        
+        # Buscar sesión por fecha
+        fecha_inicio = f"{fecha} 00:00:00"
+        fecha_fin = f"{fecha} 23:59:59"
+        sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
+            [[['start_at', '>=', fecha_inicio], ['start_at', '<=', fecha_fin], ['state', '=', 'closed']]],
+            {'fields': ['id', 'name', 'total_payments_amount'], 'limit': 1}
+        )
+        
+        if not sesiones:
+            return None, f"No encontré sesión de Odoo para {fecha}"
+        
+        sesion = sesiones[0]
+        sesion_id = sesion['id']
+        
+        # Obtener pagos de Odoo
+        pagos = await odoo_call(client, uid, 'pos.payment', 'search_read',
+            [[['session_id', '=', sesion_id]]],
+            {'fields': ['amount', 'payment_method_id'], 'limit': 500}
+        )
+        
+        # Obtener líneas de órdenes
+        lineas = await odoo_call(client, uid, 'pos.order.line', 'search_read',
+            [[['order_id.session_id', '=', sesion_id]]],
+            {'fields': ['product_id', 'qty', 'price_subtotal_incl'], 'limit': 2000}
+        )
+        
+        # Obtener salidas de caja (gastos en Odoo)
+        salidas = await odoo_call(client, uid, 'pos.payment', 'search_read',
+            [[['session_id', '=', sesion_id], ['amount', '<', 0]]],
+            {'fields': ['amount', 'payment_method_id'], 'limit': 200}
+        )
+    
+    # 3. Calcular totales de Odoo
+    efe_odoo = sum(p['amount'] for p in pagos if 'efectivo' in (p['payment_method_id'][1] or '').lower() or 'cash' in (p['payment_method_id'][1] or '').lower())
+    tar_odoo = sum(p['amount'] for p in pagos if 'tarjeta' in (p['payment_method_id'][1] or '').lower())
+    trans_odoo = sum(p['amount'] for p in pagos if 'transfer' in (p['payment_method_id'][1] or '').lower())
+    total_odoo = sesion.get('total_payments_amount', 0)
+    
+    # Contar vehículos en Odoo
+    veh_odoo = {'autos': 0, 'camionetas': 0, 'pickups': 0, 'express': 0, 'fiscalia': 0, 'motos': 0}
+    for l in lineas:
+        nom = (l['product_id'][1] or '').lower()
+        qty = int(l.get('qty') or 0)
+        if 'cortesía' in nom or 'cortesia' in nom: continue
+        if 'auto' in nom and 'camioneta' not in nom and 'pick' not in nom: veh_odoo['autos'] += qty
+        elif 'camioneta' in nom: veh_odoo['camionetas'] += qty
+        elif 'pick' in nom or 'suv' in nom or 'minivan' in nom: veh_odoo['pickups'] += qty
+        elif 'express' in nom: veh_odoo['express'] += qty
+        elif 'fiscal' in nom: veh_odoo['fiscalia'] += qty
+        elif 'moto' in nom: veh_odoo['motos'] += qty
+    
+    total_veh_odoo = sum(veh_odoo.values())
+    
+    # 4. Obtener datos del corte de Firestore
+    ventas_fc = corte.get('ventas', {})
+    pagos_fc = corte.get('pagos', {})
+    
+    autos_fc = int(ventas_fc.get('autos', 0))
+    cam_fc = int(ventas_fc.get('camionetas', 0))
+    pick_fc = int(ventas_fc.get('pickups', 0))
+    exp_fc = int(ventas_fc.get('express', 0))
+    fis_fc = int(ventas_fc.get('fiscalia', 0))
+    mot_fc = int(ventas_fc.get('motos', 0))
+    total_veh_fc = autos_fc + cam_fc + pick_fc + exp_fc + fis_fc + mot_fc
+    
+    efe_fc = float(pagos_fc.get('efectivo', 0))
+    tar_fc = float(pagos_fc.get('tarjeta', 0))
+    trans_fc = float(pagos_fc.get('transferencia', 0))
+    total_fc = float(corte.get('totales', {}).get('total_tickets', 0))
+    
+    # 5. Gastos en Firestore
+    gastos_fc = corte.get('gastos', [])
+    total_gastos_fc = sum(float(g.get('monto', 0)) for g in gastos_fc if isinstance(g, dict))
+    
+    # 6. Generar reporte de discrepancias
+    discrepancias = []
+    ok = []
+    
+    def chk(label, val_odoo, val_fc, es_dinero=False):
+        diff = abs(val_odoo - val_fc)
+        if es_dinero:
+            umbral = 1  # $1 de tolerancia
+        else:
+            umbral = 0
+        if diff > umbral:
+            discrepancias.append(f"⚠️ {label}: Odoo={('${:,.0f}'.format(val_odoo)) if es_dinero else int(val_odoo)} vs Corte={('${:,.0f}'.format(val_fc)) if es_dinero else int(val_fc)} (diff: {'+' if val_fc>val_odoo else ''}{('${:,.0f}'.format(val_fc-val_odoo)) if es_dinero else int(val_fc-val_odoo)})")
+        else:
+            ok.append(f"✅ {label}: {'${:,.0f}'.format(val_odoo) if es_dinero else int(val_odoo)}")
+    
+    chk("Autos", veh_odoo['autos'], autos_fc)
+    chk("Camionetas", veh_odoo['camionetas'], cam_fc)
+    chk("Pick-Ups/SUV", veh_odoo['pickups'], pick_fc)
+    chk("Express", veh_odoo['express'], exp_fc)
+    chk("Total vehículos", total_veh_odoo, total_veh_fc)
+    chk("Efectivo", efe_odoo, efe_fc, es_dinero=True)
+    chk("Tarjeta", tar_odoo, tar_fc, es_dinero=True)
+    chk("Transferencia", trans_odoo, trans_fc, es_dinero=True)
+    chk("Total cobrado", total_odoo, total_fc, es_dinero=True)
+    
+    nombre_sesion = sesion.get("name", "")
+    reporte = "Comparacion " + fecha + " - " + nombre_sesion + "\n\n"
+    
+    if discrepancias:
+        reporte += "DISCREPANCIAS (" + str(len(discrepancias)) + "):\n"
+        reporte += "\n".join(discrepancias) + "\n\n"
+    else:
+        reporte += "Todo cuadra con Odoo \n\n"
+    
+    if ok:
+        reporte += "OK (" + str(len(ok)) + "):\n"
+        reporte += "\n".join(ok) + "\n\n"
+    
+    reporte += "Gastos en corte: $" + f"{total_gastos_fc:,.0f}" + "\n"
+    reporte += "Sesion Odoo: " + nombre_sesion
+    
+    return reporte, None
+
+async def cmd_comparar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Compara corte vs Odoo. Uso: /comparar o /comparar 2026-08-15"""
+    if not await check_allowed(update): return
+    
+    from datetime import datetime, timedelta
+    
+    # Determinar fecha
+    args = context.args
+    if args:
+        fecha = args[0]
+    else:
+        fecha = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    msg = await update.message.reply_text(f"⏳ Comparando corte del {fecha} vs Odoo...")
+    
+    try:
+        reporte, error = await comparar_corte_vs_odoo(fecha)
+        if error:
+            await msg.edit_text(f"❌ {error}")
+        else:
+            # Limpiar markdown problemático
+            await msg.edit_text(reporte)
+    except Exception as e:
+        logger.error(f"Error comparar: {e}")
+        await msg.edit_text(f"Error: {str(e)}")
+
 # ── AUDITORÍA AUTOMÁTICA ──────────────────────────────────────────────────────
 async def auditar_corte(corte: dict, historial: list) -> str:
     """Genera reporte de auditoría comparando el corte vs historial."""
@@ -1140,6 +1297,7 @@ def main():
     app.add_handler(CommandHandler("fecha", cmd_fecha))
     app.add_handler(CommandHandler("historial", cmd_historial))
     app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
+    app.add_handler(CommandHandler("comparar", cmd_comparar))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
