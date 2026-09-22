@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timedelta
 import httpx
 from aiohttp import web
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -357,20 +357,88 @@ async def check_allowed(update: Update) -> bool:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
-    await update.message.reply_text(
-        "👋 Hola Edwin! Soy el bot de Star Wash Cortes.\n\n"
-        "Puedo hacer lo siguiente:\n"
-        "📊 /ultimo — Ver el último corte guardado\n"
-        "📅 /fecha 2026-06-15 — Ver corte de una fecha\n"
-        "📋 /historial — Ver últimos 5 cortes\n"
-        "🔄 /sincronizar — Actualizar historial de Odoo\n"
-        "📥 /exportar — Descargar Excel con historial\n\n"
-        "💬 O pregúntame algo natural:\n"
-        "  ¿cómo estuvo ayer?\n"
-        "  ¿cuántos autos entraron el viernes?\n"
-        "  ¿cuánto vendimos en diciembre?\n"
-        "  ¿cuál fue el mejor día del mes?"
+    teclado = ReplyKeyboardMarkup(
+        [["📊 Cómo vamos hoy", "🏆 Récords"],
+         ["📋 Último corte", "📅 Historial"],
+         ["⚖️ Comparar corte", "📥 Exportar"]],
+        resize_keyboard=True,
+        is_persistent=True
     )
+    await update.message.reply_text(
+        "⚡ *STAR WASH — PANEL*\n\n"
+        "Elige una opción o pregúntame normalmente.\n"
+        "Ejemplos: ‘¿cómo estuvo ayer?’, ‘¿cuál fue el mejor sábado?’ o ‘¿cuánto vendimos este mes?’",
+        parse_mode="Markdown",
+        reply_markup=teclado
+    )
+
+async def cmd_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Revisando cómo va Star Wash hoy...")
+    try:
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        historial = await get_historial_firestore(limite=500)
+        actual = next((d for d in historial if d.get("fecha") == hoy), None)
+        cortes = await get_cortes(limit=30, fecha=hoy)
+
+        # El corte del día suele tener la información más completa.
+        if cortes:
+            c = cortes[0]
+            v, t, p, m, o = c.get("ventas",{}), c.get("totales",{}), c.get("pagos",{}), c.get("maquina",{}), c.get("otros",{})
+            veh = sum(int(v.get(k,0) or 0) for k in ["autos","camionetas","pickups","express","fiscalia"])
+            total = float(t.get("total_tickets",0) or 0)
+            ticket = total / veh if veh else 0
+            texto = (f"⚡ *STAR WASH — HOY*\n📅 {hoy}\n\n"
+                     f"🚗 Vehículos pagados: *{veh}*\n"
+                     f"💰 Venta: *{fmt(total)}*\n"
+                     f"🎟 Ticket promedio: *{fmt(ticket)}*\n"
+                     f"💵 Efectivo: {fmt(p.get('efectivo',0))} | 💳 Tarjeta: {fmt(p.get('tarjeta',0))}\n"
+                     f"🧾 Máquina: {m.get('total_vendidos',0)}")
+        elif actual:
+            veh = int(actual.get("vehiculos_pagados",0) or actual.get("num_tickets",0) or 0)
+            total = float(actual.get("total",0) or 0)
+            ticket = float(actual.get("ticket_promedio",0) or (total/veh if veh else 0))
+            texto = (f"⚡ *STAR WASH — HOY*\n📅 {hoy}\n\n"
+                     f"🚗 Vehículos: *{veh}*\n💰 Venta: *{fmt(total)}*\n🎟 Ticket promedio: *{fmt(ticket)}*")
+        else:
+            await msg.edit_text("Todavía no tengo datos guardados de hoy. Si el día sigue abierto, prueba más tarde o sincroniza Odoo.")
+            return
+
+        # Comparación simple contra el mismo día de la semana anterior, si existe.
+        anterior_fecha = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        anterior = next((d for d in historial if d.get("fecha") == anterior_fecha), None)
+        if anterior and float(anterior.get("total",0) or 0) > 0:
+            ant_total = float(anterior.get("total",0) or 0)
+            cambio = ((total-ant_total)/ant_total)*100
+            signo = "+" if cambio >= 0 else ""
+            texto += f"\n\n📈 Vs. hace 7 días: *{signo}{cambio:.1f}%* en venta ({fmt(ant_total)})"
+        await msg.edit_text(texto, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Error dashboard hoy: {e}")
+        await msg.edit_text("❌ No pude armar el resumen de hoy en este momento.")
+
+async def cmd_records(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Buscando récords...")
+    try:
+        historial = await get_historial_firestore(limite=500)
+        historial = [d for d in historial if d.get("fecha") and float(d.get("total",0) or 0) > 0]
+        if not historial:
+            await msg.edit_text("Aún no hay historial suficiente para calcular récords.")
+            return
+        mejor_venta = max(historial, key=lambda d: float(d.get("total",0) or 0))
+        con_veh = [d for d in historial if int(d.get("vehiculos_pagados",0) or 0) > 0]
+        texto = ("🏆 *RÉCORDS STAR WASH*\n\n"
+                 f"💰 Mayor venta: *{fmt(mejor_venta['total'])}*\n📅 {mejor_venta['fecha_legible']}\n")
+        if con_veh:
+            mejor_veh = max(con_veh, key=lambda d: int(d.get("vehiculos_pagados",0) or 0))
+            mejor_ticket = max(con_veh, key=lambda d: float(d.get("ticket_promedio",0) or 0))
+            texto += (f"\n🚗 Más vehículos: *{mejor_veh['vehiculos_pagados']}*\n📅 {mejor_veh['fecha_legible']}\n"
+                      f"\n🎟 Mejor ticket promedio: *{fmt(mejor_ticket.get('ticket_promedio',0))}*\n📅 {mejor_ticket['fecha_legible']}")
+        await msg.edit_text(texto, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Error records: {e}")
+        await msg.edit_text("❌ No pude calcular los récords en este momento.")
 
 async def cmd_ultimo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
@@ -494,6 +562,19 @@ async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"{estado} *{c.get('fecha','—')}* — {c.get('sesion','—')}\n"
         texto += f"   🚗 {autos} autos | 💰 {fmt(t.get('total_tickets',0))} | 💸 {fmt(t.get('total_gastos',0))} gastos\n\n"
     await msg.edit_text(texto, parse_mode="Markdown")
+
+async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Convierte los botones del panel en acciones sin romper las preguntas libres."""
+    texto = (update.message.text or "").strip()
+    if texto == "📊 Cómo vamos hoy": return await cmd_hoy(update, context)
+    if texto == "🏆 Récords": return await cmd_records(update, context)
+    if texto == "📋 Último corte": return await cmd_ultimo(update, context)
+    if texto == "📅 Historial": return await cmd_historial(update, context)
+    if texto == "⚖️ Comparar corte":
+        await update.message.reply_text("Escribe /comparar AAAA-MM-DD, por ejemplo: /comparar 2026-09-20")
+        return
+    if texto == "📥 Exportar": return await cmd_exportar(update, context)
+    return await handle_text(update, context)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
@@ -759,6 +840,13 @@ async def get_historial_firestore(limite=500):
             "sesion":        fields.get("sesion", {}).get("stringValue", ""),
             "total":         float(fields.get("total", {}).get("doubleValue", 0) or fields.get("total", {}).get("integerValue", 0) or 0),
             "num_tickets":   int(fields.get("num_tickets", {}).get("integerValue", 0) or 0),
+            "ticket_promedio": float(fields.get("ticket_promedio", {}).get("doubleValue", 0) or fields.get("ticket_promedio", {}).get("integerValue", 0) or 0),
+            "vehiculos_pagados": int(fields.get("vehiculos_pagados", {}).get("integerValue", 0) or 0),
+            "autos": int(fields.get("autos", {}).get("integerValue", 0) or 0),
+            "camionetas": int(fields.get("camionetas", {}).get("integerValue", 0) or 0),
+            "pickups": int(fields.get("pickups", {}).get("integerValue", 0) or 0),
+            "express": int(fields.get("express", {}).get("integerValue", 0) or 0),
+            "fiscalia": int(fields.get("fiscalia", {}).get("integerValue", 0) or 0),
         })
     return historial
 
@@ -1470,6 +1558,8 @@ def main():
     _bot_app = app
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ultimo", cmd_ultimo))
+    app.add_handler(CommandHandler("hoy", cmd_hoy))
+    app.add_handler(CommandHandler("records", cmd_records))
     app.add_handler(CommandHandler("fecha", cmd_fecha))
     app.add_handler(CommandHandler("historial", cmd_historial))
     app.add_handler(CommandHandler("sincronizar", cmd_sincronizar))
@@ -1478,7 +1568,7 @@ def main():
     app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
 
     async def run_all():
