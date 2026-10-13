@@ -81,23 +81,24 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 .emp-nombre{font-weight:700;font-size:14px}
 .emp-cnt{font-size:12px;font-weight:600;color:var(--txt2);min-width:60px;text-align:right}
 .dias-grid{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
-.pos-grid{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
-.dias-grid{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px}
-.dia-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;width:44px}
+.dias-grid{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
+.dia-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:44px}
 .db{width:44px;height:44px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);font-size:10px;font-weight:700;color:var(--txt3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;user-select:none;-webkit-user-select:none;flex-shrink:0}
 .db .dl{font-size:8px;font-weight:500;color:var(--txt3)}
 .db:active{opacity:.7}
-.pos-sel{width:46px;font-size:10px;font-weight:700;border:1.5px solid var(--verde-mid);border-radius:6px;background:var(--verde-light);color:var(--verde);padding:2px 1px;font-family:inherit;cursor:pointer;text-align:center;-webkit-appearance:none;appearance:none}
-.pos-sel.hidden{visibility:hidden;pointer-events:none}
 .db.P{background:var(--verde-light);border-color:var(--verde-mid);color:var(--verde)}
 .db.P .dl{color:var(--verde-mid)}
 .db.F{background:var(--rojo-light);border-color:var(--rojo);color:var(--rojo)}
 .db.F .dl{color:var(--rojo)}
 .db.M{background:var(--amarillo-light);border-color:var(--amarillo);color:var(--amarillo)}
 .db.M .dl{color:var(--amarillo)}
-.nota-dia-wrap{display:flex;align-items:center;gap:4px;padding:2px 0}
-.nota-dia-wrap.hidden{display:none}
-.nota-lbl{font-size:11px;font-weight:600;color:var(--txt3);white-space:nowrap;min-width:32px}
+/* Panel desplegable por día */
+.dia-panel{display:none;flex-direction:column;gap:4px;background:var(--surface);border:1.5px solid var(--verde-mid);border-radius:8px;padding:7px 8px;margin-top:4px;width:140px;position:absolute;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.dia-panel.open{display:flex}
+.dia-wrap{position:relative}
+.pos-sel{width:100%;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--txt);padding:4px 6px;font-family:inherit;cursor:pointer}
+.nota-row{display:flex;align-items:center;gap:5px}
+.nota-lbl{font-size:11px;font-weight:600;color:var(--txt2);white-space:nowrap}
 .nota-dia{font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:var(--surface2);color:var(--txt);width:100%;font-family:inherit}
 .nota-dia:focus{outline:none;border-color:var(--verde)}
 
@@ -571,6 +572,12 @@ function toggleDia(empId, dIdx) {
   actualizarStats();
 }
 
+// Cerrar paneles al tocar fuera
+document.addEventListener('click', function(e) {
+  if(!e.target.closest('.dia-wrap')) {
+    document.querySelectorAll('.dia-panel.open').forEach(p=>p.classList.remove('open'));
+  }
+});
 // Event delegation — un solo listener para todos los botones de día
 document.addEventListener('click', function(e) {
   const db = e.target.closest('[data-di]');
@@ -581,6 +588,15 @@ document.addEventListener('click', function(e) {
   const dIdx = parseInt(db.dataset.di);
   e.stopPropagation();
   toggleDia(empId, dIdx);
+  // Abrir/cerrar panel si el día tiene panel (P o M)
+  if(db.dataset.panelBtn !== undefined) {
+    const panel = row.querySelector(`[data-panel="${dIdx}"]`);
+    if(panel) {
+      // Cerrar otros paneles del mismo empleado
+      row.querySelectorAll('.dia-panel.open').forEach(p=>{ if(p!==panel) p.classList.remove('open'); });
+      panel.classList.toggle('open');
+    }
+  }
 });
 function calcExtraPos(empId) {
   const sem = getSemana();
@@ -614,29 +630,29 @@ function renderAsisRow(empId) {
   const cnt = diasCount(datos.dias);
   el.querySelector('.emp-cnt').textContent = cnt + ' día'+(cnt!==1?'s':'');
   const posOpts = POSICIONES.map(p=>`<option value="${p}">${POS_LABEL[p]||p}</option>`).join('');
-  // Re-render fila de botones
+  // Re-render días con panel desplegable
   let gridHtml = '';
   DIAS.forEach((dl,i)=>{
     const v = datos.dias[i]||'';
     const lbl2 = v==='P'?'P':v==='F'?'F':v==='M'?'½':'·';
-    gridHtml += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>`;
+    const nota = (datos.notas && datos.notas[i]) || '';
+    const pos = (datos.pos && datos.pos[i]) || '';
+    const tienePanel = v==='P'||v==='M';
+    const abierto = el.querySelector(`[data-panel="${i}"]`)?.classList.contains('open') || false;
+    gridHtml += `<div class="dia-wrap">
+      <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>
+      ${tienePanel ? `<div class="dia-panel${abierto?' open':''}" data-panel="${i}">
+        <select class="pos-sel" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+        <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)"></div>
+      </div>` : ''}
+    </div>`;
   });
   el.querySelector('.dias-grid').innerHTML = gridHtml;
-  // Re-render fila de selectores
-  let posHtml = '';
+  // Restaurar valores de posición
   DIAS.forEach((_,i)=>{
-    const v = datos.dias[i]||'';
-    const nota = (datos.notas && datos.notas[i]) || '';
-    posHtml += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
-    posHtml += `<div class="nota-dia-wrap${(v==='P'||v==='M'||v==='F')?'':' hidden'}" data-notawrap="${i}"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" placeholder="" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)" data-nota="${i}"></div>`;
-  });
-  el.querySelector('.pos-grid').innerHTML = posHtml;
-  // Restaurar valores de posición y notas
-  DIAS.forEach((_,i)=>{
-    const sel = el.querySelector('[data-pos="'+i+'"]');
+    const panel = el.querySelector(`[data-panel="${i}"]`); if(!panel) return;
+    const sel = panel.querySelector('select');
     if(sel && datos.pos && datos.pos[i]) sel.value = datos.pos[i];
-    const inp = el.querySelector('[data-nota="'+i+'"]');
-    if(inp && datos.notas && datos.notas[i]) inp.value = datos.notas[i];
   });
 }
 function renderAsis() {
@@ -657,14 +673,15 @@ function renderAsis() {
       DIAS.forEach((dl,i)=>{
         const v = datos.dias[i]||'';
         const lbl = v==='P'?'P':v==='F'?'F':v==='M'?'½':'·';
-        html += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>`;
-      });
-      html += `</div><div class="pos-grid">`;
-      DIAS.forEach((dl,i)=>{
-        const v = datos.dias[i]||'';
         const nota = (datos.notas && datos.notas[i]) || '';
-        html += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
-        html += `<div class="nota-dia-wrap${(v==='P'||v==='M'||v==='F')?'':' hidden'}" data-notawrap="${i}"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" placeholder="" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)" data-nota="${i}"></div>`;
+        const tienePanel = v==='P'||v==='M';
+        html += `<div class="dia-wrap">
+          <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>
+          ${tienePanel ? `<div class="dia-panel" data-panel="${i}">
+            <select class="pos-sel" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+            <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)"></div>
+          </div>` : ''}
+        </div>`;
       });
       html += `</div></div>`;
   });
@@ -676,8 +693,9 @@ function renderAsis() {
     if(!datos||!datos.pos) return;
     const el = document.getElementById('asisrow-'+emp.id); if(!el) return;
     DIAS.forEach((_,i)=>{
-      const sel = el.querySelector('[data-pos="'+i+'"]');
-      if(sel) sel.value = datos.pos[i]||'';
+      const panel = el.querySelector(`[data-panel="${i}"]`); if(!panel) return;
+      const sel = panel.querySelector('select');
+      if(sel && datos.pos[i]) sel.value = datos.pos[i];
     });
   });
   actualizarStats();
