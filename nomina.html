@@ -1229,6 +1229,38 @@ function abrirImpresionNom() {
   document.getElementById('modal-print').hidden = false;
 }
 
+// ── BLOQUEO DE ACCESO ─────────────────────────────────────────────
+(function() {
+  const overlay = document.createElement('div');
+  overlay.id = 'lock-screen';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--verde);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px';
+  overlay.innerHTML = `
+    <div style="font-size:36px">⭐</div>
+    <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">Star Wash</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.75);margin-bottom:4px">Ingresa la contraseña</div>
+    <input id="lock-inp" type="password" inputmode="numeric" maxlength="10" placeholder="••••"
+      style="width:160px;text-align:center;font-size:22px;letter-spacing:6px;padding:10px 14px;border-radius:10px;border:none;outline:none;font-family:inherit;background:rgba(255,255,255,.15);color:#fff;caret-color:#fff"
+      autocomplete="off">
+    <div id="lock-err" style="color:#ffcccc;font-size:13px;display:none">Contraseña incorrecta</div>
+  `;
+  document.body.appendChild(overlay);
+  const inp = overlay.querySelector('#lock-inp');
+  const err = overlay.querySelector('#lock-err');
+  function intentar() {
+    if(inp.value === PIN_NOM) {
+      overlay.remove();
+      cargar();
+    } else {
+      err.style.display = 'block';
+      inp.value = '';
+      inp.focus();
+      setTimeout(()=>{ err.style.display='none'; }, 2000);
+    }
+  }
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') intentar(); });
+  // También intentar al completar 4 dígitos
+  inp.addEventListener('input', ()=>{ if(inp.value.length >= 4) setTimeout(intentar, 100); });
+  setTimeout(()=>inp.focus(), 200);
+})();
 // ── INIT ──────────────────────────────────────────────────────────
-cargar();;
 </script>
