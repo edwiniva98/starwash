@@ -171,6 +171,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 .btn-prim:active{opacity:.85}
 .btn-danger{padding:10px;border-radius:10px;border:1.5px solid var(--rojo);background:none;color:var(--rojo);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
 .btn-warn{padding:10px;border-radius:10px;border:1.5px solid var(--amarillo);background:none;color:var(--amarillo);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
+.btn-inactivo{padding:10px;border-radius:10px;border:1.5px solid var(--txt3);background:none;color:var(--txt2);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
+.btn-reactivar{padding:5px 12px;border-radius:8px;border:1.5px solid var(--verde);background:none;color:var(--verde);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
 
 /* Islas por día */
 .islas-bar{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:11px 14px}
@@ -303,6 +305,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
       <div class="field" id="field-adeudo"><label>Adeudo actual ($)</label><input id="inp-adeudo" type="number" placeholder="0" inputmode="decimal"></div>
       <button class="btn-prim" onclick="intentarGuardarEmp()">Guardar</button>
       <button class="btn-warn" id="btn-editar-sueldo" onclick="pedirPinParaSueldo()" style="display:none">🔒 Editar sueldo</button>
+      <button class="btn-inactivo" id="btn-desactivar-emp" onclick="pedirPinParaDesactivar()" style="display:none">⏸ Desactivar</button>
       <button class="btn-danger" id="btn-del-emp" onclick="pedirPinParaEliminar()" style="display:none">🗑 Eliminar empleado</button>
     </div>
   </div>
@@ -437,17 +440,21 @@ async function cargar() {
     // Cargar estado desde Firestore (semanas, pagos, préstamos)
     // Los empleados siempre vienen de EMPLEADOS_INIT — Firestore solo guarda asistencia
     const snap = await DOC.get();
+    // Empleados siempre desde el código
+    S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
     if(snap.exists) {
       const data = snap.data();
       S.semanas = data.semanas || {};
       S.prestamos = data.prestamos || [];
       S.semAct = data.semAct || semLunes(new Date());
+      // Aplicar estado inactivo guardado en Firestore
+      const inactivosIds = data.inactivosIds || [];
+      S.empleados.forEach(e=>{ e.inactivo = inactivosIds.includes(e.id); });
     } else {
       S.semanas = {}; S.prestamos = [];
       S.semAct = semLunes(new Date());
+      // Inactivos por defecto desde EMPLEADOS_INIT ya están en el map
     }
-    // Empleados siempre desde el código
-    S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
   } catch(e) {
     console.error('Firebase error:', e);
     try { const d = localStorage.getItem('sw_nom_v4'); if(d) S = JSON.parse(d); } catch(e2){}
@@ -487,7 +494,14 @@ function guardar() {
   clearTimeout(_guardandoTimer);
   _guardandoTimer = setTimeout(async ()=>{
     try {
-      await DOC.set(S);
+      // Solo guardamos semanas, prestamos, semAct e inactivosIds — NO los empleados completos
+      const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
+      await DOC.set({
+        semanas: S.semanas,
+        prestamos: S.prestamos,
+        semAct: S.semAct,
+        inactivosIds
+      });
     } catch(e) {
       mostrarCargando('⚠️ Error al guardar en la nube');
       setTimeout(()=>mostrarCargando(''), 3000);
@@ -921,13 +935,13 @@ function guardarPrest() {
 
 // ── EQUIPO ────────────────────────────────────────────────────────
 function renderEmps() {
-  const puestos = ['Encargado','Cajero','Maquinista','Lavador'];
+  const puestos = ['Encargado','Cajero','Maquinista','Lavador','Velador'];
   let html = '';
   puestos.forEach(p=>{
     const emps = S.empleados.filter(e=>e.puesto===p && !e.inactivo).sort((a,b)=>p==='Lavador'?a.nombre.localeCompare(b.nombre,'es'):0);
     if(!emps.length) return;
     html += `<div class="puesto-label">${p} (${emps.length})</div>`;
-    emps.forEach((emp,i)=>{
+    emps.forEach((emp)=>{
       const idx = S.empleados.indexOf(emp);
       const ini = emp.nombre.charAt(0);
       html += `<div class="emp-list-row" onclick="abrirModalEmp(${idx})">
@@ -943,6 +957,21 @@ function renderEmps() {
       </div>`;
     });
   });
+  // Sección de inactivos
+  const inactivos = S.empleados.filter(e=>e.inactivo);
+  if(inactivos.length) {
+    html += `<div class="puesto-label" style="margin-top:16px;color:var(--txt3)">Inactivos (${inactivos.length})</div>`;
+    inactivos.forEach(emp=>{
+      html += `<div class="emp-list-row" style="opacity:.55">
+        <div class="emp-avatar" style="background:var(--txt3)">${emp.nombre.charAt(0)}</div>
+        <div class="emp-list-info">
+          <div class="emp-list-nombre">${emp.nombre}</div>
+          <div class="emp-list-sub" style="color:var(--txt3)">Inactivo${emp.adeudo>0?` · Adeudo: $${fmt(emp.adeudo)}`:''}</div>
+        </div>
+        <button class="btn-reactivar" onclick="event.stopPropagation();reactivarEmpleado('${emp.id}')">Activar</button>
+      </div>`;
+    });
+  }
   document.getElementById('emp-list').innerHTML = html || '<div class="empty"><div class="empty-ico">👥</div><div class="empty-txt">Sin empleados</div></div>';
 }
 function abrirModalEmp(idx) {
@@ -959,13 +988,15 @@ function abrirModalEmp(idx) {
   document.getElementById('field-adeudo').style.display = 'block'; // siempre visible
   document.getElementById('btn-editar-sueldo').style.display = emp ? 'block' : 'none';
   document.getElementById('btn-del-emp').style.display = emp ? 'block' : 'none';
+  document.getElementById('btn-desactivar-emp').style.display = emp ? 'block' : 'none';
   document.getElementById('modal-emp').hidden = false;
 }
 
 // ── PIN / CONTRASEÑA ─────────────────────────────────────────────
 const PIN = '3098';
-let pinAccion = null; // 'sueldo' | 'eliminar' | 'reactivar'
+let pinAccion = null; // 'sueldo' | 'eliminar' | 'reactivar' | 'desactivar'
 let pinReactivarId = null;
+let pinDesactivarId = null;
 function pedirPin(accion, titulo, desc) {
   pinAccion = accion;
   document.getElementById('pin-title').textContent = titulo;
@@ -981,6 +1012,12 @@ function pedirPinParaSueldo() {
 function pedirPinParaEliminar() {
   const emp = empEditIdx !== null ? S.empleados[empEditIdx] : null;
   pedirPin('eliminar','🗑 Eliminar empleado','Ingresa la contraseña para eliminar a ' + (emp?emp.nombre:'este empleado') + '.');
+}
+function pedirPinParaDesactivar() {
+  const emp = empEditIdx !== null ? S.empleados[empEditIdx] : null;
+  if(!emp) return;
+  pinDesactivarId = emp.id;
+  pedirPin('desactivar','🔒 Desactivar empleado','Ingresa la contraseña para marcar a ' + emp.nombre + ' como inactivo. No aparecerá en asistencia ni nómina.');
 }
 function confirmarPin() {
   const val = document.getElementById('inp-pin').value;
@@ -1000,8 +1037,12 @@ function confirmarPin() {
     guardarEmp();
   } else if(pinAccion === 'reactivar') {
     const emp = S.empleados.find(e=>e.id===pinReactivarId);
-    if(emp) { delete emp.inactivo; guardar(); render(); }
+    if(emp) { emp.inactivo = false; guardar(); render(); }
     pinReactivarId = null;
+  } else if(pinAccion === 'desactivar') {
+    const emp = S.empleados.find(e=>e.id===pinDesactivarId);
+    if(emp) { emp.inactivo = true; guardar(); cerrarModal('modal-emp'); render(); }
+    pinDesactivarId = null;
   }
   pinAccion = null;
 }
