@@ -99,7 +99,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 .dia-panel.open{display:flex}
 .nota-row{display:flex;align-items:center;gap:5px}
 .nota-lbl{font-size:11px;font-weight:600;color:var(--txt2);white-space:nowrap}
-.nota-dia{font-size:12px;border:1px solid var(--border);border-radius:6px;padding:4px 7px;background:var(--surface2);color:var(--txt);width:100%;font-family:inherit}
+.nota-dia{font-size:10px;border:1px solid var(--border);border-radius:6px;padding:3px 5px;background:var(--surface2);color:var(--txt);width:44px;font-family:inherit;margin-top:2px}
 .nota-dia:focus{outline:none;border-color:var(--verde)}
 
 /* Stats row */
@@ -540,7 +540,7 @@ function getSemana() {
   if(!S.semanas[S.semAct]) S.semanas[S.semAct] = {};
   return S.semanas[S.semAct];
 }
-const POSICIONES = ['Isla 1','Isla 2','Isla 3','Isla 4','Isla 5','Isla 6','Afuera','Rines','Lavado a mano','Cajero','Maquinista','Encargado'];
+const POSICIONES = ['Isla 1','Isla 2','Isla 3','Isla 4','Isla 5','Isla 6','Afuera','Rines','Lavado a mano','Cajero','Maquinista','Encargado','Otro'];
 const POS_LABEL = {'Isla 1':'Is.1','Isla 2':'Is.2','Isla 3':'Is.3','Isla 4':'Is.4','Isla 5':'Is.5','Isla 6':'Is.6'};
 const POS_EXTRA = ['Cajero','Maquinista','Encargado']; // +$200 automático
 const POS_DEFAULT = {'Cajero':'Cajero','Maquinista':'Maquinista','Encargado':'Encargado'};
@@ -568,7 +568,7 @@ function toggleDia(empId, dIdx) {
   } else {
     sem[empId].pos[dIdx] = '';
   }
-  guardar(); renderAsisRow(empId);
+  guardar(); renderAsisRow(empId, null);
   actualizarStats();
 }
 
@@ -588,15 +588,6 @@ document.addEventListener('click', function(e) {
   const dIdx = parseInt(db.dataset.di);
   e.stopPropagation();
   toggleDia(empId, dIdx);
-  // Abrir/cerrar panel si el día tiene panel (P o M)
-  if(db.dataset.panelBtn !== undefined) {
-    const panel = row.querySelector(`[data-panel="${dIdx}"]`);
-    if(panel) {
-      // Cerrar otros paneles del mismo empleado
-      row.querySelectorAll('.dia-panel.open').forEach(p=>{ if(p!==panel) p.classList.remove('open'); });
-      panel.classList.toggle('open');
-    }
-  }
 });
 function calcExtraPos(empId) {
   const sem = getSemana();
@@ -610,7 +601,7 @@ function setPosicion(empId, dIdx, val) {
   if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],pos:['','','','','','',''],extra:0,abono:0,pagado:false};
   if(!sem[empId].pos) sem[empId].pos = ['','','','','','',''];
   sem[empId].pos[dIdx] = val;
-  guardar(); renderAlertas(); renderIslaBar();
+  guardar(); renderAsisRow(empId, null); renderAlertas(); renderIslaBar();
 }
 function setNota(empId, dIdx, val) {
   const sem = getSemana();
@@ -630,7 +621,6 @@ function renderAsisRow(empId) {
   const cnt = diasCount(datos.dias);
   el.querySelector('.emp-cnt').textContent = cnt + ' día'+(cnt!==1?'s':'');
   const posOpts = POSICIONES.map(p=>`<option value="${p}">${POS_LABEL[p]||p}</option>`).join('');
-  // Re-render días con panel desplegable
   let gridHtml = '';
   DIAS.forEach((dl,i)=>{
     const v = datos.dias[i]||'';
@@ -638,17 +628,14 @@ function renderAsisRow(empId) {
     const nota = (datos.notas && datos.notas[i]) || '';
     const pos = (datos.pos && datos.pos[i]) || '';
     const tienePanel = v==='P'||v==='M';
-    const abierto = el.querySelector(`[data-panel="${i}"]`)?.classList.contains('open') || false;
+    const esOtro = pos==='Otro';
     gridHtml += `<div class="dia-wrap">
-      <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>
+      <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>
       ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>
-      <div class="dia-panel${abierto?' open':''}" data-panel="${i}">
-        <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)"></div>
-      </div>` : ''}
+      ${esOtro ? `<input class="nota-dia" type="text" placeholder="nota…" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)">` : ''}` : ''}
     </div>`;
   });
   el.querySelector('.dias-grid').innerHTML = gridHtml;
-  // Restaurar valores de posición
   DIAS.forEach((_,i)=>{
     const wrap = el.querySelectorAll('.dia-wrap')[i]; if(!wrap) return;
     const sel = wrap.querySelector('.pos-sel');
@@ -674,13 +661,13 @@ function renderAsis() {
         const v = datos.dias[i]||'';
         const lbl = v==='P'?'P':v==='F'?'F':v==='M'?'½':'·';
         const nota = (datos.notas && datos.notas[i]) || '';
+        const pos = (datos.pos && datos.pos[i]) || '';
         const tienePanel = v==='P'||v==='M';
+        const esOtro = pos==='Otro';
         html += `<div class="dia-wrap">
-          <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>
+          <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>
           ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>
-          <div class="dia-panel" data-panel="${i}">
-            <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)"></div>
-          </div>` : ''}
+          ${esOtro ? `<input class="nota-dia" type="text" placeholder="nota…" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)">` : ''}` : ''}
         </div>`;
       });
       html += `</div></div>`;
