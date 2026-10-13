@@ -430,47 +430,20 @@ function mostrarCargando(msg) {
 async function cargar() {
   mostrarCargando('⏳ Cargando datos…');
   try {
-    // Cargar empleados desde nomina_empleados (misma colección que los cortes)
-    const empSnap = await EMP_COL.get();
-    if(!empSnap.empty) {
-      const empFirebase = [];
-      empSnap.forEach(doc => {
-        const d = doc.data();
-        // Mapear campos de Firebase al formato interno
-        const nombre = ((d.nombre||'') + ' ' + (d.apellido||'') + (d.apodo ? ' ('+d.apodo+')' : '')).trim().toUpperCase();
-        const puesto = mapPuesto(d.puesto||'');
-        const sueldo = parseFloat(d.sueldoDia)||250;
-        const adeudo = parseFloat(d.saldoPrestamo)||0;
-        const inactivo = (d.estado && d.estado !== 'activo') ? true : undefined;
-        const emp = { id: doc.id, nombre, puesto, sueldo, adeudo };
-        if(inactivo) emp.inactivo = true;
-        empFirebase.push(emp);
-      });
-      // Mezclar con los datos locales de asistencia (semanas, adelantos, abonos)
-      const snap = await DOC.get();
-      if(snap.exists) {
-        S = snap.data();
-        // Actualizar lista de empleados desde Firebase (fuente de verdad)
-        // Preservar campos de asistencia (semanas) pero actualizar info base
-        S.empleados = empFirebase;
-      } else {
-        S.empleados = empFirebase;
-        S.semanas = {}; S.prestamos = [];
-        S.semAct = semLunes(new Date());
-        await DOC.set(S);
-      }
+    // Cargar estado desde Firestore (semanas, pagos, préstamos)
+    // Los empleados siempre vienen de EMPLEADOS_INIT — Firestore solo guarda asistencia
+    const snap = await DOC.get();
+    if(snap.exists) {
+      const data = snap.data();
+      S.semanas = data.semanas || {};
+      S.prestamos = data.prestamos || [];
+      S.semAct = data.semAct || semLunes(new Date());
     } else {
-      // Fallback: si nomina_empleados está vacío, usar EMPLEADOS_INIT
-      const snap = await DOC.get();
-      if(snap.exists) {
-        S = snap.data();
-      } else {
-        S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
-        S.semanas = {}; S.prestamos = [];
-        S.semAct = semLunes(new Date());
-        await DOC.set(S);
-      }
+      S.semanas = {}; S.prestamos = [];
+      S.semAct = semLunes(new Date());
     }
+    // Empleados siempre desde el código
+    S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
   } catch(e) {
     console.error('Firebase error:', e);
     try { const d = localStorage.getItem('sw_nom_v4'); if(d) S = JSON.parse(d); } catch(e2){}
@@ -478,6 +451,16 @@ async function cargar() {
     setTimeout(()=>mostrarCargando(''), 3000);
   }
 
+  // Migraciones
+  S.empleados = (S.empleados||[]).filter(e=>e.nombre !== 'CARLOS');
+  S.empleados.forEach(e=>{ if(e.puesto==='Isla') e.puesto='Lavador'; });
+  if(!S.empleados.find(e=>e.nombre==='DIDIER')) {
+    S.empleados.push({id:'e_didier', nombre:'DIDIER', puesto:'Lavador', sueldo:250, adeudo:1150, inactivo:true});
+  }
+  if(!S.empleados.find(e=>e.nombre==='JOSE LUIS ZICO')) {
+    S.empleados.push({id:'e_zico', nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0});
+    guardar();
+  }
   S.prestamos = S.prestamos||[];
   S.semanas = S.semanas||{};
   if(!S.semAct) S.semAct = semLunes(new Date());
