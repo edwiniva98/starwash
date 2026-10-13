@@ -410,6 +410,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const DOC = db.collection('nomina').doc('estado');
+const EMP_COL = db.collection('nomina_empleados');
 
 // ── ESTADO ───────────────────────────────────────────────────────
 let S = { empleados:[], semanas:{}, prestamos:[], semAct:'' };
@@ -431,44 +432,69 @@ function mostrarCargando(msg) {
 async function cargar() {
   mostrarCargando('⏳ Cargando datos…');
   try {
-    // Login anónimo automático — requerido por las reglas de Firestore
     if(!auth.currentUser) await auth.signInAnonymously();
-    const snap = await DOC.get();
-    if(snap.exists) {
-      S = snap.data();
+
+    // Cargar empleados desde nomina_empleados (misma colección que los cortes)
+    const empSnap = await EMP_COL.get();
+    if(!empSnap.empty) {
+      const empFirebase = [];
+      empSnap.forEach(doc => {
+        const d = doc.data();
+        // Mapear campos de Firebase al formato interno
+        const nombre = ((d.nombre||'') + ' ' + (d.apellido||'') + (d.apodo ? ' ('+d.apodo+')' : '')).trim().toUpperCase();
+        const puesto = mapPuesto(d.puesto||'');
+        const sueldo = parseFloat(d.sueldoDia)||250;
+        const adeudo = parseFloat(d.saldoPrestamo)||0;
+        const inactivo = (d.estado && d.estado !== 'activo') ? true : undefined;
+        const emp = { id: doc.id, nombre, puesto, sueldo, adeudo };
+        if(inactivo) emp.inactivo = true;
+        empFirebase.push(emp);
+      });
+      // Mezclar con los datos locales de asistencia (semanas, adelantos, abonos)
+      const snap = await DOC.get();
+      if(snap.exists) {
+        S = snap.data();
+        // Actualizar lista de empleados desde Firebase (fuente de verdad)
+        // Preservar campos de asistencia (semanas) pero actualizar info base
+        S.empleados = empFirebase;
+      } else {
+        S.empleados = empFirebase;
+        S.semanas = {}; S.prestamos = [];
+        S.semAct = semLunes(new Date());
+        await DOC.set(S);
+      }
     } else {
-      // Primera vez — inicializar con todos los empleados y subir a Firestore
-      S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
-      S.semanas = {}; S.prestamos = [];
-      S.semAct = semLunes(new Date());
-      await DOC.set(S);
+      // Fallback: si nomina_empleados está vacío, usar EMPLEADOS_INIT
+      const snap = await DOC.get();
+      if(snap.exists) {
+        S = snap.data();
+      } else {
+        S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
+        S.semanas = {}; S.prestamos = [];
+        S.semAct = semLunes(new Date());
+        await DOC.set(S);
+      }
     }
   } catch(e) {
-    // Sin conexión — intentar localStorage como respaldo
+    console.error('Firebase error:', e);
     try { const d = localStorage.getItem('sw_nom_v4'); if(d) S = JSON.parse(d); } catch(e2){}
     mostrarCargando('⚠️ Sin conexión — usando datos locales');
     setTimeout(()=>mostrarCargando(''), 3000);
   }
 
-  // Migraciones y limpieza
-  const BAJAS = ['CARLOS'];
-  S.empleados = (S.empleados||[]).filter(e=>!BAJAS.includes(e.nombre));
-  S.empleados.forEach(e=>{ if(e.puesto==='Isla') e.puesto='Lavador'; });
-  if(!S.empleados.find(e=>e.nombre==='DIDIER')) {
-    S.empleados.push({id:'e_didier', nombre:'DIDIER', puesto:'Lavador', sueldo:250, adeudo:1150, inactivo:true});
-  } else {
-    const d = S.empleados.find(e=>e.nombre==='DIDIER');
-    if(d.inactivo === undefined) { d.adeudo = 1150; d.inactivo = true; }
-  }
-  if(!S.empleados.find(e=>e.nombre==='JOSE LUIS ZICO')) {
-    S.empleados.push({id:'e_zico', nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0});
-    guardar();
-  }
   S.prestamos = S.prestamos||[];
+  S.semanas = S.semanas||{};
   if(!S.semAct) S.semAct = semLunes(new Date());
 
   mostrarCargando('');
   render();
+}
+
+function mapPuesto(p) {
+  const m = { 'caja':'Cajero', 'cajero':'Cajero', 'maquinista':'Maquinista',
+    'encargado':'Encargado', 'lavador':'Lavador', 'isla':'Lavador',
+    'velador':'Velador' };
+  return m[(p||'').toLowerCase()] || p || 'Lavador';
 }
 
 function guardar() {
@@ -488,9 +514,12 @@ function guardar() {
 
 // ── SEMANAS ───────────────────────────────────────────────────────
 function semLunes(d) {
+  // Semana lunes–domingo. getDay(): 0=dom,1=lun,...,6=sáb
   const c = new Date(d);
+  c.setHours(12,0,0,0);
   const dow = c.getDay();
-  const diff = (dow === 0) ? -6 : 1 - dow;
+  // Para llegar al lunes: si es lunes (1) diff=0, martes (2) diff=-1... domingo (0) diff=-6
+  const diff = dow === 0 ? -6 : 1 - dow;
   c.setDate(c.getDate() + diff);
   return c.toISOString().slice(0,10);
 }
