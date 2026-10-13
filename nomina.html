@@ -392,6 +392,7 @@ const EMPLEADOS_INIT = [
   {nombre:'SALVADOR',    puesto:'Lavador', sueldo:250, adeudo:750},
   {nombre:'ANTONIO',     puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'TONCHO',      puesto:'Lavador', sueldo:250, adeudo:0},
+  {nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0},
   // Inactivos — no aparecen en asistencia/nómina pero rastrean adeudo
   {nombre:'DIDIER',      puesto:'Lavador', sueldo:250, adeudo:1150, inactivo:true},
 ];
@@ -436,9 +437,11 @@ async function cargar() {
     if(snap.exists) {
       S = snap.data();
     } else {
-      // Primera vez — inicializar con datos base
+      // Primera vez — inicializar con todos los empleados y subir a Firestore
       S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
       S.semanas = {}; S.prestamos = [];
+      S.semAct = semLunes(new Date());
+      await DOC.set(S);
     }
   } catch(e) {
     // Sin conexión — intentar localStorage como respaldo
