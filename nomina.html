@@ -460,6 +460,10 @@ async function cargar() {
     const d = S.empleados.find(e=>e.nombre==='DIDIER');
     if(d.inactivo === undefined) { d.adeudo = 1150; d.inactivo = true; }
   }
+  if(!S.empleados.find(e=>e.nombre==='JOSE LUIS ZICO')) {
+    S.empleados.push({id:'e_zico', nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0});
+    guardar();
+  }
   S.prestamos = S.prestamos||[];
   if(!S.semAct) S.semAct = semLunes(new Date());
 
