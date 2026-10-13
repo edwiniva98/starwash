@@ -520,7 +520,8 @@ function semLunes(d) {
   // Para llegar al lunes: si es lunes (1) diff=0, martes (2) diff=-1... domingo (0) diff=-6
   const diff = dow === 0 ? -6 : 1 - dow;
   c.setDate(c.getDate() + diff);
-  return c.toISOString().slice(0,10);
+  const yy = c.getFullYear(), mm = String(c.getMonth()+1).padStart(2,'0'), dd = String(c.getDate()).padStart(2,'0');
+  return `${yy}-${mm}-${dd}`;
 }
 function semStr(lunes) {
   const d = new Date(lunes+'T12:00:00');
@@ -1189,7 +1190,7 @@ function imprimirModalContenido() {
   win.document.close();
 }
 function abrirImpresionAsis() {
-  const todos = [...S.empleados].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const todos = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   let html = `<table class="print-table"><thead><tr>
     <th style="width:32%">Nombre</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th><th>Total</th><th>Firma</th>
   </tr></thead><tbody>`;
