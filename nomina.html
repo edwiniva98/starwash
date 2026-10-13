@@ -1014,6 +1014,8 @@ function abrirModalEmp(idx) {
 
 // ── PIN / CONTRASEÑA ─────────────────────────────────────────────
 const PIN = '3098';
+const PIN_NOM = '2026';
+let nomDesbloqueada = false;
 let pinAccion = null; // 'sueldo' | 'eliminar' | 'reactivar' | 'desactivar'
 let pinReactivarId = null;
 let pinDesactivarId = null;
@@ -1041,13 +1043,19 @@ function pedirPinParaDesactivar() {
 }
 function confirmarPin() {
   const val = document.getElementById('inp-pin').value;
-  if(val !== PIN) {
+  const pinEsperado = pinAccion === 'desbloquear-nom' ? PIN_NOM : PIN;
+  if(val !== pinEsperado) {
     document.getElementById('pin-error').style.display = 'block';
     document.getElementById('inp-pin').value = '';
     document.getElementById('inp-pin').focus();
     return;
   }
   cerrarModal('modal-pin');
+  if(pinAccion === 'desbloquear-nom') {
+    nomDesbloqueada = true;
+    irTab('nom', document.querySelector('.htab:nth-child(2)'));
+    return;
+  }
   if(pinAccion === 'sueldo') {
     document.getElementById('field-sueldo').style.display = 'block';
     document.getElementById('btn-editar-sueldo').style.display = 'none';
@@ -1106,6 +1114,10 @@ function eliminarEmp() {
 const TABS = {asis:'v-asis',nom:'v-nom',prest:'v-prest',emps:'v-emps'};
 let tabAct = 'asis';
 function irTab(tab, btn) {
+  if(tab === 'nom' && !nomDesbloqueada) {
+    pedirPin('desbloquear-nom', '🔒 Nómina', 'Ingresa la contraseña para ver la nómina.');
+    return;
+  }
   tabAct = tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById(TABS[tab]).classList.add('on');
