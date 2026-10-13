@@ -95,10 +95,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 .db.F .dl{color:var(--rojo)}
 .db.M{background:var(--amarillo-light);border-color:var(--amarillo);color:var(--amarillo)}
 .db.M .dl{color:var(--amarillo)}
-.db.O{background:#f3e6ff;border-color:#9b59b6;color:#6c3483}
-.db.O .dl{color:#9b59b6}
-@media (prefers-color-scheme:dark){.db.O{background:#2d1a40;border-color:#a569bd;color:#d2b4de}}
-:root[data-theme="dark"] .db.O{background:#2d1a40;border-color:#a569bd;color:#d2b4de}
+.nota-dia-wrap{display:flex;align-items:center;gap:4px;padding:2px 0}
+.nota-dia-wrap.hidden{display:none}
+.nota-lbl{font-size:11px;font-weight:600;color:var(--txt3);white-space:nowrap;min-width:32px}
+.nota-dia{font-size:12px;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:var(--surface2);color:var(--txt);width:100%;font-family:inherit}
+.nota-dia:focus{outline:none;border-color:var(--verde)}
 
 /* Stats row */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -362,7 +363,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 
 <script>
 const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-const CICLO = ['','P','F','M','O'];
+const CICLO = ['','P','F','M'];
 
 // ── DATOS INICIALES ──────────────────────────────────────────────
 const EMPLEADOS_INIT = [
@@ -595,8 +596,15 @@ function setPosicion(empId, dIdx, val) {
   sem[empId].pos[dIdx] = val;
   guardar(); renderAlertas(); renderIslaBar();
 }
+function setNota(empId, dIdx, val) {
+  const sem = getSemana();
+  if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],pos:['','','','','','',''],notas:['','','','','','',''],extra:0,abono:0,pagado:false};
+  if(!sem[empId].notas) sem[empId].notas = ['','','','','','',''];
+  sem[empId].notas[dIdx] = val.trim();
+  guardar();
+}
 function diasCount(dias) {
-  return dias.reduce((s,d) => s + (d==='P'?1 : d==='M'?0.5 : d==='O'?1 : 0), 0);
+  return dias.reduce((s,d) => s + (d==='P'?1 : d==='M'?0.5 : 0), 0);
 }
 function renderAsisRow(empId) {
   const sem = getSemana();
@@ -610,7 +618,7 @@ function renderAsisRow(empId) {
   let gridHtml = '';
   DIAS.forEach((dl,i)=>{
     const v = datos.dias[i]||'';
-    const lbl2 = v==='P'?'P':v==='F'?'F':v==='M'?'½':v==='O'?'Otro':'·';
+    const lbl2 = v==='P'?'P':v==='F'?'F':v==='M'?'½':'·';
     gridHtml += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>`;
   });
   el.querySelector('.dias-grid').innerHTML = gridHtml;
@@ -618,13 +626,17 @@ function renderAsisRow(empId) {
   let posHtml = '';
   DIAS.forEach((_,i)=>{
     const v = datos.dias[i]||'';
-    posHtml += `<select class="pos-sel${(v==='P'||v==='M'||v==='O')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+    const nota = (datos.notas && datos.notas[i]) || '';
+    posHtml += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+    posHtml += `<div class="nota-dia-wrap${(v==='P'||v==='M'||v==='F')?'':' hidden'}" data-notawrap="${i}"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" placeholder="" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)" data-nota="${i}"></div>`;
   });
   el.querySelector('.pos-grid').innerHTML = posHtml;
-  // Restaurar valores de posición
+  // Restaurar valores de posición y notas
   DIAS.forEach((_,i)=>{
     const sel = el.querySelector('[data-pos="'+i+'"]');
     if(sel && datos.pos && datos.pos[i]) sel.value = datos.pos[i];
+    const inp = el.querySelector('[data-nota="'+i+'"]');
+    if(inp && datos.notas && datos.notas[i]) inp.value = datos.notas[i];
   });
 }
 function renderAsis() {
@@ -644,13 +656,15 @@ function renderAsis() {
         <div class="dias-grid">`;
       DIAS.forEach((dl,i)=>{
         const v = datos.dias[i]||'';
-        const lbl = v==='P'?'P':v==='F'?'F':v==='M'?'½':v==='O'?'Otro':'·';
+        const lbl = v==='P'?'P':v==='F'?'F':v==='M'?'½':'·';
         html += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>`;
       });
       html += `</div><div class="pos-grid">`;
       DIAS.forEach((dl,i)=>{
         const v = datos.dias[i]||'';
-        html += `<select class="pos-sel${(v==='P'||v==='M'||v==='O')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+        const nota = (datos.notas && datos.notas[i]) || '';
+        html += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+        html += `<div class="nota-dia-wrap${(v==='P'||v==='M'||v==='F')?'':' hidden'}" data-notawrap="${i}"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" placeholder="" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)" data-nota="${i}"></div>`;
       });
       html += `</div></div>`;
   });
@@ -820,6 +834,7 @@ function renderNom() {
         <div class="ni"><div class="ni-l">Abono a adeudo</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${abono||''}" onchange="setAbono('${emp.id}',this.value)" onfocus="this.select()"></div></div>
         ${descPrest>0?`<div class="ni"><div class="ni-l">Desc. préstamo</div><div class="ni-v rojo">-$${fmt(descPrest)}</div></div>`:''}
         ${emp.adeudo>0?`<div class="ni"><div class="ni-l">Adeudo actual</div><div class="ni-v rojo">$${fmt(adeudoActual)}</div></div>`:''}
+        ${(()=>{ const notas=sem[emp.id]&&sem[emp.id].notas; const DIASN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; if(!notas) return ''; const ns=notas.map((n,i)=>n?`${DIASN[i]}: ${n}`:'').filter(Boolean); return ns.length?`<div class="ni" style="grid-column:1/-1"><div class="ni-l">Otro</div><div class="ni-v" style="font-size:12px;color:var(--txt2)">${ns.join(' · ')}</div></div>`:''; })()}
       </div>
       <button class="pagado-btn${datos.pagado?' on':''}" onclick="togglePagado('${emp.id}')">
         ${datos.pagado?'✓ Pagado':'Marcar pagado'}
