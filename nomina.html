@@ -1191,8 +1191,15 @@ function imprimirModalContenido() {
 }
 function abrirImpresionAsis() {
   const todos = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const [ly,lm,ld] = (S.semAct||'').split('-').map(Number);
+  const lunesD = ly ? new Date(ly,lm-1,ld) : null;
+  const diaHdr = (i) => {
+    if(!lunesD) return '';
+    const d = new Date(lunesD.getFullYear(),lunesD.getMonth(),lunesD.getDate()+i);
+    return '<br><span style="font-weight:400;font-size:9px">'+d.getDate()+'</span>';
+  };
   let html = `<table class="print-table"><thead><tr>
-    <th style="width:32%">Nombre</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th><th>Total</th><th>Firma</th>
+    <th style="width:32%">Nombre</th><th>Lun${diaHdr(0)}</th><th>Mar${diaHdr(1)}</th><th>Mié${diaHdr(2)}</th><th>Jue${diaHdr(3)}</th><th>Vie${diaHdr(4)}</th><th>Sáb${diaHdr(5)}</th><th>Dom${diaHdr(6)}</th><th>Total</th><th>Firma</th>
   </tr></thead><tbody>`;
   todos.forEach(emp=>{
     html += `<tr><td>${emp.nombre}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style="min-width:60px"></td></tr>`;
