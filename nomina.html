@@ -95,6 +95,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 .db.F .dl{color:var(--rojo)}
 .db.M{background:var(--amarillo-light);border-color:var(--amarillo);color:var(--amarillo)}
 .db.M .dl{color:var(--amarillo)}
+.db.O{background:#f3e6ff;border-color:#9b59b6;color:#6c3483}
+.db.O .dl{color:#9b59b6}
+@media (prefers-color-scheme:dark){.db.O{background:#2d1a40;border-color:#a569bd;color:#d2b4de}}
+:root[data-theme="dark"] .db.O{background:#2d1a40;border-color:#a569bd;color:#d2b4de}
 
 /* Stats row */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -355,7 +359,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
 
 <script>
 const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-const CICLO = ['','P','F','M'];
+const CICLO = ['','P','F','M','O'];
 
 // ── DATOS INICIALES ──────────────────────────────────────────────
 const EMPLEADOS_INIT = [
@@ -578,7 +582,7 @@ function setPosicion(empId, dIdx, val) {
   guardar(); renderAlertas(); renderIslaBar();
 }
 function diasCount(dias) {
-  return dias.reduce((s,d) => s + (d==='P'?1 : d==='M'?0.5 : 0), 0);
+  return dias.reduce((s,d) => s + (d==='P'?1 : d==='M'?0.5 : d==='O'?1 : 0), 0);
 }
 function renderAsisRow(empId) {
   const sem = getSemana();
@@ -592,14 +596,15 @@ function renderAsisRow(empId) {
   let gridHtml = '';
   DIAS.forEach((dl,i)=>{
     const v = datos.dias[i]||'';
-    gridHtml += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${v||'·'}</span><span class="dl">${dl}</span></div>`;
+    const lbl2 = v==='P'?'P':v==='F'?'F':v==='M'?'½':v==='O'?'Otro':'·';
+    gridHtml += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>`;
   });
   el.querySelector('.dias-grid').innerHTML = gridHtml;
   // Re-render fila de selectores
   let posHtml = '';
   DIAS.forEach((_,i)=>{
     const v = datos.dias[i]||'';
-    posHtml += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+    posHtml += `<select class="pos-sel${(v==='P'||v==='M'||v==='O')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
   });
   el.querySelector('.pos-grid').innerHTML = posHtml;
   // Restaurar valores de posición
@@ -625,12 +630,13 @@ function renderAsis() {
         <div class="dias-grid">`;
       DIAS.forEach((dl,i)=>{
         const v = datos.dias[i]||'';
-        html += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${v||'·'}</span><span class="dl">${dl}</span></div>`;
+        const lbl = v==='P'?'P':v==='F'?'F':v==='M'?'½':v==='O'?'Otro':'·';
+        html += `<div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>`;
       });
       html += `</div><div class="pos-grid">`;
       DIAS.forEach((dl,i)=>{
         const v = datos.dias[i]||'';
-        html += `<select class="pos-sel${(v==='P'||v==='M')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
+        html += `<select class="pos-sel${(v==='P'||v==='M'||v==='O')?'':' hidden'}" data-pos="${i}" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>`;
       });
       html += `</div></div>`;
   });
