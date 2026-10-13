@@ -467,9 +467,9 @@ async function cargar() {
   // Migraciones
   S.empleados = (S.empleados||[]).filter(e=>e.nombre !== 'CARLOS');
   S.empleados.forEach(e=>{ if(e.puesto==='Isla') e.puesto='Lavador'; });
-  if(!S.empleados.find(e=>e.nombre==='DIDIER')) {
-    S.empleados.push({id:'e_didier', nombre:'DIDIER', puesto:'Lavador', sueldo:250, adeudo:1150, inactivo:true});
-  }
+  // DIDIER siempre inactivo — forzar independiente de Firestore
+  const didier = S.empleados.find(e=>e.nombre==='DIDIER');
+  if(didier) didier.inactivo = true;
   if(!S.empleados.find(e=>e.nombre==='JOSE LUIS ZICO')) {
     S.empleados.push({id:'e_zico', nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0});
     guardar();
@@ -621,7 +621,8 @@ function renderAsisRow(empId) {
   const cnt = diasCount(datos.dias);
   el.querySelector('.emp-cnt').textContent = cnt + ' día'+(cnt!==1?'s':'');
   const posOpts = POSICIONES.map(p=>`<option value="${p}">${POS_LABEL[p]||p}</option>`).join('');
-  const lunesDate = new Date(S.semAct+'T12:00:00');
+  const [ly,lm,ld] = (S.semAct||'').split('-').map(Number);
+  const lunesDate = ly ? new Date(ly,lm-1,ld) : null;
   let gridHtml = '';
   DIAS.forEach((dl,i)=>{
     const v = datos.dias[i]||'';
@@ -630,9 +631,9 @@ function renderAsisRow(empId) {
     const pos = (datos.pos && datos.pos[i]) || '';
     const tienePanel = v==='P'||v==='M';
     const esOtro = pos==='Otro';
-    const diaNum = new Date(lunesDate.getTime() + i*86400000).getDate();
+    const diaNum = lunesDate ? new Date(lunesDate.getFullYear(),lunesDate.getMonth(),lunesDate.getDate()+i).getDate() : '';
     gridHtml += `<div class="dia-wrap">
-      <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl} ${diaNum}</span></div>
+      <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl2}</span><span class="dl">${dl}${diaNum?` ${diaNum}`:''}</span></div>
       ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>
       ${esOtro ? `<input class="nota-dia" type="text" placeholder="nota…" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)">` : ''}` : ''}
     </div>`;
@@ -647,7 +648,8 @@ function renderAsisRow(empId) {
 function renderAsis() {
   const sem = getSemana();
   const posOpts = POSICIONES.map(p=>`<option value="${p}">${POS_LABEL[p]||p}</option>`).join('');
-  const lunesDate = new Date(S.semAct+'T12:00:00');
+  const [ry,rm,rd] = (S.semAct||'').split('-').map(Number);
+  const lunesDateR = ry ? new Date(ry,rm-1,rd) : null;
   let html = '<div class="card">';
   const emps = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   emps.forEach(emp=>{
@@ -667,9 +669,9 @@ function renderAsis() {
         const pos = (datos.pos && datos.pos[i]) || '';
         const tienePanel = v==='P'||v==='M';
         const esOtro = pos==='Otro';
-        const diaNum = new Date(lunesDate.getTime() + i*86400000).getDate();
+        const diaNum = lunesDateR ? new Date(lunesDateR.getFullYear(),lunesDateR.getMonth(),lunesDateR.getDate()+i).getDate() : '';
         html += `<div class="dia-wrap">
-          <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl} ${diaNum}</span></div>
+          <div class="db${v?' '+v:''}" data-di="${i}"><span class="dv">${lbl}</span><span class="dl">${dl}${diaNum?` ${diaNum}`:''}</span></div>
           ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>
           ${esOtro ? `<input class="nota-dia" type="text" placeholder="nota…" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)">` : ''}` : ''}
         </div>`;
