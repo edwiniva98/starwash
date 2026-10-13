@@ -641,8 +641,8 @@ function renderAsisRow(empId) {
     const abierto = el.querySelector(`[data-panel="${i}"]`)?.classList.contains('open') || false;
     gridHtml += `<div class="dia-wrap">
       <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl2}</span><span class="dl">${dl}</span></div>
-      ${tienePanel ? `<div class="dia-panel${abierto?' open':''}" data-panel="${i}">
-        <select class="pos-sel" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+      ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${empId}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+      <div class="dia-panel${abierto?' open':''}" data-panel="${i}">
         <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${empId}',${i},this.value)"></div>
       </div>` : ''}
     </div>`;
@@ -650,8 +650,8 @@ function renderAsisRow(empId) {
   el.querySelector('.dias-grid').innerHTML = gridHtml;
   // Restaurar valores de posición
   DIAS.forEach((_,i)=>{
-    const panel = el.querySelector(`[data-panel="${i}"]`); if(!panel) return;
-    const sel = panel.querySelector('select');
+    const wrap = el.querySelectorAll('.dia-wrap')[i]; if(!wrap) return;
+    const sel = wrap.querySelector('.pos-sel');
     if(sel && datos.pos && datos.pos[i]) sel.value = datos.pos[i];
   });
 }
@@ -677,8 +677,8 @@ function renderAsis() {
         const tienePanel = v==='P'||v==='M';
         html += `<div class="dia-wrap">
           <div class="db${v?' '+v:''}" data-di="${i}"${tienePanel?` data-panel-btn="${i}"`:''}><span class="dv">${lbl}</span><span class="dl">${dl}</span></div>
-          ${tienePanel ? `<div class="dia-panel" data-panel="${i}">
-            <select class="pos-sel" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+          ${tienePanel ? `<select class="pos-sel" onchange="setPosicion('${emp.id}',${i},this.value)"><option value="">—</option>${posOpts}</select>
+          <div class="dia-panel" data-panel="${i}">
             <div class="nota-row"><span class="nota-lbl">Otro:</span><input class="nota-dia" type="text" maxlength="60" value="${nota.replace(/"/g,'&quot;')}" onchange="setNota('${emp.id}',${i},this.value)"></div>
           </div>` : ''}
         </div>`;
@@ -693,8 +693,8 @@ function renderAsis() {
     if(!datos||!datos.pos) return;
     const el = document.getElementById('asisrow-'+emp.id); if(!el) return;
     DIAS.forEach((_,i)=>{
-      const panel = el.querySelector(`[data-panel="${i}"]`); if(!panel) return;
-      const sel = panel.querySelector('select');
+      const wrap = el.querySelectorAll('.dia-wrap')[i]; if(!wrap) return;
+      const sel = wrap.querySelector('.pos-sel');
       if(sel && datos.pos[i]) sel.value = datos.pos[i];
     });
   });
