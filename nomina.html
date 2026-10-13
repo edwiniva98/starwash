@@ -2,7 +2,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 /* Layout: tab shell, sticky header, scrollable content, bottom nav */
@@ -407,7 +406,6 @@ const firebaseConfig = {
   appId: "1:426771852547:web:fd143b1bb798d46ddd8d36"
 };
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.firestore();
 const DOC = db.collection('nomina').doc('estado');
 const EMP_COL = db.collection('nomina_empleados');
@@ -432,8 +430,6 @@ function mostrarCargando(msg) {
 async function cargar() {
   mostrarCargando('⏳ Cargando datos…');
   try {
-    if(!auth.currentUser) await auth.signInAnonymously();
-
     // Cargar empleados desde nomina_empleados (misma colección que los cortes)
     const empSnap = await EMP_COL.get();
     if(!empSnap.empty) {
