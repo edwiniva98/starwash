@@ -439,23 +439,24 @@ function mostrarCargando(msg) {
 async function cargar() {
   mostrarCargando('⏳ Cargando datos…');
   try {
-    // Cargar estado desde Firestore (semanas, pagos, préstamos)
-    // Los empleados siempre vienen de EMPLEADOS_INIT — Firestore solo guarda asistencia
     const snap = await DOC.get();
-    // Empleados siempre desde el código
-    S.empleados = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
+    // Empleados base siempre desde el código
+    const baseEmps = EMPLEADOS_INIT.map((e,i)=>({id:'e'+i, ...e}));
     if(snap.exists) {
       const data = snap.data();
       S.semanas = data.semanas || {};
       S.prestamos = data.prestamos || [];
       S.semAct = data.semAct || semLunes(new Date());
+      // Empleados extra guardados en Firestore (los que se agregan desde la app)
+      const extras = data.empleadosExtra || [];
+      S.empleados = [...baseEmps, ...extras];
       // Aplicar estado inactivo guardado en Firestore
       const inactivosIds = data.inactivosIds || [];
       S.empleados.forEach(e=>{ e.inactivo = inactivosIds.includes(e.id); });
     } else {
       S.semanas = {}; S.prestamos = [];
       S.semAct = semLunes(new Date());
-      // Inactivos por defecto desde EMPLEADOS_INIT ya están en el map
+      S.empleados = baseEmps;
     }
   } catch(e) {
     console.error('Firebase error:', e);
@@ -496,13 +497,16 @@ function guardar() {
   clearTimeout(_guardandoTimer);
   _guardandoTimer = setTimeout(async ()=>{
     try {
-      // Solo guardamos semanas, prestamos, semAct e inactivosIds — NO los empleados completos
+      // Guardamos semanas, prestamos, semAct, inactivosIds y empleadosExtra (los que no están en EMPLEADOS_INIT)
+      const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
+      const empleadosExtra = S.empleados.filter(e=>!baseIds.has(e.id));
       const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
       await DOC.set({
         semanas: S.semanas,
         prestamos: S.prestamos,
         semAct: S.semAct,
-        inactivosIds
+        inactivosIds,
+        empleadosExtra
       });
     } catch(e) {
       mostrarCargando('⚠️ Error al guardar en la nube');
@@ -924,6 +928,7 @@ function renderPrest() {
         <span class="prest-chip">Monto original: $${fmt(p.monto)}</span>
         <span class="prest-chip">Desc. semanal: $${fmt(p.descSem)}</span>
         ${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}
+        <button onclick="pedirPinBorrarPrest('${p.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo,#e53);color:var(--rojo,#e53);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
       </div>
     </div>`;
   });
@@ -936,7 +941,11 @@ function renderPrest() {
           <span class="prest-nombre">${emp?emp.nombre:'—'}</span>
           <span class="prest-saldo ok">✓ Liquidado</span>
         </div>
-        <div class="prest-det"><span class="prest-chip">$${fmt(p.monto)}</span>${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}</div>
+        <div class="prest-det">
+          <span class="prest-chip">$${fmt(p.monto)}</span>
+          ${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}
+          <button onclick="pedirPinBorrarPrest('${p.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo,#e53);color:var(--rojo,#e53);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
+        </div>
       </div>`;
     });
   }
@@ -958,6 +967,17 @@ function guardarPrest() {
   if(!monto) return;
   S.prestamos.push({id:'p'+Date.now(), empId, monto, saldo:monto, descSem:desc, nota});
   guardar(); cerrarModal('modal-prest'); renderPrest();
+}
+let _prestBorrarId = null;
+function pedirPinBorrarPrest(prestId) {
+  _prestBorrarId = prestId;
+  pedirPin('borrar-prest','🗑 Borrar préstamo','Ingresa la contraseña para eliminar este préstamo.');
+}
+function borrarPrest() {
+  if(!_prestBorrarId) return;
+  S.prestamos = S.prestamos.filter(p=>p.id!==_prestBorrarId);
+  _prestBorrarId = null;
+  guardar(); renderPrest(); renderNom();
 }
 
 // ── EQUIPO ────────────────────────────────────────────────────────
@@ -1078,6 +1098,8 @@ function confirmarPin() {
     const emp = S.empleados.find(e=>e.id===pinDesactivarId);
     if(emp) { emp.inactivo = true; guardar(); cerrarModal('modal-emp'); render(); }
     pinDesactivarId = null;
+  } else if(pinAccion === 'borrar-prest') {
+    borrarPrest();
   }
   pinAccion = null;
 }
