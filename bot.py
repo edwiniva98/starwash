@@ -184,13 +184,22 @@ def detectar_fecha(texto: str) -> str | None:
     return None
 
 # ── CLAUDE ────────────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """Eres el asistente inteligente del *Autolavado Star Wash*, un negocio de lavado de autos en México.
+SYSTEM_PROMPT = f"""Eres el asistente inteligente del *Autolavado Star Wash*, un negocio de lavado de autos en México.
 
 Tu función es responder preguntas del dueño (Edwin) sobre los cortes del día: ventas, caja, diferencias, gastos, máquina, etc.
 
-Contexto del negocio:
-- Categorías de vehículos: Autos ($110), Camionetas ($120), Pick-Ups/SUV ($140), Express ($90), Fiscalía ($80), Motos ($60)
-- Adicionales: Tapetes ($40), Motor ($60), Lavado a Mano ($20), Plus+Cera ($20), Pro Cera+Tapetes ($50)
+Fecha actual: {datetime.now().strftime("%Y-%m-%d")} (año {datetime.now().year})
+IMPORTANTE: Cuando el usuario mencione fechas sin año (ej: "octubre", "el 15"), asume siempre el año {datetime.now().year} a menos que especifique otro.
+
+Contexto del negocio (precios actualizados desde octubre 2026):
+- Básicos (Prog 1-3): Auto Básico $130, Cam. Chica/Med. Básico $150, Pick-Up/SUV Grande Básico $170
+- Plus (Prog 4-6): Auto Plus $160, Cam. Chica/Med. Plus $180, Pick-Up/SUV Grande Plus $200
+- Pro (Prog 4T-6T): Auto Pro $190, Cam. Chica/Med. Pro $210, Pick-Up/SUV Grande Pro $230
+- Express: X1 Express $100, X4 Express Plus $130
+- Moto: $70 | Lavado a Mano: $30 | Lavado a Mano + Cera: $40 | Fiscalía: $80
+- Adicionales: + Cera Plus $30, + Cera y Tapetes Pro $60, Lavado de Motor $100, Lavado de Tapetes $50
+- Cortesías: C1 Taller, C1 Ayto, C4 Familiar, C4 Auto Plus (cortesía premium)
+- Seguros: S1 Seguro Básico 24h, S4 Seguro Plus/Pro 48h
 - La "máquina" es el contador automático de vehículos que pasan por el túnel de lavado
 - "Corte de caja" = comparar lo que dice Odoo (POS) vs lo que hay en el cajón
 - "Diferencia de máquina" = autos que contó la máquina vs autos esperados (pagados + cortesías + seguro - mano - regresos)
@@ -377,7 +386,7 @@ async def cmd_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ Revisando cómo va Star Wash hoy...")
     try:
         hoy = datetime.now().strftime("%Y-%m-%d")
-        historial = await get_historial_firestore(limite=500)
+        historial = await get_historial_firestore(limite=1000)
         actual = next((d for d in historial if d.get("fecha") == hoy), None)
         cortes = await get_cortes(limit=30, fecha=hoy)
 
@@ -421,7 +430,7 @@ async def cmd_records(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Buscando récords...")
     try:
-        historial = await get_historial_firestore(limite=500)
+        historial = await get_historial_firestore(limite=1000)
         historial = [d for d in historial if d.get("fecha") and float(d.get("total",0) or 0) > 0]
         if not historial:
             await msg.edit_text("Aún no hay historial suficiente para calcular récords.")
@@ -468,7 +477,7 @@ async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
     msg = await update.message.reply_text("⏳ Generando Excel con historial completo...")
     try:
-        historial = await get_historial_firestore(limite=500)
+        historial = await get_historial_firestore(limite=1000)
         if not historial:
             await msg.edit_text("No hay datos en el historial.")
             return
@@ -696,17 +705,27 @@ async def sincronizar_historial_odoo():
         # Clasificar productos
         def clasificar_producto(nom):
             n = nom.lower()
-            if 'cortesia taller' in n or 'cortesía taller' in n: return 'cortes_taller'
-            if 'cortesia ayuntamiento' in n or 'cortesía ayuntamiento' in n: return 'cortes_ayto'
-            if 'cortesia familiar' in n or 'cortesía familiar' in n: return 'cortes_familiar'
+            # Cortesías (primero para evitar falsos positivos)
+            if 'taller' in n: return 'cortes_taller'
+            if 'ayto' in n or 'ayuntamiento' in n: return 'cortes_ayto'
+            if 'familiar' in n: return 'cortes_familiar'
+            # Seguros
+            if 'seguro' in n: return 'seguro'
+            # Motos
             if 'moto' in n: return 'motos'
+            # Fiscalía
             if 'fiscal' in n: return 'fiscalia'
-            if 'express' in n: return 'express'
+            # Express (X1, X4)
+            if 'express' in n or n.startswith('x'): return 'express'
+            # Pick-Up / SUV Grande (Prog 3, 6, 6T)
             if 'pick' in n or 'suv' in n or 'minivan' in n: return 'pickups'
-            if 'camioneta' in n: return 'camionetas'
+            # Camioneta (Prog 2, 5, 5T)
+            if 'camioneta' in n or 'cam.' in n: return 'camionetas'
+            # Auto (Prog 1, 4, 4T)
             if 'auto' in n: return 'autos'
-            if 'pro cera' in n or 'pro_cera' in n: return 'pro_cera'
-            if 'plus' in n or 'cera' in n: return 'plus_cera'
+            # Adicionales
+            if 'cera y tapetes' in n or 'pro' in n: return 'pro_cera'
+            if 'cera' in n or 'plus' in n: return 'plus_cera'
             if 'mano' in n: return 'mano'
             if 'motor' in n: return 'motor'
             if 'tapete' in n: return 'tapetes'
@@ -814,10 +833,10 @@ async def sincronizar_historial_odoo():
         logger.info(f"Sincronización completa: {guardados} días guardados, {errores} errores")
         return guardados, errores, len(por_dia)
 
-async def get_historial_firestore(limite=500):
+async def get_historial_firestore(limite=1000):
     """Lee el historial de Firestore (más rápido que Odoo)."""
     url = f"{FIRESTORE_URL}/historial_odoo"
-    params = {"pageSize": limite}
+    params = {"pageSize": limite, "orderBy": "fecha desc"}
     async with httpx.AsyncClient() as client:
         r = await client.get(url, params=params)
         data = r.json()
@@ -1335,13 +1354,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.edit_text("⏳ Consultando historial completo de Odoo...")
             try:
                 # Intentar desde Firestore primero (más rápido)
-                historial_odoo = await get_historial_firestore()
+                historial_odoo = await get_historial_firestore(limite=1000)
                 if len(historial_odoo) < 10:
                     # Si no hay suficiente en Firestore, ir a Odoo
                     historial_odoo = await get_historial_odoo()
                 prompt_hist = f"""Eres el asistente del Autolavado Star Wash en Texcoco, México. El dueño (Edwin) pregunta sobre el historial de ventas.
 
-Tienes acceso al historial COMPLETO del negocio con {len(historial_odoo)} días de datos desde julio 2025.
+Fecha actual: {datetime.now().strftime("%d/%m/%Y")} (año {datetime.now().year})
+IMPORTANTE: Cuando mencionen fechas sin año, asume siempre {datetime.now().year}.
+
+Tienes acceso al historial COMPLETO del negocio con {len(historial_odoo)} días de datos.
 Cada registro tiene: fecha (YYYY-MM-DD), total (ventas del día en pesos MXN), num_tickets (número de órdenes).
 
 Historial completo:
