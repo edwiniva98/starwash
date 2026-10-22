@@ -18,7 +18,7 @@ FIRESTORE_URL      = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PR
 ODOO_URL           = os.environ.get("ODOO_URL", "https://star-wash.odoo.com")
 ODOO_DB            = os.environ.get("ODOO_DB", "star-wash")
 ODOO_USER          = os.environ.get("ODOO_USER", "starwashtexcoco@hotmail.com")
-ODOO_KEY           = os.environ.get("ODOO_KEY", "8f5c64a7d44c7ef76f99545760043dfdda89fa2a")
+ODOO_KEY           = os.environ.get("ODOO_KEY", "")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
