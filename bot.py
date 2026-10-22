@@ -620,9 +620,14 @@ async def get_historial_odoo(dias=None):
         por_dia = defaultdict(lambda: {'total': 0, 'ordenes': 0, 'sesion': ''})
         
         for o in ordenes:
-            fecha = (o.get('date_order') or '')[:10]
-            if not fecha:
+            raw_fecha = (o.get('date_order') or '')[:19]
+            if not raw_fecha:
                 continue
+            try:
+                dt_utc = datetime.strptime(raw_fecha, "%Y-%m-%d %H:%M:%S")
+                fecha = (dt_utc - timedelta(hours=6)).strftime("%Y-%m-%d")
+            except Exception:
+                fecha = raw_fecha[:10]
             por_dia[fecha]['total'] += o.get('amount_total', 0)
             por_dia[fecha]['ordenes'] += 1
             if o.get('session_id'):
@@ -698,7 +703,7 @@ async def sincronizar_historial_odoo():
         orden_info = {}
         for o in ordenes:
             orden_info[o['id']] = {
-                'fecha': (o.get('date_order') or '')[:10],
+                'fecha': (lambda d: (datetime.strptime(d, "%Y-%m-%d %H:%M:%S") - timedelta(hours=6)).strftime("%Y-%m-%d") if len(d) >= 19 else d[:10])((o.get('date_order') or '')[:19]),
                 'sesion': o['session_id'][1] if isinstance(o.get('session_id'), list) else ''
             }
         
