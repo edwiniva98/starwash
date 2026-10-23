@@ -1030,6 +1030,9 @@ async function cargarSesionOdoo(sessionId){
     const od = { sesion: sesion.name||'', ventas, adics, cortesias, pagos:{efe, tar, trans} };
     buildCorte(od);
 
+    // Recargar inicios de máquina con la fecha/turno que vino de Odoo
+    cargarInicioPaquetes();
+
     document.getElementById('odooSesiones').style.display = 'none';
     const gastosMsg = gastos_odoo.length > 0
       ? ` · ${gastos_odoo.length} gasto(s) cargado(s)`
