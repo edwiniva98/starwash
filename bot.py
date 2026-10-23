@@ -698,8 +698,25 @@ async def sincronizar_historial_odoo():
                 break
         
         logger.info(f"Total ordenes: {len(ordenes)}")
-        
-        # Mapa order_id -> fecha, hora CDMX y sesion
+
+        # Traer sesiones para obtener start_at y clasificar turno
+        sesiones_all = await odoo_call(client, uid, 'pos.session', 'search_read',
+            [[['state', 'in', ['closed', 'opened']]]],
+            {'fields': ['id', 'name', 'start_at'], 'limit': 5000}
+        )
+        # Mapa session_id -> turno ('D' o 'N') basado en start_at CDMX
+        # Día: start < 17:30 CDMX, Noche: start >= 18:00 CDMX
+        sesion_turno = {}
+        for s in sesiones_all:
+            raw_s = (s.get('start_at') or '')[:19]
+            if len(raw_s) >= 19:
+                dt_s = datetime.strptime(raw_s, "%Y-%m-%d %H:%M:%S") - timedelta(hours=6)
+                hora_s = dt_s.hour + dt_s.minute / 60
+                sesion_turno[s['id']] = 'N' if hora_s >= 18 else 'D'
+            else:
+                sesion_turno[s['id']] = 'D'
+
+        # Mapa order_id -> fecha, turno y sesion
         orden_info = {}
         for o in ordenes:
             raw = (o.get('date_order') or '')[:19]
@@ -707,13 +724,13 @@ async def sincronizar_historial_odoo():
                 dt_utc = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
                 dt_cdmx = dt_utc - timedelta(hours=6)
                 fecha = dt_cdmx.strftime("%Y-%m-%d")
-                hora_cdmx = dt_cdmx.hour + dt_cdmx.minute / 60  # hora decimal CDMX
             else:
                 fecha = raw[:10]
-                hora_cdmx = 12.0
+            sesion_id = o['session_id'][0] if isinstance(o.get('session_id'), list) else None
+            turno = sesion_turno.get(sesion_id, 'D') if sesion_id else 'D'
             orden_info[o['id']] = {
                 'fecha': fecha,
-                'hora_cdmx': hora_cdmx,
+                'turno': turno,
                 'sesion': o['session_id'][1] if isinstance(o.get('session_id'), list) else ''
             }
         
@@ -774,11 +791,11 @@ async def sincronizar_historial_odoo():
             qty = int(l.get('qty') or 0)
             precio = float(l.get('price_subtotal_incl') or 0)
             
-            hora_cdmx = orden_info[order_id]['hora_cdmx']
+            turno = orden_info[order_id]['turno']
             por_dia[fecha][cat] += qty
             por_dia[fecha]['total'] += precio
-            # Separar por turno: Día 08-18h, Noche 18-22h CDMX
-            if hora_cdmx >= 18:
+            # Separar por turno según start_at de la sesión
+            if turno == 'N':
                 por_dia[fecha]['total_noche'] += precio
             else:
                 por_dia[fecha]['total_dia'] += precio
