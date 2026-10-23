@@ -1592,33 +1592,55 @@ async def handle_odoo_sesion_detalle(request):
             )
 
             # Gastos / salidas de caja de la sesión
-            # Método 1: pos.payment con monto negativo (Odoo 16+)
+            # Los gastos aparecen como account.bank.statement.line con nombre
+            # tipo "POS/00525-out-masking", amount negativo, vinculados al diario
+            # de la sesión a través de pos_session_id o del nombre de la sesión.
+            sesion_name = sesion.get('name', '')  # e.g. "POS/00525"
             gastos_raw = []
+
+            # Método 1: account.bank.statement.line filtrado por nombre de sesión (más directo)
             try:
-                gastos_raw = await odoo_call(client, uid, 'pos.payment', 'search_read',
-                    [[['session_id', '=', session_id], ['amount', '<', 0]]],
-                    {'fields': ['amount', 'payment_method_id', 'pos_order_id'], 'limit': 200}
+                gastos_raw = await odoo_call(client, uid, 'account.bank.statement.line', 'search_read',
+                    [[['payment_ref', 'like', f'{sesion_name}-out-'], ['amount', '<', 0]]],
+                    {'fields': ['amount', 'payment_ref', 'narration', 'name'], 'limit': 200}
                 )
             except Exception:
                 pass
 
-            # Método 2: account.bank.statement.line con ref a la sesión (Odoo 14/15)
+            # Método 2: pos_session_id si el campo existe (Odoo 14/15/16 según versión)
             if not gastos_raw:
                 try:
                     gastos_raw = await odoo_call(client, uid, 'account.bank.statement.line', 'search_read',
                         [[['pos_session_id', '=', session_id], ['amount', '<', 0]]],
-                        {'fields': ['amount', 'payment_ref', 'narration'], 'limit': 200}
+                        {'fields': ['amount', 'payment_ref', 'narration', 'name'], 'limit': 200}
+                    )
+                except Exception:
+                    pass
+
+            # Método 3: pos.payment con monto negativo (algunas versiones Odoo 17)
+            if not gastos_raw:
+                try:
+                    gastos_raw = await odoo_call(client, uid, 'pos.payment', 'search_read',
+                        [[['session_id', '=', session_id], ['amount', '<', 0]]],
+                        {'fields': ['amount', 'payment_method_id', 'name'], 'limit': 200}
                     )
                 except Exception:
                     pass
 
             # Normalizar gastos a lista {concepto, monto}
+            # El concepto viene del nombre: "POS/00525-out-masking" → "masking"
+            import re
             gastos_norm = []
             for g in gastos_raw:
                 monto = abs(float(g.get('amount', 0)))
-                # Concepto: desde payment_ref, narration, o método de pago
-                concepto = (g.get('payment_ref') or g.get('narration') or
-                            (g.get('payment_method_id') and g['payment_method_id'][1]) or 'Gasto')
+                if monto == 0:
+                    continue
+                # Extraer concepto limpio: quitar prefijo "POS/XXXXX-out-"
+                raw_ref = (g.get('payment_ref') or g.get('name') or g.get('narration') or
+                           (g.get('payment_method_id') and g['payment_method_id'][1]) or 'Gasto')
+                concepto = re.sub(r'^POS/\d+-out-', '', str(raw_ref), flags=re.IGNORECASE).strip()
+                if not concepto:
+                    concepto = 'Gasto'
                 gastos_norm.append({'concepto': concepto, 'monto': round(monto, 2)})
 
         result = {
