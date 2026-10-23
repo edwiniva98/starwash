@@ -796,6 +796,52 @@ function recalcMaq(){
     total += vend;
   });
   document.getElementById('maq_total').textContent = total || 0;
+
+  // Actualizar también la tabla de resumen (o_maq_body) con los valores actuales
+  actualizarTablaMaqResumen();
+  recalcOut();
+}
+
+function actualizarTablaMaqResumen(){
+  const omBody = document.getElementById('o_maq_body');
+  if(!omBody) return;
+
+  // Calcular cuántos vendió Odoo por programa
+  const odooPorProg = {};
+  PROGRAMAS.forEach(p => odooPorProg[p.prog] = 0);
+  PAQUETES.forEach(paq => {
+    if(paq.prog) odooPorProg[paq.prog] = (odooPorProg[paq.prog]||0) + Math.round((D.V||{})[paq.key]||0);
+  });
+
+  omBody.innerHTML = '';
+  let totMaqAutos=0, totMaqOdoo=0;
+  PROGRAMAS.forEach(p => {
+    const ini = parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0;
+    const fin = parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0;
+    const autos = Math.max(0, fin - ini);
+    const odooQ = odooPorProg[p.prog] || 0;
+    const dif = autos - odooQ;
+    totMaqAutos += autos; totMaqOdoo += odooQ;
+    const difClass = dif===0 ? 'diff-ok' : Math.abs(dif)<=2 ? 'diff-warn' : 'diff-err';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="lbl">${p.name}</td>
+      <td class="c">${ini||'—'}</td><td class="c">${fin||'—'}</td>
+      <td class="c" style="font-weight:700;color:var(--teal)">${autos||'—'}</td>
+      <td class="c">${odooQ}</td>
+      <td class="c"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
+    omBody.appendChild(tr);
+  });
+
+  const finEl = document.getElementById('o_maq_fin_tot');
+  if(finEl) finEl.textContent = totMaqAutos || '—';
+  document.getElementById('o_maq_autos_tot').textContent = totMaqAutos || 0;
+  document.getElementById('o_maq_odoo_tot').textContent  = totMaqOdoo;
+  const difTot = totMaqAutos - totMaqOdoo;
+  const difTotEl = document.getElementById('o_maq_dif_tot');
+  if(difTotEl) difTotEl.innerHTML = `<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
+
+  // Actualizar D.maqVend para que recalcOut() use el valor correcto
+  if(D) D.maqVend = totMaqAutos;
 }
 
 // ═══════════════════════════════════════════════════════
