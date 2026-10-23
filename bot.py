@@ -747,7 +747,8 @@ async def sincronizar_historial_odoo():
             'autos': 0, 'camionetas': 0, 'pickups': 0, 'express': 0,
             'fiscalia': 0, 'motos': 0, 'plus_cera': 0, 'pro_cera': 0,
             'mano': 0, 'motor': 0, 'tapetes': 0,
-            'cortes_taller': 0, 'cortes_ayto': 0, 'cortes_familiar': 0, 'otros': 0
+            'cortes_taller': 0, 'cortes_ayto': 0, 'cortes_familiar': 0,
+            'seguro': 0, 'otros': 0
         })
         
         for l in lineas:
@@ -818,6 +819,7 @@ async def sincronizar_historial_odoo():
                     "cortes_taller":    {"integerValue": str(datos['cortes_taller'])},
                     "cortes_ayto":      {"integerValue": str(datos['cortes_ayto'])},
                     "cortes_familiar":  {"integerValue": str(datos['cortes_familiar'])},
+                    "seguro":           {"integerValue": str(datos['seguro'])},
                     "vehiculos_pagados":{"integerValue": str(vehiculos_pagados)},
                     "fuente":           {"stringValue": "odoo"},
                     "sincronizado":     {"stringValue": datetime.now().isoformat()},
