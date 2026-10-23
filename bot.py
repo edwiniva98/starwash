@@ -1684,6 +1684,25 @@ async def handle_options(request):
         'Access-Control-Allow-Headers': 'Content-Type',
     })
 
+async def handle_enviar_reporte(request):
+    """Recibe un resumen de corte desde el botón 📤 Enviar Reporte y lo manda a Telegram."""
+    try:
+        data = await request.json()
+        texto = data.get("texto", "").strip()
+        if not texto:
+            return web.Response(text="sin texto", status=400)
+        if _bot_app:
+            for uid in ALLOWED_USERS:
+                await _bot_app.bot.send_message(
+                    chat_id=uid,
+                    text=texto,
+                    parse_mode="Markdown"
+                )
+        return web.Response(text="ok")
+    except Exception as e:
+        logger.error(f"Error en handle_enviar_reporte: {e}")
+        return web.Response(text=f"error: {e}", status=500)
+
 async def handle_corte_nuevo(request):
     """Recibe un corte guardado desde el HTML y manda auditoría por Telegram."""
     try:
@@ -1711,6 +1730,7 @@ async def run_web_server():
     """Servidor HTTP para recibir notificaciones del HTML."""
     server = web.Application()
     server.router.add_post("/corte-nuevo", handle_corte_nuevo)
+    server.router.add_post("/enviar-reporte", handle_enviar_reporte)
     server.router.add_get("/odoo/sesiones", handle_odoo_sesiones)
     server.router.add_get("/odoo/fields", handle_odoo_fields)
     server.router.add_get("/odoo/sesion/{session_id}", handle_odoo_sesion_detalle)

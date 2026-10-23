@@ -1598,6 +1598,14 @@ async function enviarReporte(){
   const totalCaja = v('o_morralla')+v('o_billetes')+v('o_terminal')+(D.trans||0)+totGastos-v('o_apertura')-v('o_fondo');
   const dif = totalCobrado-totalCaja;
 
+  // Construir texto del reporte
+  let difTexto;
+  if(Math.abs(dif)<1)        difTexto='✅ Cuadra';
+  else if(dif>0)             difTexto=`❌ Faltan ${fmt(dif)} en caja`;
+  else                       difTexto=`⚠️ Sobran ${fmt(Math.abs(dif))} en caja`;
+
+  const gastosLineas = gastos.filter(g=>g.c&&g.m).map(g=>`  • ${g.c}: ${fmt(g.m)}`).join('\n');
+
   const resumen =
 `⭐ *CORTE STAR WASH — ${formatFecha(fecha)} ${turnoActual==='N'?'🌙 NOCHE':'☀️ DÍA'}*
 Sesión: ${document.getElementById('o_sesion').textContent}
@@ -1605,7 +1613,7 @@ Sesión: ${document.getElementById('o_sesion').textContent}
 💰 *Totales*
 • Cobrado (Odoo): ${fmt(totalCobrado)}
 • En Caja: ${fmt(totalCaja)}
-• Diferencia: ${dif>=0?'+':''}${fmt(dif)} ${Math.abs(dif)<50?'✅':Math.abs(dif)<500?'⚠️':'❌'}
+• Diferencia: ${difTexto}
 
 💳 *Formas de pago*
 • Efectivo: ${fmt(D.efe||0)}
@@ -1618,16 +1626,32 @@ Sesión: ${document.getElementById('o_sesion').textContent}
 • Total entraron: ${(D.cantPagados||0)+v('o_ct')+v('o_ca')+v('o_cf')+v('o_seg')}
 • Máquina (lectura): ${D.maqVend||0}
 
-💸 *Gastos*: ${fmt(totGastos)}
-${gastos.filter(g=>g.c&&g.m).map(g=>`  • ${g.c}: ${fmt(g.m)}`).join('\n')}
+💸 *Gastos*: ${fmt(totGastos)}${gastosLineas ? '\n'+gastosLineas : ''}
 
 👤 Responsable: ${document.getElementById('inp_resp').value||'—'}`;
 
-  if(navigator.share){
-    navigator.share({title:'Corte Star Wash', text:resumen}).catch(()=>copyToClipboard(resumen));
-  } else {
+  // Enviar al bot de Telegram vía Railway
+  const btn = document.querySelector('[onclick="enviarReporte()"]');
+  if(btn){ btn.disabled=true; btn.textContent='📤 Enviando...'; }
+  try{
+    const res = await fetch(`${BOT_BASE}/enviar-reporte`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ texto: resumen })
+    });
+    if(res.ok){
+      if(btn){ btn.textContent='✅ Enviado'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='📤 Enviar Reporte'; },3000); }
+      // También copiar al portapapeles como respaldo
+      try{ await navigator.clipboard.writeText(resumen); }catch(e){}
+    } else {
+      throw new Error(await res.text());
+    }
+  } catch(err){
+    console.error('Telegram error:', err);
+    // Fallback: copiar al portapapeles
     copyToClipboard(resumen);
-    alert('📋 Reporte copiado al portapapeles');
+    if(btn){ btn.disabled=false; btn.innerHTML='📤 Enviar Reporte'; }
+    alert('⚠️ No se pudo enviar a Telegram. Reporte copiado al portapapeles.\n\nError: '+err.message);
   }
 }
 
