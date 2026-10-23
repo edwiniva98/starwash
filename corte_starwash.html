@@ -1154,10 +1154,14 @@ async function generate(){
       buildCorte(od);
       setStatus('✅ PDF procesado correctamente', 'ok');
     } else {
-      // ── MODO API: generar corte sin datos Odoo (manual) ──
-      setStatus('Generando corte manual...', 'loading');
-      buildCorte(null);
-      setStatus('✅ Corte generado — recuerda cargar datos Odoo arriba', 'ok');
+      // ── MODO API: si ya hay datos Odoo cargados, preservarlos; si no, corte manual ──
+      setStatus('Generando corte...', 'loading');
+      buildCorte(D.od || null);  // reutiliza datos Odoo si ya se cargaron
+      if(D.od){
+        setStatus('✅ Corte generado con datos Odoo', 'ok');
+      } else {
+        setStatus('✅ Corte generado — recuerda cargar datos Odoo arriba', 'ok');
+      }
     }
   } catch(e) {
     setStatus('❌ Error: ' + e.message, 'err');
