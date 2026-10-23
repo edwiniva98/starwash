@@ -778,8 +778,8 @@ function renderGastos(){
   if(!gastos.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos.</p>'; return; }
   gastos.forEach((g,i) => {
     const d = document.createElement('div'); d.className = 'gasto-row';
-    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value">
-      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0">
+    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value" onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.gasto-row').querySelector('.gm').focus();}">
+      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();addGasto();}">
       <button class="del" onclick="gastos.splice(${i},1);renderGastos()">×</button>`;
     el.appendChild(d);
   });
@@ -793,8 +793,8 @@ function renderGastosOut(){
   const el = document.getElementById('o_gastos_list'); el.innerHTML = '';
   gastos.forEach((g,i) => {
     const d = document.createElement('div'); d.className = 'gasto-row';
-    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value;recalcOut()">
-      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0;recalcOut()">
+    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value;recalcOut()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.gasto-row').querySelector('.gm').focus();}">
+      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0;recalcOut()" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();addGastoOut();}">
       <button class="del" onclick="gastos.splice(${i},1);renderGastosOut();recalcOut()">×</button>`;
     el.appendChild(d);
   });
