@@ -953,6 +953,7 @@ async function cargarSesionOdoo(sessionId){
     const sesion = data.sesion;
     const pagos_raw = data.pagos || [];
     const lineas = data.lineas || [];
+    const gastos_odoo = data.gastos || [];
 
     // — Procesar ventas usando mapProducto() del nuevo sistema —
     const ventas = {}; PAQUETES.forEach(p => ventas[p.key] = 0);
@@ -1001,12 +1002,20 @@ async function cargarSesionOdoo(sessionId){
     if(inpCF) inpCF.value = cortesias.familiar || 0;
     if(inpSeg) inpSeg.value = cortesias.seguro || 0;
 
+    // — Cargar gastos de Odoo automáticamente —
+    if(gastos_odoo.length > 0){
+      gastos = gastos_odoo.map(g => ({c: g.concepto||'', m: parseFloat(g.monto)||0}));
+    }
+
     // — Construir corte con los datos —
     const od = { sesion: sesion.name||'', ventas, adics, cortesias, pagos:{efe, tar, trans} };
     buildCorte(od);
 
     document.getElementById('odooSesiones').style.display = 'none';
-    status.textContent = `✅ Sesión ${sesion.name} cargada — $${(sesion.total_payments_amount||0).toLocaleString('es-MX')} en ventas`;
+    const gastosMsg = gastos_odoo.length > 0
+      ? ` · ${gastos_odoo.length} gasto(s) cargado(s)`
+      : '';
+    status.textContent = `✅ Sesión ${sesion.name} cargada — $${(sesion.total_payments_amount||0).toLocaleString('es-MX')} en ventas${gastosMsg}`;
     setStatus('✅ Datos de Odoo cargados correctamente', 'ok');
   } catch(e){
     status.textContent = '❌ Error: ' + e.message;

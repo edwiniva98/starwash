@@ -1591,10 +1591,41 @@ async def handle_odoo_sesion_detalle(request):
                 {'fields': ['product_id', 'qty', 'price_unit', 'price_subtotal_incl'], 'limit': 2000}
             )
 
+            # Gastos / salidas de caja de la sesión
+            # Método 1: pos.payment con monto negativo (Odoo 16+)
+            gastos_raw = []
+            try:
+                gastos_raw = await odoo_call(client, uid, 'pos.payment', 'search_read',
+                    [[['session_id', '=', session_id], ['amount', '<', 0]]],
+                    {'fields': ['amount', 'payment_method_id', 'pos_order_id'], 'limit': 200}
+                )
+            except Exception:
+                pass
+
+            # Método 2: account.bank.statement.line con ref a la sesión (Odoo 14/15)
+            if not gastos_raw:
+                try:
+                    gastos_raw = await odoo_call(client, uid, 'account.bank.statement.line', 'search_read',
+                        [[['pos_session_id', '=', session_id], ['amount', '<', 0]]],
+                        {'fields': ['amount', 'payment_ref', 'narration'], 'limit': 200}
+                    )
+                except Exception:
+                    pass
+
+            # Normalizar gastos a lista {concepto, monto}
+            gastos_norm = []
+            for g in gastos_raw:
+                monto = abs(float(g.get('amount', 0)))
+                # Concepto: desde payment_ref, narration, o método de pago
+                concepto = (g.get('payment_ref') or g.get('narration') or
+                            (g.get('payment_method_id') and g['payment_method_id'][1]) or 'Gasto')
+                gastos_norm.append({'concepto': concepto, 'monto': round(monto, 2)})
+
         result = {
             'sesion': sesion,
             'pagos': pagos,
             'lineas': lineas,
+            'gastos': gastos_norm,
         }
         headers = {
             'Access-Control-Allow-Origin': '*',
