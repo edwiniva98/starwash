@@ -708,7 +708,7 @@ async function cargarInicioPaquetes(){
     const cajaF = fields.caja?.mapValue?.fields || {};
     const morralla = parseInt(cajaF.morralla?.integerValue || 0);
     const inpAp = document.getElementById('inp_apertura');
-    if(morralla && inpAp && !inpAp.value){
+    if(morralla && inpAp){
       inpAp.value = morralla;
       inpAp.style.background = 'var(--teal-light)';
       inpAp.title = `Morralla del corte ${docFecha}`;
