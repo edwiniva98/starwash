@@ -113,7 +113,14 @@ def generar_resumen_firebase(corte):
     # Turno
     turno_label = "🌙 Noche" if corte.get("turno") == "N" else "☀️ Día"
 
-    estado_din = "✅ Cuadra" if diferencia == 0 else (f"⚠️ Sobra {fmt(abs(diferencia))}" if diferencia > 0 else f"❌ Falta {fmt(abs(diferencia))}")
+    # diferencia = total_cobrado - total_caja
+    # >0 → cobrado > caja → faltan en caja | <0 → caja > cobrado → sobran en caja
+    if abs(diferencia) < 1:
+        estado_din = "✅ Cuadra"
+    elif diferencia > 0:
+        estado_din = f"❌ Faltan {fmt(diferencia)} en caja"
+    else:
+        estado_din = f"⚠️ Sobran {fmt(abs(diferencia))} en caja"
     estado_maq = "✅" if dif_maq == 0 else (f"⚠️ Faltan {dif_maq} por cobrar" if dif_maq > 0 else f"⚠️ Sobran {abs(dif_maq)} cobrados")
 
     msg  = f"⭐ *STAR WASH — CORTE*\n"
@@ -133,10 +140,7 @@ def generar_resumen_firebase(corte):
     msg += f"• Morralla: {fmt(c.get('morralla',0))} | Billetes: {fmt(c.get('billetes',0))} | Terminal: {fmt(c.get('terminal',0))}\n"
     msg += f"• *Total en caja: {fmt(total_caja)}*\n\n"
 
-    msg += f"📊 *RESULTADO: {estado_din}*\n"
-    if diferencia != 0:
-        msg += f"• Diferencia: {fmt(diferencia)}\n"
-    msg += "\n"
+    msg += f"📊 *RESULTADO: {estado_din}*\n\n"
 
     gastos = corte.get("gastos", [])
     if gastos:
