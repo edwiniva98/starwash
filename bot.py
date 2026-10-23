@@ -114,7 +114,7 @@ def generar_resumen_firebase(corte):
     turno_label = "🌙 Noche" if corte.get("turno") == "N" else "☀️ Día"
 
     estado_din = "✅ Cuadra" if diferencia == 0 else (f"⚠️ Sobra {fmt(abs(diferencia))}" if diferencia > 0 else f"❌ Falta {fmt(abs(diferencia))}")
-    estado_maq = "✅" if dif_maq == 0 else (f"⚠️ +{dif_maq}" if dif_maq > 0 else f"⚠️ {dif_maq}")
+    estado_maq = "✅" if dif_maq == 0 else (f"⚠️ Sobran {dif_maq} en máquina" if dif_maq > 0 else f"⚠️ Faltan {abs(dif_maq)} en máquina")
 
     msg  = f"⭐ *STAR WASH — CORTE*\n"
     msg += f"📅 {corte.get('fecha', '—')} {turno_label} | 🔖 {corte.get('sesion', '—')}\n"
