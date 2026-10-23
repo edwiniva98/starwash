@@ -640,14 +640,18 @@ async function cargarInicioPaquetes(){
     primeraCand = {fecha:fechaAyer, turno:'N'};
   }
 
-  // Listar todos los documentos de cortes
+  // Listar todos los documentos de cortes (paginando si hay más de 300)
   const base = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
   let todosLosDocs = [];
   try{
-    const r = await fetch(`${base}?pageSize=100`);
-    if(!r.ok) return;
-    const data = await r.json();
-    todosLosDocs = data.documents || [];
+    let url = `${base}?pageSize=300`;
+    while(url){
+      const r = await fetch(url);
+      if(!r.ok) break;
+      const data = await r.json();
+      todosLosDocs = todosLosDocs.concat(data.documents || []);
+      url = data.nextPageToken ? `${base}?pageSize=300&pageToken=${data.nextPageToken}` : null;
+    }
   } catch(e){ return; }
 
   // Convertir fecha+turno a número comparable (YYYYMMDD * 10 + turno: D=1, N=2)
