@@ -220,9 +220,9 @@ table.ct tr.amb td{background:var(--amber-light)}
 
   <!-- Lectura de máquina TÚNEL -->
   <div class="card">
-    <div class="card-head"><span class="ico">🔢</span>LECTURA DE TÚNEL — 6 PROGRAMAS</div>
+    <div class="card-head"><span class="ico">🔢</span>LECTURA DE TÚNEL</div>
     <div class="card-body">
-      <p class="hint">Captura Inicio y Final del contador físico de la máquina. El Final de hoy es el Inicio de mañana.</p>
+      <p class="hint">Captura el Final de cada paquete. El Inicio se precarga automáticamente del corte anterior.</p>
       <table class="maq-table">
         <thead>
           <tr>
@@ -535,12 +535,12 @@ const ADICIONALES = [
 
 // Programas del túnel
 const PROGRAMAS = [
-  {prog:1, name:'Prog 1 — Auto Básico'},
-  {prog:2, name:'Prog 2 — Cam. Básica'},
-  {prog:3, name:'Prog 3 — Pick-Up Básico'},
-  {prog:4, name:'Prog 4 — Auto Plus / Pro'},
-  {prog:5, name:'Prog 5 — Cam. Plus / Pro'},
-  {prog:6, name:'Prog 6 — Pick-Up Plus / Pro'},
+  {prog:1, name:'Paquete 1'},
+  {prog:2, name:'Paquete 2'},
+  {prog:3, name:'Paquete 3'},
+  {prog:4, name:'Paquete 4'},
+  {prog:5, name:'Paquete 5'},
+  {prog:6, name:'Paquete 6'},
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -612,16 +612,18 @@ async function cargarInicioPaquetes(){
   if(!fecha) return;
 
   // Calcular qué docId buscar según turno
+  // Incluimos también el formato viejo (sin sufijo) como fallback
   let candidatos = [];
   if(turnoActual === 'N'){
     // Turno noche: busca el turno Día del mismo día
-    candidatos = [ fecha.replace(/-/g,'') + '_D' ];
+    const hoy = fecha.replace(/-/g,'');
+    candidatos = [ hoy + '_D', hoy ]; // también formato viejo sin sufijo
   } else {
-    // Turno día: busca turno Noche de ayer, luego Día de ayer como fallback
+    // Turno día: busca turno Noche de ayer, luego Día de ayer como fallback, luego formato viejo
     const ayer = new Date(fecha + 'T12:00:00');
     ayer.setDate(ayer.getDate()-1);
     const fechaAyer = ayer.toISOString().slice(0,10).replace(/-/g,'');
-    candidatos = [ fechaAyer + '_N', fechaAyer + '_D' ];
+    candidatos = [ fechaAyer + '_N', fechaAyer + '_D', fechaAyer ];
   }
 
   const base = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
