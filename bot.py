@@ -108,7 +108,7 @@ def generar_resumen_firebase(corte):
     # Lectura máquina desde paquetes_finales
     paq = corte.get("paquetes_finales", [])
     maq_total = sum(p.get("autos", 0) for p in paq if isinstance(p, dict))
-    dif_maq = maq_total - autos_pagados
+    dif_maq = maq_total - (autos_pagados + total_cort)  # máquina vs pagados+cortesías
 
     # Turno
     turno_label = "🌙 Noche" if corte.get("turno") == "N" else "☀️ Día"
