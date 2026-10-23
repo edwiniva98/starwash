@@ -699,11 +699,21 @@ async def sincronizar_historial_odoo():
         
         logger.info(f"Total ordenes: {len(ordenes)}")
         
-        # Mapa order_id -> fecha y sesion
+        # Mapa order_id -> fecha, hora CDMX y sesion
         orden_info = {}
         for o in ordenes:
+            raw = (o.get('date_order') or '')[:19]
+            if len(raw) >= 19:
+                dt_utc = datetime.strptime(raw, "%Y-%m-%d %H:%M:%S")
+                dt_cdmx = dt_utc - timedelta(hours=6)
+                fecha = dt_cdmx.strftime("%Y-%m-%d")
+                hora_cdmx = dt_cdmx.hour + dt_cdmx.minute / 60  # hora decimal CDMX
+            else:
+                fecha = raw[:10]
+                hora_cdmx = 12.0
             orden_info[o['id']] = {
-                'fecha': (lambda d: (datetime.strptime(d, "%Y-%m-%d %H:%M:%S") - timedelta(hours=6)).strftime("%Y-%m-%d") if len(d) >= 19 else d[:10])((o.get('date_order') or '')[:19]),
+                'fecha': fecha,
+                'hora_cdmx': hora_cdmx,
                 'sesion': o['session_id'][1] if isinstance(o.get('session_id'), list) else ''
             }
         
@@ -743,7 +753,8 @@ async def sincronizar_historial_odoo():
         CORTESIAS = ['cortes_taller','cortes_ayto','cortes_familiar']
         
         por_dia = defaultdict(lambda: {
-            'total': 0, 'tickets': set(), 'sesion': '', 'fecha': '',
+            'total': 0, 'total_dia': 0, 'total_noche': 0,
+            'tickets': set(), 'sesion': '', 'fecha': '',
             'autos': 0, 'camionetas': 0, 'pickups': 0, 'express': 0,
             'fiscalia': 0, 'motos': 0, 'plus_cera': 0, 'pro_cera': 0,
             'mano': 0, 'motor': 0, 'tapetes': 0,
@@ -763,8 +774,14 @@ async def sincronizar_historial_odoo():
             qty = int(l.get('qty') or 0)
             precio = float(l.get('price_subtotal_incl') or 0)
             
+            hora_cdmx = orden_info[order_id]['hora_cdmx']
             por_dia[fecha][cat] += qty
             por_dia[fecha]['total'] += precio
+            # Separar por turno: Día 08-18h, Noche 18-22h CDMX
+            if hora_cdmx >= 18:
+                por_dia[fecha]['total_noche'] += precio
+            else:
+                por_dia[fecha]['total_dia'] += precio
             por_dia[fecha]['tickets'].add(order_id)
             por_dia[fecha]['fecha'] = fecha
             if orden_info[order_id]['sesion']:
@@ -803,6 +820,8 @@ async def sincronizar_historial_odoo():
                     "dia_semana":       {"stringValue": dia_semana},
                     "sesion":           {"stringValue": datos['sesion']},
                     "total":            {"doubleValue": round(datos['total'], 2)},
+                    "total_dia":        {"doubleValue": round(datos['total_dia'], 2)},
+                    "total_noche":      {"doubleValue": round(datos['total_noche'], 2)},
                     "num_tickets":      {"integerValue": str(num_tickets)},
                     "ticket_promedio":  {"doubleValue": ticket_promedio},
                     "autos":            {"integerValue": str(datos['autos'])},
