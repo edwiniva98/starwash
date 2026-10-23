@@ -288,21 +288,34 @@ table.ct tr.amb td{background:var(--amber-light)}
 
   <!-- Modo de carga -->
   <div class="card">
-    <div class="card-head"><span class="ico">📥</span>FUENTE DE DATOS ODOO</div>
+    <div class="card-head"><span class="ico">📥</span>DATOS DE ODOO</div>
     <div class="card-body">
-      <div style="display:flex;gap:10px;margin-bottom:12px">
-        <button class="modo-btn active" id="btn_modo_api" onclick="setModo('api')">🔗 API Directa<br><span style="font-size:10px;font-weight:400">Automático</span></button>
+      <!-- Selector de modo -->
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <button class="modo-btn active" id="btn_modo_api" onclick="setModo('api')">🔗 Sesiones Odoo<br><span style="font-size:10px;font-weight:400">Conexión directa</span></button>
         <button class="modo-btn" id="btn_modo_pdf" onclick="setModo('pdf')">📄 Subir PDF<br><span style="font-size:10px;font-weight:400">Reporte Z de Odoo</span></button>
       </div>
-      <!-- API Key Anthropic (solo para modo PDF) -->
-      <div id="apikey_wrap" style="display:none;margin-bottom:10px">
-        <div class="fl">
-          <label>API Key Anthropic (para leer el PDF)</label>
-          <input type="password" id="apikey" placeholder="sk-ant-..." oninput="localStorage.setItem('sw_ant_key',this.value)" style="background:var(--gray)">
+
+      <!-- MODO API: botón + lista de sesiones -->
+      <div id="api_wrap">
+        <button onclick="cargarSesionesOdoo()" style="background:#714B67;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600;width:100%">
+          🔗 Cargar sesiones recientes de Odoo
+        </button>
+        <div id="odooStatus" style="font-size:13px;color:#666;margin-top:8px;min-height:18px"></div>
+        <div id="odooSesiones" style="margin-top:10px;display:none">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Selecciona la sesión del día a procesar:</p>
+          <div id="odooListaSesiones"></div>
         </div>
       </div>
-      <!-- Dropzone PDF -->
+
+      <!-- MODO PDF -->
       <div id="pdf_wrap" style="display:none">
+        <div id="apikey_wrap" style="margin-bottom:10px">
+          <div class="fl">
+            <label>API Key Anthropic (para leer el PDF)</label>
+            <input type="password" id="apikey" placeholder="sk-ant-..." oninput="localStorage.setItem('sw_ant_key',this.value)" style="background:var(--gray)">
+          </div>
+        </div>
         <div id="dropzone" onclick="document.getElementById('fi').click()"
           ondragover="event.preventDefault();this.classList.add('over')"
           ondragleave="this.classList.remove('over')"
@@ -320,7 +333,7 @@ table.ct tr.amb td{background:var(--amber-light)}
   <!-- Generar -->
   <button class="btn-main" id="genBtn" onclick="generate()">
     <div id="spinner"></div>
-    <span id="genTxt">🔗 Conectar Odoo y Generar Corte</span>
+    <span id="genTxt">✅ Generar Corte (sin datos Odoo)</span>
   </button>
   <div class="status" id="gen_status"></div>
 
@@ -692,14 +705,115 @@ function setModo(modo){
   modoActual = modo;
   document.getElementById('btn_modo_api').classList.toggle('active', modo==='api');
   document.getElementById('btn_modo_pdf').classList.toggle('active', modo==='pdf');
-  document.getElementById('pdf_wrap').style.display    = modo==='pdf' ? 'block' : 'none';
-  document.getElementById('apikey_wrap').style.display = modo==='pdf' ? 'block' : 'none';
+  document.getElementById('api_wrap').style.display = modo==='api' ? 'block' : 'none';
+  document.getElementById('pdf_wrap').style.display = modo==='pdf' ? 'block' : 'none';
   const genTxt = document.getElementById('genTxt');
-  genTxt.textContent = modo==='api' ? '🔗 Conectar Odoo y Generar Corte' : '📄 Procesar PDF y Generar Corte';
-  // cargar key guardada
+  genTxt.textContent = modo==='api' ? '✅ Generar Corte (sin datos Odoo)' : '📄 Procesar PDF y Generar Corte';
   if(modo==='pdf'){
     const saved = localStorage.getItem('sw_ant_key');
     if(saved) document.getElementById('apikey').value = saved;
+  }
+}
+
+// ── ODOO VÍA RAILWAY PROXY ────────────────────────────────
+async function cargarSesionesOdoo(){
+  const status = document.getElementById('odooStatus');
+  const seccion = document.getElementById('odooSesiones');
+  const lista = document.getElementById('odooListaSesiones');
+  status.textContent = '⏳ Conectando con Odoo...';
+  try {
+    const r = await fetch(`${BOT_BASE}/odoo/sesiones`);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const sesiones = await r.json();
+    if(sesiones.error) throw new Error(sesiones.error);
+    if(!sesiones || sesiones.length === 0){
+      status.textContent = '⚠️ No hay sesiones disponibles en Odoo';
+      return;
+    }
+    status.textContent = `✅ ${sesiones.length} sesión(es) encontrada(s) — selecciona una:`;
+    seccion.style.display = 'block';
+    lista.innerHTML = sesiones.map(s => {
+      const total = s.total_payments_amount || 0;
+      const fechaObj = s.start_at ? new Date(s.start_at) : null;
+      const hora = fechaObj ? fechaObj.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '--';
+      const fechaDia = fechaObj ? fechaObj.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'}) : '--';
+      const estado = s.state==='closed'?'🔒 Cerrada':s.state==='opened'?'🟢 Abierta':s.state;
+      const dim = total===0 ? 'opacity:0.55;' : '';
+      return `<div style="${dim}display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f5f5f5;border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="cargarSesionOdoo(${s.id})">
+        <span style="font-weight:700;color:#714B67">${s.name}</span>
+        <span>💰 $${total.toLocaleString('es-MX')}</span>
+        <span style="color:#666;font-size:12px">${fechaDia} ${hora}</span>
+        <span style="font-size:11px;color:#999">${estado}</span>
+        <span style="margin-left:auto;color:#714B67;font-weight:600">${total===0?'⚠️ vacía':'→ Cargar'}</span>
+      </div>`;
+    }).join('');
+  } catch(e){
+    status.textContent = '❌ Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+async function cargarSesionOdoo(sessionId){
+  const status = document.getElementById('odooStatus');
+  status.textContent = '⏳ Cargando datos de la sesión...';
+  try {
+    const r = await fetch(`${BOT_BASE}/odoo/sesion/${sessionId}`);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+    const sesion = data.sesion;
+    const pagos_raw = data.pagos || [];
+    const lineas = data.lineas || [];
+
+    // — Procesar ventas usando mapProducto() del nuevo sistema —
+    const ventas = {}; PAQUETES.forEach(p => ventas[p.key] = 0);
+    const adics  = {}; ADICIONALES.forEach(a => adics[a.key] = 0);
+    const cortesias = {taller:0, ayuntamiento:0, familiar:0, seguro:0};
+
+    lineas.forEach(l => {
+      const pname = (l.product_id ? (l.product_id[1]||'') : '').toLowerCase();
+      const qty = Math.round(l.qty || 0);
+      const mapped = mapProducto(pname);
+      if(mapped.type==='venta')    ventas[mapped.key] = (ventas[mapped.key]||0) + qty;
+      else if(mapped.type==='adic') adics[mapped.key]  = (adics[mapped.key]||0)  + qty;
+      else if(mapped.type==='corte') cortesias[mapped.key] = (cortesias[mapped.key]||0) + qty;
+    });
+
+    // — Procesar pagos —
+    let efe=0, tar=0, trans=0;
+    pagos_raw.forEach(p => {
+      const pm = (p.payment_method_id ? (p.payment_method_id[1]||'') : '').toLowerCase();
+      const amt = p.amount || 0;
+      if(pm.includes('efectivo')||pm.includes('cash')) efe += amt;
+      else if(pm.includes('tarjeta')||pm.includes('card')||pm.includes('banco')) tar += amt;
+      else if(pm.includes('transfer')) trans += amt;
+      else efe += amt;
+    });
+
+    // — Llenar fecha y sesión —
+    const fechaRaw = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
+    document.getElementById('inp_fecha').value = fechaRaw;
+    document.getElementById('inp_sesion').value = sesion.name || '';
+    // Cortesías
+    const inpCT = document.getElementById('inp_ct');
+    const inpCA = document.getElementById('inp_ca');
+    const inpCF = document.getElementById('inp_cf');
+    const inpSeg = document.getElementById('inp_seg');
+    if(inpCT) inpCT.value = cortesias.taller || 0;
+    if(inpCA) inpCA.value = cortesias.ayuntamiento || 0;
+    if(inpCF) inpCF.value = cortesias.familiar || 0;
+    if(inpSeg) inpSeg.value = cortesias.seguro || 0;
+
+    // — Construir corte con los datos —
+    const od = { sesion: sesion.name||'', ventas, adics, cortesias, pagos:{efe, tar, trans} };
+    buildCorte(od);
+
+    document.getElementById('odooSesiones').style.display = 'none';
+    status.textContent = `✅ Sesión ${sesion.name} cargada — $${(sesion.total_payments_amount||0).toLocaleString('es-MX')} en ventas`;
+    setStatus('✅ Datos de Odoo cargados correctamente', 'ok');
+  } catch(e){
+    status.textContent = '❌ Error: ' + e.message;
+    console.error(e);
   }
 }
 
@@ -819,27 +933,19 @@ async function generate(){
       buildCorte(od);
       setStatus('✅ PDF procesado correctamente', 'ok');
     } else {
-      // ── MODO API ──
-      document.getElementById('genTxt').textContent = 'Cargando datos de Odoo...';
-      setStatus('Conectando con Odoo...', 'loading');
-      const od = await cargarDatosOdoo(fecha);
-      buildCorte(od);
-      setStatus('✅ Datos cargados desde Odoo', 'ok');
+      // ── MODO API: generar corte sin datos Odoo (manual) ──
+      setStatus('Generando corte manual...', 'loading');
+      buildCorte(null);
+      setStatus('✅ Corte generado — recuerda cargar datos Odoo arriba', 'ok');
     }
   } catch(e) {
-    if(modoActual === 'api'){
-      setStatus('⚠️ Sin conexión Odoo — modo manual. ' + e.message, 'err');
-      console.warn('Odoo error:', e);
-      buildCorte(null);
-    } else {
-      setStatus('❌ Error procesando PDF: ' + e.message, 'err');
-      console.error('PDF error:', e);
-    }
+    setStatus('❌ Error: ' + e.message, 'err');
+    console.error('generate() error:', e);
   } finally {
     btn.disabled = false; spin.style.display = 'none';
     document.getElementById('genTxt').textContent = modoActual === 'pdf'
       ? '📄 Procesar PDF y Generar Corte'
-      : '🔗 Conectar Odoo y Generar Corte';
+      : '✅ Generar Corte (sin datos Odoo)';
   }
 }
 
