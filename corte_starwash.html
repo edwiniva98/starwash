@@ -727,12 +727,34 @@ function buildMaqInputs(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="prog-name">${p.name}</td>
-      <td><input id="pi_ini_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()"></td>
-      <td><input id="pi_fin_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()"></td>
+      <td><input id="pi_ini_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()" onfocus="maqFocus(this)" onkeydown="maqEnter(event,'pi_ini_${p.prog}')"></td>
+      <td><input id="pi_fin_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()" onfocus="maqFocus(this)" onkeydown="maqEnter(event,'pi_fin_${p.prog}')"></td>
       <td class="vend" id="pi_vend_${p.prog}">—</td>`;
     tb.appendChild(tr);
   });
   recalcMaq();
+}
+
+// Orden de navegación con Enter en tabla de máquina
+const MAQ_ORDER = [
+  'pi_ini_1','pi_fin_1',
+  'pi_ini_2','pi_fin_2',
+  'pi_ini_3','pi_fin_3',
+  'pi_ini_4','pi_fin_4',
+  'pi_ini_5','pi_fin_5',
+  'pi_ini_6','pi_fin_6',
+];
+function maqEnter(e, currentId){
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const idx = MAQ_ORDER.indexOf(currentId);
+  if(idx >= 0 && idx < MAQ_ORDER.length - 1){
+    const next = document.getElementById(MAQ_ORDER[idx + 1]);
+    if(next){ next.focus(); next.select(); }
+  }
+}
+function maqFocus(el){
+  el.select();
 }
 
 function recalcMaq(){
