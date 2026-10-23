@@ -77,66 +77,78 @@ def fmt(n):
         return "$0.00"
 
 def generar_resumen_firebase(corte):
-    """Genera resumen completo desde datos de Firebase."""
-    v = corte.get("ventas", {})
-    a = corte.get("adicionales", {})
+    """Genera resumen desde datos de Firebase (formato nuevo corte_starwash.html)."""
+    # Pagos Odoo
     p = corte.get("pagos", {})
+    efe   = p.get("efe", 0)
+    tar   = p.get("tar", 0)
+    trans = p.get("trans", 0)
+    total_cobrado = corte.get("total_cobrado", efe + tar + trans)
+
+    # Caja física
     c = corte.get("caja", {})
-    t = corte.get("totales", {})
-    m = corte.get("maquina", {})
-    o = corte.get("otros", {})
+    total_caja  = corte.get("total_caja", c.get("total", 0))
+    diferencia  = corte.get("diferencia", total_cobrado - total_caja)
+    total_gastos = corte.get("total_gastos", 0)
 
-    autos_pagados = sum([v.get("autos", 0), v.get("camionetas", 0), v.get("pickups", 0), v.get("express", 0), v.get("fiscalia", 0)])
-    total_entraron = autos_pagados + o.get("cortes_taller", 0) + o.get("cortes_ayto", 0) + o.get("cortes_familiar", 0) + o.get("seguro", 0)
-    dif_din = t.get("diferencia_din", 0)
-    dif_maq = m.get("diferencia", 0)
+    # Cortesías
+    cort = corte.get("cortesias", {})
+    ct = cort.get("taller", 0)
+    ca = cort.get("ayuntamiento", 0)
+    cf = cort.get("familiar", 0)
+    seg = cort.get("seguro", 0)
+    total_cort = ct + ca + cf + seg
 
-    estado_din = "✅ Cuadra exacto" if dif_din == 0 else (f"⚠️ Sobra {fmt(abs(dif_din))}" if dif_din > 0 else f"❌ Falta {fmt(abs(dif_din))}")
-    estado_maq = "✅ Cuadra exacto" if dif_maq == 0 else (f"⚠️ +{dif_maq} en máquina (posible sin cobrar)" if dif_maq > 0 else f"⚠️ {abs(dif_maq)} menos en máquina")
+    # Ventas por paquete desde ventas_odoo
+    vo = corte.get("ventas_odoo", {})
+    # Suma todos excepto motos para autos pagados
+    autos_pagados = sum(v for k, v in vo.items() if k != "motos" and isinstance(v, (int, float)))
+    total_entraron = autos_pagados + total_cort
 
-    msg = f"⚡ *STAR WASH — CORTE DEL DÍA*\n"
-    msg += f"📅 {corte.get('fecha', '—')} | 🔖 {corte.get('sesion', '—')}\n"
+    # Lectura máquina desde paquetes_finales
+    paq = corte.get("paquetes_finales", [])
+    maq_total = sum(p.get("autos", 0) for p in paq if isinstance(p, dict))
+    dif_maq = maq_total - autos_pagados
+
+    # Turno
+    turno_label = "🌙 Noche" if corte.get("turno") == "N" else "☀️ Día"
+
+    estado_din = "✅ Cuadra" if diferencia == 0 else (f"⚠️ Sobra {fmt(abs(diferencia))}" if diferencia > 0 else f"❌ Falta {fmt(abs(diferencia))}")
+    estado_maq = "✅" if dif_maq == 0 else (f"⚠️ +{dif_maq}" if dif_maq > 0 else f"⚠️ {dif_maq}")
+
+    msg  = f"⭐ *STAR WASH — CORTE*\n"
+    msg += f"📅 {corte.get('fecha', '—')} {turno_label} | 🔖 {corte.get('sesion', '—')}\n"
     msg += f"👤 {corte.get('responsable', '—')}\n\n"
 
     msg += f"🚗 *VEHÍCULOS*\n"
-    msg += f"• Autos: {v.get('autos',0)} | Camionetas: {v.get('camionetas',0)} | Pick-Ups: {v.get('pickups',0)}\n"
-    msg += f"• Express: {v.get('express',0)} | Fiscalía: {v.get('fiscalia',0)} | Motos: {v.get('motos',0)}\n"
-    msg += f"• *Autos pagados: {autos_pagados}* | Cortesías: {o.get('cortes_taller',0)+o.get('cortes_ayto',0)+o.get('cortes_familiar',0)} (T:{o.get('cortes_taller',0)} A:{o.get('cortes_ayto',0)} F:{o.get('cortes_familiar',0)}) | Seguro: {o.get('seguro',0)}\n"
-    msg += f"• *Total entraron: {total_entraron}* | Máquina: {m.get('total_vendidos',0)}\n"
-    msg += f"• {estado_maq}\n\n"
-
-    msg += f"💵 *BILLETES EN CAJA: {fmt(c.get('billetes',0))}*\n\n"
+    msg += f"• Autos pagados: *{autos_pagados}* | Cortesías: {total_cort} (T:{ct} A:{ca} F:{cf}) | Seguro: {seg}\n"
+    msg += f"• *Total entraron: {total_entraron}* | Máquina: {maq_total} {estado_maq}\n\n"
 
     msg += f"💰 *VENTAS ODOO*\n"
-    msg += f"• Total tickets: *{fmt(t.get('total_tickets',0))}*\n"
-    msg += f"• Efectivo: {fmt(p.get('efectivo',0))} | Tarjeta: {fmt(p.get('tarjeta',0))} | Trans: {fmt(p.get('transferencia',0))}\n"
-    msg += f"• Total cobrado: *{fmt(t.get('total_cobrado',0))}*\n\n"
+    msg += f"• Efectivo: {fmt(efe)} | Tarjeta: {fmt(tar)} | Trans: {fmt(trans)}\n"
+    msg += f"• *Total cobrado: {fmt(total_cobrado)}*\n\n"
 
     msg += f"🏦 *CONTROL DE CAJA*\n"
     msg += f"• Apertura: {fmt(c.get('apertura',0))}\n"
     msg += f"• Morralla: {fmt(c.get('morralla',0))} | Billetes: {fmt(c.get('billetes',0))} | Terminal: {fmt(c.get('terminal',0))}\n"
-    msg += f"• *Total en caja: {fmt(t.get('total_caja',0))}*\n\n"
+    msg += f"• *Total en caja: {fmt(total_caja)}*\n\n"
 
-    msg += f"📊 *RESULTADO: {estado_din}*\n\n"
+    msg += f"📊 *RESULTADO: {estado_din}*\n"
+    if diferencia != 0:
+        msg += f"• Diferencia: {fmt(diferencia)}\n"
+    msg += "\n"
 
     gastos = corte.get("gastos", [])
     if gastos:
-        total_g = t.get("total_gastos", 0)
-        msg += f"💸 *GASTOS: {fmt(total_g)}*\n"
+        msg += f"💸 *GASTOS: {fmt(total_gastos)}*\n"
         for g in gastos:
             if isinstance(g, dict) and g.get("concepto") and g.get("monto", 0) > 0:
                 msg += f"• {g['concepto']}: {fmt(g['monto'])}\n"
-
-    svc = corte.get("servicios_manuales", [])
-    if svc:
-        msg += f"\n✨ *SERVICIOS MANUALES*\n"
-        for s in svc:
-            if isinstance(s, dict) and s.get("nombre") and s.get("total", 0) > 0:
-                msg += f"• {s['nombre']}: {fmt(s['total'])}\n"
+        msg += "\n"
 
     notas = [n for n in corte.get("notas", []) if n and str(n).strip()]
     if notas:
-        msg += f"\n📝 *NOTAS*\n"
+        msg += f"📝 *NOTAS*\n"
         for i, n in enumerate(notas, 1):
             msg += f"{i}. {n}\n"
 
