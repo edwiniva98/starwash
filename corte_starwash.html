@@ -204,7 +204,7 @@ table.ct tr.amb td{background:var(--amber-light)}
     <div class="card-head"><span class="ico">📋</span>DATOS GENERALES</div>
     <div class="card-body">
       <div class="g3">
-        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha"></div>
+        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha" onchange="limpiarYRecargarInicios()"></div>
         <div class="fl"><label>Responsable</label><input type="text" id="inp_resp" placeholder="Nombre"></div>
         <div class="fl"><label>Sesión Odoo</label><input type="text" id="inp_sesion" placeholder="POS/00525" class="odoo-val"></div>
       </div>
@@ -554,7 +554,7 @@ function ls(k, v){ if(v!==undefined) localStorage.setItem(k,v); else return loca
 // TURNO (D = Día, N = Noche)
 // ═══════════════════════════════════════════════════════
 let turnoActual = 'D';
-function setTurno(t){
+function setTurno(t, skipReload){
   turnoActual = t;
   const btnD = document.getElementById('btn_turno_d');
   const btnN = document.getElementById('btn_turno_n');
@@ -564,6 +564,16 @@ function setTurno(t){
   } else {
     btnN.style.cssText='flex:1;padding:8px;border:2px solid var(--navy);border-radius:7px;background:#1a2940;color:#9BBDD4;font-weight:700;font-size:13px;cursor:pointer';
     btnD.style.cssText='flex:1;padding:8px;border:2px solid var(--border);border-radius:7px;background:#fff;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer';
+  }
+  // Al cambiar turno manualmente, limpiar inicios y recargar del corte correcto
+  if(!skipReload){
+    PROGRAMAS.forEach(p => {
+      const inp = document.getElementById(`pi_ini_${p.prog}`);
+      if(inp && inp.style.background === 'var(--teal-light)'){ inp.value=''; inp.style.background=''; inp.title=''; }
+    });
+    const ban = document.getElementById('banner_inicios');
+    if(ban) ban.remove();
+    cargarInicioPaquetes();
   }
 }
 
@@ -583,12 +593,107 @@ window.onload = () => {
   if(k) document.getElementById('odoo_key').value = k;
   const ak = localStorage.getItem('sw_ant_key');
   if(ak) document.getElementById('apikey').value = ak;
-  document.getElementById('inp_fecha').value = new Date().toLocaleDateString('en-CA');
+  document.getElementById('inp_fecha').value = new Date().toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'});
   buildMaqInputs();
   renderGastos();
   renderNotas();
   addGasto(); // empezar con un gasto vacío
+  cargarInicioPaquetes(); // carga finales del corte anterior como inicios
 };
+
+// ═══════════════════════════════════════════════════════
+// CARGA AUTOMÁTICA DE INICIOS DESDE CORTE ANTERIOR
+// ═══════════════════════════════════════════════════════
+// Lógica:
+//   Turno Día  → busca los finales del turno Noche del día ANTERIOR (o Día anterior si no hay)
+//   Turno Noche → busca los finales del turno Día del MISMO día
+async function cargarInicioPaquetes(){
+  const fecha  = document.getElementById('inp_fecha').value;
+  if(!fecha) return;
+
+  // Calcular qué docId buscar según turno
+  let candidatos = [];
+  if(turnoActual === 'N'){
+    // Turno noche: busca el turno Día del mismo día
+    candidatos = [ fecha.replace(/-/g,'') + '_D' ];
+  } else {
+    // Turno día: busca turno Noche de ayer, luego Día de ayer como fallback
+    const ayer = new Date(fecha + 'T12:00:00');
+    ayer.setDate(ayer.getDate()-1);
+    const fechaAyer = ayer.toISOString().slice(0,10).replace(/-/g,'');
+    candidatos = [ fechaAyer + '_N', fechaAyer + '_D' ];
+  }
+
+  const base = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
+
+  for(const docId of candidatos){
+    try{
+      const r = await fetch(`${base}/${docId}`);
+      if(!r.ok) continue;
+      const doc = await r.json();
+      if(doc.error) continue;
+      const fields = doc.fields || {};
+      const paqField = fields.paquetes_finales;
+      if(!paqField?.arrayValue?.values?.length) continue;
+
+      const paquetes = paqField.arrayValue.values;
+      let alguno = false;
+      paquetes.forEach(p => {
+        const fp = p.mapValue?.fields || {};
+        const prog    = parseInt(fp.prog?.integerValue || 0);
+        const finalVal= parseInt(fp.final?.integerValue || fp.final?.doubleValue || 0);
+        if(prog && finalVal){
+          const inp = document.getElementById(`pi_ini_${prog}`);
+          if(inp && !inp.value){
+            inp.value = finalVal;
+            inp.style.background = 'var(--teal-light)';
+            inp.title = `Cargado del corte ${docId}`;
+            alguno = true;
+          }
+        }
+      });
+
+      if(alguno){
+        // También cargar morralla como apertura si turno Día viene de turno Noche anterior
+        const cajaF = fields.caja?.mapValue?.fields || {};
+        const morralla = parseInt(cajaF.morralla?.integerValue || 0);
+        const inpAp = document.getElementById('inp_apertura');
+        if(morralla && inpAp && !inpAp.value){
+          inpAp.value = morralla;
+          inpAp.style.background = 'var(--teal-light)';
+          inpAp.title = `Morralla del corte ${docId}`;
+        }
+        mostrarBannerInicio(docId);
+        recalcMaq();
+        return; // encontramos, no seguimos buscando
+      }
+    } catch(e){ /* silencioso */ }
+  }
+}
+
+function limpiarYRecargarInicios(){
+  PROGRAMAS.forEach(p => {
+    const inp = document.getElementById(`pi_ini_${p.prog}`);
+    if(inp){ inp.value=''; inp.style.background=''; inp.title=''; }
+  });
+  const ban = document.getElementById('banner_inicios');
+  if(ban) ban.remove();
+  cargarInicioPaquetes();
+}
+
+function mostrarBannerInicio(docId){
+  let banner = document.getElementById('banner_inicios');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'banner_inicios';
+    banner.style.cssText = 'background:var(--teal);color:#fff;padding:7px 12px;border-radius:7px;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:6px';
+    const maqCard = document.querySelector('#maq_body')?.closest('.card')?.querySelector('.card-body');
+    if(maqCard) maqCard.insertBefore(banner, maqCard.firstChild);
+  }
+  const origen = docId.endsWith('_N') ? 'turno Noche' : 'turno Día';
+  const fecha  = docId.slice(0,4)+'-'+docId.slice(4,6)+'-'+docId.slice(6,8);
+  banner.innerHTML = `✅ Inicios cargados del ${origen} del ${formatFecha(fecha)} — solo captura los Finales de este turno.`;
+}
 
 // ═══════════════════════════════════════════════════════
 // MÁQUINA — INPUTS
@@ -836,7 +941,7 @@ async function cargarSesionOdoo(sessionId){
     if(sesion.start_at){
       const fechaObj = odooUTCtoLocal(sesion.start_at);
       const horaLocal = parseInt(fechaObj.toLocaleTimeString('es-MX',{hour:'2-digit',hour12:false,timeZone:'America/Mexico_City'}));
-      setTurno(horaLocal < 15 ? 'D' : 'N');
+      setTurno(horaLocal < 15 ? 'D' : 'N', true); // skipReload: ya cargamos la sesión completa
     }
     // Cortesías
     const inpCT = document.getElementById('inp_ct');
@@ -1482,9 +1587,9 @@ function cargarCorteHist(doc){
   document.getElementById('inp_fecha').value = fecha;
   document.getElementById('inp_resp').value = f.responsable?.stringValue||'';
   document.getElementById('inp_sesion').value = f.sesion?.stringValue||'';
-  // Restaurar turno
+  // Restaurar turno (skipReload=true porque cargamos los datos del historial, no del corte anterior)
   const turno = f.turno?.stringValue||'D';
-  setTurno(turno);
+  setTurno(turno, true);
 
   // Cargar lecturas de máquina del historial
   const paqFinales = f.paquetes_finales?.arrayValue?.values||[];
