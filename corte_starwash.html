@@ -1461,9 +1461,17 @@ function recalcOut(){
 
   const difCajaEl = document.getElementById('o_dif_caja');
   if(difCajaEl){
-    if(Math.abs(difDinero)<1){ difCajaEl.innerHTML='<span class="diff-badge diff-ok">✅ Cuadra</span>'; }
-    else if(Math.abs(difDinero)<500){ difCajaEl.innerHTML=`<span class="diff-badge diff-warn">${difDinero>=0?'+':''}${fmt(difDinero)}</span>`; }
-    else { difCajaEl.innerHTML=`<span class="diff-badge diff-err">${difDinero>=0?'+':''}${fmt(difDinero)}</span>`; }
+    if(Math.abs(difDinero)<1){
+      difCajaEl.innerHTML='<span class="diff-badge diff-ok">✅ Cuadra</span>';
+    } else if(difDinero > 0){
+      // Cobrado > Caja → faltan en caja
+      const cls = difDinero < 500 ? 'diff-warn' : 'diff-err';
+      difCajaEl.innerHTML=`<span class="diff-badge ${cls}">❌ Faltan ${fmt(difDinero)} en caja</span>`;
+    } else {
+      // Cobrado < Caja → sobran en caja
+      const cls = Math.abs(difDinero) < 500 ? 'diff-warn' : 'diff-err';
+      difCajaEl.innerHTML=`<span class="diff-badge ${cls}">⚠️ Sobran ${fmt(Math.abs(difDinero))} en caja</span>`;
+    }
   }
 
   // KPIs
