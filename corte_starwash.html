@@ -132,6 +132,11 @@ table.ct tr.amb td{background:var(--amber-light)}
 .b-send{background:#25D366;color:#fff}
 .b-print{background:#475569;color:#fff}
 .b-reset{background:#94A3B8;color:#fff}
+.b-audit{background:#0EA5E9;color:#fff}
+#alertBox{display:none;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+#alertBox .ah{background:#0EA5E9;color:#fff;padding:9px 16px;font-weight:700;font-size:13px}
+#alertBox .ab{padding:14px 16px;font-size:13px;line-height:1.9;background:#0F172A;color:#fff}
+@media print{#alertBox{display:none!important}}
 
 /* STATUS */
 .status{font-size:12px;color:var(--muted);margin-top:6px;text-align:center;min-height:18px}
@@ -349,6 +354,12 @@ table.ct tr.amb td{background:var(--amber-light)}
 <!-- ══ CORTE OUTPUT ══ -->
 <div id="corteWrap">
 
+  <!-- AI Analysis Box -->
+  <div id="alertBox">
+    <div class="ah">🤖 Análisis del Corte</div>
+    <div class="ab" id="alertContent"></div>
+  </div>
+
   <!-- Header -->
   <div class="card" style="margin-bottom:12px">
     <div class="card-body" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:10px 14px">
@@ -493,6 +504,7 @@ table.ct tr.amb td{background:var(--amber-light)}
 
   <!-- Acciones -->
   <div class="actions" id="actions">
+    <button class="btn-sec b-audit" onclick="runAudit()">🤖 Análisis IA</button>
     <button class="btn-sec b-save" onclick="guardarCorte()">💾 Guardar Corte</button>
     <button class="btn-sec b-send" onclick="enviarReporte()">📤 Enviar Reporte</button>
     <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
@@ -1710,6 +1722,62 @@ function cargarCorteHist(doc){
 }
 
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ANÁLISIS IA
+// ═══════════════════════════════════════════════════════
+async function runAudit(){
+  const key = document.getElementById('apikey').value.trim();
+  if(!key){ alert('Ingresa tu API Key de Anthropic para usar el análisis IA.'); return; }
+
+  const box = document.getElementById('alertBox');
+  const content = document.getElementById('alertContent');
+  box.style.display = 'block';
+  content.innerHTML = '⏳ Analizando...';
+
+  const v = id => parseFloat(document.getElementById(id)?.value)||0;
+  const cantPagados = D.cantPagados || 0;
+  const cort = { ct: v('o_ct'), ca: v('o_ca'), cf: v('o_cf'), seg: v('o_seg') };
+  const totalCort = cort.ct + cort.ca + cort.cf + cort.seg;
+  const totalEntraron = cantPagados + totalCort;
+  const maqVend = D.maqVend || 0;
+  const difMaq = maqVend - totalEntraron;
+  const totalCobrado = (D.efe||0) + (D.tar||0) + (D.trans||0);
+  const totGastos = gastos.reduce((s,g)=>s+(g.m||0),0);
+  const morralla=v('o_morralla'), billetes=v('o_billetes'), terminal=v('o_terminal');
+  const apertura=v('o_apertura'), fondo=v('o_fondo');
+  const totalCaja = morralla + billetes + terminal + (D.trans||0) + totGastos - apertura - fondo;
+  const difDin = totalCobrado - totalCaja;
+  const notasAudit = notas.filter(n=>n&&n.trim());
+
+  const prompt = `Eres el auditor del Autolavado Star Wash. Analiza este corte del día. Responde en español, máximo 6 líneas, usa ✅⚠️❌. Sé concreto con números.
+
+DATOS:
+- Autos pagados: ${cantPagados} | Cortesías: Taller ${cort.ct}, Ayto ${cort.ca}, Familiar ${cort.cf}, Seguro ${cort.seg}
+- Total entraron: ${totalEntraron} | Máquina real: ${maqVend}
+- Diferencia máquina: ${difMaq===0?'cuadra exacto':difMaq>0?difMaq+' de más en máquina = posibles sin cobrar':Math.abs(difMaq)+' de menos = posibles cobrados sin pasar'}
+- Efectivo: ${D.efe||0} | Tarjeta: ${D.tar||0} | Transferencia: ${D.trans||0}
+- Total cobrado (Odoo): $${totalCobrado} | Total en caja (físico): $${totalCaja}
+- Diferencia dinero: ${difDin===0?'cuadra exacto':'$'+difDin+' '+(difDin>0?'sobra':'falta')}
+- Gastos: $${totGastos}
+${notasAudit.length?'Notas: '+notasAudit.join(' | '):''}`;
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok){ content.innerHTML='❌ Error al conectar con IA'; return; }
+    const data = await res.json();
+    const txt = data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
+    content.innerHTML = txt.replace(/\n/g,'<br>');
+  }catch(e){
+    content.innerHTML='❌ Error: '+e.message;
+    console.warn('Audit error:',e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 // RESET
 // ═══════════════════════════════════════════════════════
 function resetAll(){
@@ -1718,6 +1786,7 @@ function resetAll(){
   document.getElementById('inputSection').style.display='block';
   document.getElementById('corteWrap').style.display='none';
   document.getElementById('actions').style.display='none';
+  document.getElementById('alertBox').style.display='none';
   document.getElementById('inp_fecha').value=new Date().toLocaleDateString('en-CA');
   document.getElementById('inp_resp').value='';
   document.getElementById('inp_sesion').value='';
