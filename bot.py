@@ -1459,35 +1459,71 @@ async def handle_odoo_fields(request):
         return web.Response(text=json.dumps({"error": str(e)}), status=500, headers={'Access-Control-Allow-Origin': '*'})
 
 async def handle_odoo_sesiones(request):
-    """Devuelve las últimas 5 sesiones POS de Odoo."""
+    """Devuelve sesiones POS de Odoo. Con ?fecha=YYYY-MM-DD filtra ese día."""
     try:
+        from datetime import datetime, timedelta, timezone
+        fecha_str = request.rel_url.query.get('fecha')  # YYYY-MM-DD opcional
         async with httpx.AsyncClient(timeout=30) as client:
             uid = await odoo_uid(client)
-            from datetime import datetime, timedelta
-            hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d 00:00:00')
-            # Buscar sesiones cerradas de los últimos 7 días + sesión abierta actual
-            sesiones_cerradas = await odoo_call(client, uid, 'pos.session', 'search_read',
-                [[['state', '=', 'closed'], ['stop_at', '>=', hace_7_dias]]],
-                {
-                    'fields': ['id', 'name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
-                    'order': 'stop_at desc',
-                    'limit': 5
-                }
-            )
-            sesiones_abiertas = await odoo_call(client, uid, 'pos.session', 'search_read',
-                [[['state', '=', 'opened']]],
-                {
-                    'fields': ['id', 'name', 'start_at', 'stop_at', 'state', 'total_payments_amount', 'cash_register_balance_start', 'cash_register_difference'],
-                    'limit': 1
-                }
-            )
-            sesiones = sesiones_abiertas + sesiones_cerradas
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Content-Type': 'application/json'
-        }
-        return web.Response(text=json.dumps(sesiones), headers=headers)
+            CORS_HEADERS = {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Content-Type': 'application/json'
+            }
+            if fecha_str:
+                # Filtrar exactamente ese día en UTC-6 (= UTC+6h)
+                # medianoche CDMX = fecha 06:00 UTC
+                d0 = datetime.strptime(fecha_str, '%Y-%m-%d').replace(tzinfo=timezone.utc) + timedelta(hours=6)
+                d1 = d0 + timedelta(hours=24)
+                utc_start = d0.strftime('%Y-%m-%d %H:%M:%S')
+                utc_end   = d1.strftime('%Y-%m-%d %H:%M:%S')
+                # Sesiones que iniciaron ese día
+                sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
+                    [[['start_at', '>=', utc_start], ['start_at', '<', utc_end]]],
+                    {
+                        'fields': ['id', 'name', 'start_at', 'stop_at', 'state',
+                                   'total_payments_amount', 'cash_register_balance_start',
+                                   'cash_register_difference'],
+                        'order': 'start_at desc',
+                        'limit': 5
+                    }
+                )
+                # Si no hay sesión que inició ese día, buscar sesión abierta (puede haber
+                # iniciado el día anterior y todavía no se cierra)
+                if not sesiones:
+                    sesiones = await odoo_call(client, uid, 'pos.session', 'search_read',
+                        [[['state', '=', 'opened']]],
+                        {
+                            'fields': ['id', 'name', 'start_at', 'stop_at', 'state',
+                                       'total_payments_amount', 'cash_register_balance_start',
+                                       'cash_register_difference'],
+                            'limit': 1
+                        }
+                    )
+            else:
+                # Sin fecha: devolver últimas 5 + abierta actual
+                hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d 00:00:00')
+                sesiones_cerradas = await odoo_call(client, uid, 'pos.session', 'search_read',
+                    [[['state', '=', 'closed'], ['stop_at', '>=', hace_7_dias]]],
+                    {
+                        'fields': ['id', 'name', 'start_at', 'stop_at', 'state',
+                                   'total_payments_amount', 'cash_register_balance_start',
+                                   'cash_register_difference'],
+                        'order': 'stop_at desc',
+                        'limit': 5
+                    }
+                )
+                sesiones_abiertas = await odoo_call(client, uid, 'pos.session', 'search_read',
+                    [[['state', '=', 'opened']]],
+                    {
+                        'fields': ['id', 'name', 'start_at', 'stop_at', 'state',
+                                   'total_payments_amount', 'cash_register_balance_start',
+                                   'cash_register_difference'],
+                        'limit': 1
+                    }
+                )
+                sesiones = sesiones_abiertas + sesiones_cerradas
+        return web.Response(text=json.dumps(sesiones), headers=CORS_HEADERS)
     except Exception as e:
         logger.error(f"Error odoo_sesiones: {e}")
         return web.Response(text=json.dumps({"error": str(e)}), status=500,

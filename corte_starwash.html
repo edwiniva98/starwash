@@ -488,6 +488,7 @@ table.ct tr.amb td{background:var(--amber-light)}
 // ═══════════════════════════════════════════════════════
 const FIREBASE_PROJECT = 'starwash-cortes';
 const ODOO_BASE = 'https://starwash.odoo.com';
+const BOT_BASE  = 'https://worker-production-d35e.up.railway.app'; // proxy Railway → Odoo
 
 // Paquetes vendidos en Odoo — mapeo exacto por nombre de producto
 const PAQUETES = [
@@ -635,12 +636,44 @@ function renderNotasOut(){
 // ═══════════════════════════════════════════════════════
 async function odooRPC(model, method, args, kwargs){
   const key = document.getElementById('odoo_key').value.trim();
+  // Odoo 17 SaaS: autenticación con API key via Basic Auth (user=key, pass=key)
+  // o via header X-Openerp-Session-Id / api_key en params
   const url = `${ODOO_BASE}/web/dataset/call_kw`;
-  const body = { jsonrpc:'2.0', method:'call', id:1, params:{ model, method, args, kwargs:{...kwargs, context:{lang:'es_MX',tz:'America/Merida'}}}};
+  const body = {
+    jsonrpc:'2.0', method:'call', id:Date.now(),
+    params:{
+      model, method, args,
+      kwargs:{
+        ...kwargs,
+        context:{lang:'es_MX', tz:'America/Merida'},
+        // Incluir API key en context si está disponible
+      }
+    }
+  };
   const headers = {'Content-Type':'application/json'};
-  if(key) headers['Authorization'] = `Bearer ${key}`;
-  const r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body), credentials:'include'});
-  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  if(key){
+    // Odoo 16/17 SaaS acepta API key como Basic Auth con usuario vacío
+    headers['Authorization'] = 'Basic ' + btoa(key + ':' + key);
+  }
+  const r = await fetch(url, {
+    method:'POST',
+    headers,
+    body: JSON.stringify(body),
+    credentials: key ? 'omit' : 'include'
+  });
+  if(!r.ok){
+    // Si falla Basic Auth, intentar con Bearer
+    if(r.status === 500 || r.status === 401){
+      const headers2 = {'Content-Type':'application/json'};
+      if(key) headers2['Authorization'] = `Bearer ${key}`;
+      const r2 = await fetch(url, {method:'POST', headers:headers2, body:JSON.stringify(body), credentials:'omit'});
+      if(!r2.ok) throw new Error(`HTTP ${r2.status} — Verifica la API Key de Odoo`);
+      const j2 = await r2.json();
+      if(j2.error) throw new Error(j2.error.data?.message || j2.error.message || 'Error Odoo');
+      return j2.result;
+    }
+    throw new Error(`HTTP ${r.status}`);
+  }
   const j = await r.json();
   if(j.error) throw new Error(j.error.data?.message || j.error.message || 'Error Odoo');
   return j.result;
@@ -811,73 +844,69 @@ async function generate(){
 }
 
 async function cargarDatosOdoo(fecha){
-  // Convertir fecha local a rango UTC (UTC-6 → sumar 6h)
-  const fechaInicio = fecha + ' 06:00:00'; // medianoche CDMX en UTC
-  const fechaFin    = fecha + ' 29:59:59'; // 23:59:59 CDMX en UTC (siguiente día 05:59:59 UTC)
-  // Simplificado: buscar orders donde date_order en [fecha 06:00 UTC, fecha+1 06:00 UTC]
+  // ── PASO 1: Obtener sesiones del día via proxy Railway ──
+  // El bot tiene CORS abierto y credenciales de Odoo en sus env vars
+  setStatus('Buscando sesiones del día...', 'loading');
+  const rSes = await fetch(`${BOT_BASE}/odoo/sesiones?fecha=${fecha}`, {
+    headers: {'Accept': 'application/json'}
+  });
+  if(!rSes.ok) throw new Error(`Bot Railway: HTTP ${rSes.status}`);
+  const todasSesiones = await rSes.json();
+  if(todasSesiones.error) throw new Error('Odoo: ' + todasSesiones.error);
+
+  // Filtrar sesiones del día pedido (el bot devuelve últimas 7 días)
   const d0 = new Date(fecha + 'T06:00:00Z');
   const d1 = new Date(d0.getTime() + 24*60*60*1000);
-  const utcStart = d0.toISOString().slice(0,19).replace('T',' ');
-  const utcEnd   = d1.toISOString().slice(0,19).replace('T',' ');
+  const sesionesDia = todasSesiones.filter(s => {
+    const t = new Date(s.start_at);
+    return t >= d0 && t < d1;
+  });
 
-  // 1. Buscar sesiones del día
-  const sesiones = await odooRPC('pos.session', 'search_read',
-    [[['start_at','>=',utcStart],['start_at','<',utcEnd]]],
-    {fields:['name','start_at','stop_at','state'], limit:5}
-  );
+  // Si no filtra por fecha, usar todas (puede ser sesión de hoy aún abierta)
+  const sesiones = sesionesDia.length ? sesionesDia : todasSesiones.slice(0,1);
+  if(!sesiones.length) throw new Error('No hay sesiones POS para ' + fecha);
 
-  const sesionName = sesiones.length ? sesiones[0].name : (document.getElementById('inp_sesion').value || '—');
-  if(sesiones.length && !document.getElementById('inp_sesion').value){
+  const sesion = sesiones[0];
+  const sesionName = sesion.name || '—';
+  if(!document.getElementById('inp_sesion').value){
     document.getElementById('inp_sesion').value = sesionName;
   }
 
-  const sesionIds = sesiones.map(s => s.id);
-  if(!sesionIds.length) throw new Error('No se encontraron sesiones POS para ' + fecha);
+  // ── PASO 2: Obtener detalle de la sesión (líneas + pagos) ──
+  setStatus(`Cargando ventas de ${sesionName}...`, 'loading');
+  const rDet = await fetch(`${BOT_BASE}/odoo/sesion/${sesion.id}`, {
+    headers: {'Accept': 'application/json'}
+  });
+  if(!rDet.ok) throw new Error(`Bot detalle: HTTP ${rDet.status}`);
+  const detalle = await rDet.json();
+  if(detalle.error) throw new Error('Odoo detalle: ' + detalle.error);
 
-  // 2. Cargar órdenes de la sesión
-  const orders = await odooRPC('pos.order', 'search_read',
-    [[['session_id','in',sesionIds],['state','in',['paid','done','invoiced']]]],
-    {fields:['name','lines','amount_total','payment_ids'], limit:500}
-  );
+  const lines = detalle.lineas || [];
+  const pagos_list = detalle.pagos || [];
 
-  const orderIds = orders.map(o => o.id);
-
-  // 3. Cargar líneas de productos
-  const lines = await odooRPC('pos.order.line', 'search_read',
-    [[['order_id','in',orderIds]]],
-    {fields:['product_id','qty','price_unit','order_id'], limit:2000}
-  );
-
-  // 4. Cargar pagos
-  const pagos_list = await odooRPC('pos.payment', 'search_read',
-    [[['pos_order_id','in',orderIds]]],
-    {fields:['payment_method_id','amount'], limit:2000}
-  );
-
-  // Procesar productos
+  // ── PASO 3: Procesar productos ──
   const ventas = {}; PAQUETES.forEach(p => ventas[p.key] = 0);
   const adics = {};  ADICIONALES.forEach(a => adics[a.key] = 0);
   const cortesias = {taller:0, ayuntamiento:0, familiar:0, seguro:0};
 
   lines.forEach(l => {
-    const pname = (l.product_id[1] || '').toLowerCase();
+    const pname = (l.product_id ? (l.product_id[1] || '') : '').toLowerCase();
     const qty = Math.round(l.qty || 0);
-    // Mapear por nombre de producto
     const mapped = mapProducto(pname);
     if(mapped.type === 'venta')    ventas[mapped.key] = (ventas[mapped.key]||0) + qty;
     else if(mapped.type === 'adic')  adics[mapped.key]  = (adics[mapped.key]||0)  + qty;
     else if(mapped.type === 'corte') cortesias[mapped.key] = (cortesias[mapped.key]||0) + qty;
   });
 
-  // Procesar pagos
+  // ── PASO 4: Procesar pagos ──
   let efe=0, tar=0, trans=0;
   pagos_list.forEach(p => {
-    const pm = (p.payment_method_id[1]||'').toLowerCase();
+    const pm = (p.payment_method_id ? (p.payment_method_id[1]||'') : '').toLowerCase();
     const amt = p.amount || 0;
     if(pm.includes('efectivo') || pm.includes('cash')) efe += amt;
     else if(pm.includes('tarjeta') || pm.includes('card') || pm.includes('credit') || pm.includes('debit')) tar += amt;
     else if(pm.includes('transfer')) trans += amt;
-    else efe += amt; // default cash
+    else efe += amt;
   });
 
   return { sesion:sesionName, ventas, adics, cortesias, pagos:{efe, tar, trans} };
