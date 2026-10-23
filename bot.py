@@ -1501,16 +1501,16 @@ async def handle_odoo_sesiones(request):
                         }
                     )
             else:
-                # Sin fecha: devolver últimas 5 + abierta actual
-                hace_7_dias = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d 00:00:00')
+                # Sin fecha: devolver últimas 20 sesiones (2 turnos/día = ~10 días)
+                hace_14_dias = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d 00:00:00')
                 sesiones_cerradas = await odoo_call(client, uid, 'pos.session', 'search_read',
-                    [[['state', '=', 'closed'], ['stop_at', '>=', hace_7_dias]]],
+                    [[['state', '=', 'closed'], ['stop_at', '>=', hace_14_dias]]],
                     {
                         'fields': ['id', 'name', 'start_at', 'stop_at', 'state',
                                    'total_payments_amount', 'cash_register_balance_start',
                                    'cash_register_difference'],
                         'order': 'stop_at desc',
-                        'limit': 5
+                        'limit': 20
                     }
                 )
                 sesiones_abiertas = await odoo_call(client, uid, 'pos.session', 'search_read',
