@@ -512,25 +512,27 @@ const BOT_BASE  = 'https://worker-production-d35e.up.railway.app'; // proxy Rail
 
 // Paquetes vendidos en Odoo — mapeo exacto por nombre de producto
 const PAQUETES = [
-  {key:'auto_bas',   name:'Auto Básico',           price:110, prog:1},
-  {key:'cam_bas',    name:'Cam. Básica',            price:120, prog:2},
-  {key:'pickup_bas', name:'Pick-Up Básico',         price:140, prog:3},
-  {key:'auto_plus',  name:'Auto Plus',              price:140, prog:4},
-  {key:'auto_pro',   name:'Auto Pro',               price:170, prog:4},
-  {key:'cam_plus',   name:'Cam. Plus',              price:160, prog:5},
-  {key:'cam_pro',    name:'Cam. Pro',               price:190, prog:5},
-  {key:'pickup_plus',name:'Pick-Up Plus',           price:175, prog:6},
-  {key:'pickup_pro', name:'Pick-Up Pro',            price:210, prog:6},
-  {key:'express',    name:'Express',                price:90,  prog:null},
-  {key:'fiscalia',   name:'Fiscalía',               price:80,  prog:null},
-  {key:'motos',      name:'Motos',                  price:60,  prog:null},
+  {key:'t1',        name:'1. Auto Básico',                  price:130, prog:1},
+  {key:'t2',        name:'2. Camionetas Chica y Med. Básico',price:140, prog:2},
+  {key:'t3',        name:'3. Pick-Up/SUV Grande Básico',    price:150, prog:3},
+  {key:'t4',        name:'4. Auto Plus',                    price:160, prog:4},
+  {key:'t4t',       name:'4T. Auto Pro',                    price:190, prog:4},
+  {key:'t5',        name:'5. Camioneta Chica y Med. Plus',  price:170, prog:5},
+  {key:'t5t',       name:'5T. Camioneta Chica y Med. Pro',  price:200, prog:5},
+  {key:'t6',        name:'6. Pick-Up/SUV Grande Plus',      price:180, prog:6},
+  {key:'t6t',       name:'6T. Pick-Up/SUV Grande Pro',      price:210, prog:6},
+  {key:'x1',        name:'X1. Express',                     price:100, prog:1},
+  {key:'x4',        name:'X4. Express Plus',                price:130, prog:4},
+  {key:'fiscalia',  name:'Fiscalía',                        price:80,  prog:null},
+  {key:'motos',     name:'Motos',                           price:70,  prog:null},
 ];
 const ADICIONALES = [
-  {key:'tapetes',    name:'Lavado de Tapetes Solo', price:40},
-  {key:'motor',      name:'Lavado de Motor',        price:60},
-  {key:'mano',       name:'Lavado a Mano',          price:20},
-  {key:'plus_cera',  name:'Plus + Cera',            price:20},
-  {key:'pro_cera',   name:'Pro Cera + Tapetes',     price:50},
+  {key:'cera_plus',     name:'+ Cera Plus',          price:30},
+  {key:'cera_tapetes',  name:'+ Cera y Tapetes Pro', price:60},
+  {key:'tapetes',       name:'Lavado de Tapetes',    price:40},
+  {key:'motor',         name:'Lavado de Motor',      price:100},
+  {key:'mano',          name:'M1. Lavado a Mano',    price:20},
+  {key:'mano_cera',     name:'M2. Lavado a Mano + Cera', price:40},
 ];
 
 // Programas del túnel
@@ -1047,14 +1049,15 @@ Responde SOLO con un objeto JSON con esta estructura exacta (sin markdown, solo 
 {
   "sesion": "nombre de sesión o fecha",
   "ventas": {
-    "auto_bas": 0, "cam_bas": 0, "pickup_bas": 0,
-    "auto_plus": 0, "auto_pro": 0,
-    "cam_plus": 0, "cam_pro": 0,
-    "pickup_plus": 0, "pickup_pro": 0,
-    "express": 0, "fiscalia": 0, "motos": 0
+    "t1": 0, "t2": 0, "t3": 0,
+    "t4": 0, "t4t": 0,
+    "t5": 0, "t5t": 0,
+    "t6": 0, "t6t": 0,
+    "x1": 0, "x4": 0,
+    "fiscalia": 0, "motos": 0
   },
   "adics": {
-    "tapetes": 0, "motor": 0, "mano": 0, "plus_cera": 0, "pro_cera": 0
+    "cera_plus": 0, "cera_tapetes": 0, "tapetes": 0, "motor": 0, "mano": 0, "mano_cera": 0
   },
   "cortesias": {
     "taller": 0, "ayuntamiento": 0, "familiar": 0, "seguro": 0
@@ -1065,13 +1068,20 @@ Responde SOLO con un objeto JSON con esta estructura exacta (sin markdown, solo 
 }
 
 Mapea los productos así:
-- "Auto Básico" → auto_bas, "Camioneta Básica/Cam. Básica" → cam_bas, "Pick-Up Básico/PickUp Básico" → pickup_bas
-- "Auto Plus" → auto_plus, "Auto Pro" → auto_pro
-- "Cam. Plus/Camioneta Plus" → cam_plus, "Cam. Pro/Camioneta Pro" → cam_pro
-- "Pick-Up Plus/PickUp Plus" → pickup_plus, "Pick-Up Pro/PickUp Pro" → pickup_pro
-- "Express" → express, "Fiscalía" → fiscalia, "Motos" → motos
-- Adicionales: tapetes, motor, lavado a mano, plus cera, pro cera+tapetes
-- Cortesías: taller, ayuntamiento, familiar, seguro de lluvia
+- "1. Auto Básico" → t1
+- "2. Camionetas Chica y Med. Básico" → t2
+- "3. Pick-Up/SUV Grande Básico" → t3
+- "4. Auto Plus" → t4
+- "4T. Auto Pro" → t4t
+- "5. Camioneta Chica y Med. Plus" → t5
+- "5T. Camioneta Chica y Med. Pro" → t5t
+- "6. Pick-Up/SUV Grande Plus" → t6
+- "6T. Pick-Up/SUV Grande Pro" → t6t
+- "X1. Express" → x1
+- "X4. Express Plus" → x4
+- "Fiscalía" → fiscalia, "Motos" → motos
+- Adicionales: "+ Cera Plus" → cera_plus, "+ Cera y Tapetes Pro" → cera_tapetes, "Lavado de Tapetes" → tapetes, "Lavado de Motor" → motor, "M1. Lavado a Mano" → mano, "M2. Lavado a Mano + Cera" → mano_cera
+- Cortesías (precio $0): C1 Taller → taller, C1/C4 Ayto → ayuntamiento, CF4 Familiar → familiar, S1/S4 Seguro → seguro
 - Pagos: efectivo/cash → efe, tarjeta/card → tar, transferencia/transfer → trans
 
 Usa las cantidades (qty) no los montos. Si un dato no aparece pon 0.`;
@@ -1215,30 +1225,32 @@ async function cargarDatosOdoo(fecha){
 
 function mapProducto(nombre){
   const n = nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-  // Ventas
-  if(n.includes('auto') && n.includes('basico'))  return {type:'venta', key:'auto_bas'};
-  if(n.includes('auto') && n.includes('plus'))    return {type:'venta', key:'auto_plus'};
-  if(n.includes('auto') && n.includes('pro'))     return {type:'venta', key:'auto_pro'};
-  if((n.includes('camioneta')||n.includes('cam')) && n.includes('basic')) return {type:'venta', key:'cam_bas'};
-  if((n.includes('camioneta')||n.includes('cam')) && n.includes('plus'))  return {type:'venta', key:'cam_plus'};
-  if((n.includes('camioneta')||n.includes('cam')) && n.includes('pro'))   return {type:'venta', key:'cam_pro'};
-  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('basic')) return {type:'venta', key:'pickup_bas'};
-  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('plus'))  return {type:'venta', key:'pickup_plus'};
-  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('pro'))   return {type:'venta', key:'pickup_pro'};
-  if(n.includes('express'))  return {type:'venta', key:'express'};
-  if(n.includes('fiscal'))   return {type:'venta', key:'fiscalia'};
-  if(n.includes('moto'))     return {type:'venta', key:'motos'};
+  // Ventas túnel — por número de producto (más robusto)
+  if(n.startsWith('6t') || (n.includes('pick') && n.includes('pro')))    return {type:'venta', key:'t6t'};
+  if(n.startsWith('5t') || (n.includes('camion') && n.includes('pro')))  return {type:'venta', key:'t5t'};
+  if(n.startsWith('4t') || (n.includes('auto') && n.includes('pro')))    return {type:'venta', key:'t4t'};
+  if(n.startsWith('6.') || n.startsWith('6 ') || (n.includes('pick') && n.includes('plus')))  return {type:'venta', key:'t6'};
+  if(n.startsWith('5.') || n.startsWith('5 ') || (n.includes('camion') && n.includes('plus'))) return {type:'venta', key:'t5'};
+  if(n.startsWith('4.') || n.startsWith('4 ') || (n.includes('auto') && n.includes('plus')))   return {type:'venta', key:'t4'};
+  if(n.startsWith('3.') || n.startsWith('3 ') || (n.includes('pick') && n.includes('basic')))  return {type:'venta', key:'t3'};
+  if(n.startsWith('2.') || n.startsWith('2 ') || (n.includes('camion') && n.includes('basic'))) return {type:'venta', key:'t2'};
+  if(n.startsWith('1.') || n.startsWith('1 ') || (n.includes('auto') && n.includes('basic')))   return {type:'venta', key:'t1'};
+  if(n.startsWith('x4') || (n.includes('express') && n.includes('plus'))) return {type:'venta', key:'x4'};
+  if(n.startsWith('x1') || n.includes('express'))  return {type:'venta', key:'x1'};
+  if(n.includes('fiscal'))  return {type:'venta', key:'fiscalia'};
+  if(n.includes('moto'))    return {type:'venta', key:'motos'};
   // Adicionales
-  if(n.includes('tapete') && !n.includes('cera')) return {type:'adic', key:'tapetes'};
-  if(n.includes('motor'))  return {type:'adic', key:'motor'};
-  if(n.includes('mano'))   return {type:'adic', key:'mano'};
-  if(n.includes('plus') && n.includes('cera') && !n.includes('pro')) return {type:'adic', key:'plus_cera'};
-  if(n.includes('pro') && (n.includes('cera')||n.includes('tapete'))) return {type:'adic', key:'pro_cera'};
+  if(n.includes('cera') && n.includes('tapete'))   return {type:'adic', key:'cera_tapetes'};
+  if(n.includes('cera'))                            return {type:'adic', key:'cera_plus'};
+  if(n.includes('tapete'))                          return {type:'adic', key:'tapetes'};
+  if(n.includes('motor'))                           return {type:'adic', key:'motor'};
+  if(n.startsWith('m2') || (n.includes('mano') && n.includes('cera'))) return {type:'adic', key:'mano_cera'};
+  if(n.startsWith('m1') || n.includes('mano'))      return {type:'adic', key:'mano'};
   // Cortesías
-  if(n.includes('taller'))      return {type:'corte', key:'taller'};
-  if(n.includes('ayuntamiento')||n.includes('ayto')) return {type:'corte', key:'ayuntamiento'};
-  if(n.includes('familiar'))    return {type:'corte', key:'familiar'};
-  if(n.includes('seguro'))      return {type:'corte', key:'seguro'};
+  if(n.includes('taller'))                          return {type:'corte', key:'taller'};
+  if(n.includes('ayto') || n.includes('ayuntamiento')) return {type:'corte', key:'ayuntamiento'};
+  if(n.includes('familiar'))                        return {type:'corte', key:'familiar'};
+  if(n.includes('seguro'))                          return {type:'corte', key:'seguro'};
   return {type:'otro', key:'otro'};
 }
 
