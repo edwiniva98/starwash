@@ -802,6 +802,45 @@ function recalcMaq(){
   recalcOut();
 }
 
+// Sincroniza el input de Final editado en la tabla de resumen hacia pi_fin_X
+function syncFinFromResumen(prog, val){
+  const piFinEl = document.getElementById(`pi_fin_${prog}`);
+  if(piFinEl){ piFinEl.value = val; }
+  // Recalcular solo las celdas de esta fila en el resumen
+  const ini = parseFloat(document.getElementById(`pi_ini_${prog}`)?.value)||0;
+  const fin = parseFloat(val)||0;
+  const autos = Math.max(0, fin - ini);
+  // Actualizar celda AUTOS de esta fila
+  const autosEl = document.getElementById(`of_autos_${prog}`);
+  if(autosEl) autosEl.textContent = autos||'—';
+  // Actualizar VEND en la tabla de arriba
+  const vendEl = document.getElementById(`pi_vend_${prog}`);
+  if(vendEl) vendEl.textContent = (ini||fin) ? autos : '—';
+  // Recalc totales y KPIs
+  recalcOut();
+  // Actualizar totales del footer de la tabla
+  let totAutos=0, totOdoo=0;
+  PROGRAMAS.forEach(p2 => {
+    const i2 = parseFloat(document.getElementById(`pi_ini_${p2.prog}`)?.value)||0;
+    const f2 = parseFloat(document.getElementById(`pi_fin_${p2.prog}`)?.value)||0;
+    totAutos += Math.max(0, f2-i2);
+  });
+  const odooPorProg2={};
+  PROGRAMAS.forEach(p2=>odooPorProg2[p2.prog]=0);
+  PAQUETES.forEach(paq=>{ if(paq.prog) odooPorProg2[paq.prog]=(odooPorProg2[paq.prog]||0)+Math.round((D.V||{})[paq.key]||0); });
+  PROGRAMAS.forEach(p2=>{ totOdoo += odooPorProg2[p2.prog]||0; });
+  const finTotEl=document.getElementById('o_maq_fin_tot');
+  if(finTotEl) finTotEl.textContent=totAutos||'—';
+  const autosTotEl=document.getElementById('o_maq_autos_tot');
+  if(autosTotEl) autosTotEl.textContent=totAutos||0;
+  const odooTotEl=document.getElementById('o_maq_odoo_tot');
+  if(odooTotEl) odooTotEl.textContent=totOdoo;
+  const difTot=totAutos-totOdoo;
+  const difTotEl=document.getElementById('o_maq_dif_tot');
+  if(difTotEl) difTotEl.innerHTML=`<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
+  if(D) D.maqVend=totAutos;
+}
+
 function actualizarTablaMaqResumen(){
   const omBody = document.getElementById('o_maq_body');
   if(!omBody) return;
@@ -825,10 +864,11 @@ function actualizarTablaMaqResumen(){
     const difClass = dif===0 ? 'diff-ok' : Math.abs(dif)<=2 ? 'diff-warn' : 'diff-err';
     const tr = document.createElement('tr');
     tr.innerHTML = `<td class="lbl">${p.name}</td>
-      <td class="c">${ini||'—'}</td><td class="c">${fin||'—'}</td>
-      <td class="c" style="font-weight:700;color:var(--teal)">${autos||'—'}</td>
+      <td class="c">${ini||'—'}</td>
+      <td class="c"><input type="number" id="of_fin_${p.prog}" value="${fin||''}" placeholder="—" style="width:70px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;background:#fff" oninput="syncFinFromResumen(${p.prog},this.value)"></td>
+      <td class="c" style="font-weight:700;color:var(--teal)" id="of_autos_${p.prog}">${autos||'—'}</td>
       <td class="c">${odooQ}</td>
-      <td class="c"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
+      <td class="c" id="of_dif_${p.prog}"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
     omBody.appendChild(tr);
   });
 
@@ -1413,10 +1453,11 @@ function buildCorte(od){
     const difClass = dif===0 ? 'diff-ok' : Math.abs(dif)<=2 ? 'diff-warn' : 'diff-err';
     const tr = document.createElement('tr');
     tr.innerHTML = `<td class="lbl">${p.name}</td>
-      <td class="c">${ini||'—'}</td><td class="c">${fin||'—'}</td>
-      <td class="c" style="font-weight:700;color:var(--teal)">${autos||'—'}</td>
+      <td class="c">${ini||'—'}</td>
+      <td class="c"><input type="number" id="of_fin_${p.prog}" value="${fin||''}" placeholder="—" style="width:70px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;background:#fff" oninput="syncFinFromResumen(${p.prog},this.value)"></td>
+      <td class="c" style="font-weight:700;color:var(--teal)" id="of_autos_${p.prog}">${autos||'—'}</td>
       <td class="c">${odooQ}</td>
-      <td class="c"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
+      <td class="c" id="of_dif_${p.prog}"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
     omBody.appendChild(tr);
   });
   document.getElementById('o_maq_autos_tot').textContent = totMaqAutos || 0;
