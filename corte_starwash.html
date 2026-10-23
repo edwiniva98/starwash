@@ -25,6 +25,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#E4EDF5;c
 #topbar button{background:#1C3A54;border:1px solid #2D5A7A;color:#9BBDD4;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap}
 #topbar button:hover{background:#2D5A7A;color:#fff}
 
+/* DROPZONE PDF */
+#dropzone{border:2px dashed var(--sky);border-radius:10px;background:#fff;padding:20px;text-align:center;cursor:pointer;transition:all .2s}
+#dropzone:hover,#dropzone.over{background:var(--ice);border-color:var(--blue)}
+#dropzone .dz-icon{font-size:28px;margin-bottom:4px}
+#dropzone strong{color:var(--navy);font-size:13px}
+#dropzone p{color:var(--muted);font-size:11px;margin-top:2px}
+#fileInfo{margin-top:4px;font-size:12px;color:var(--teal);font-weight:600}
+/* MODO selector */
+.modo-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);transition:all .15s;text-align:center}
+.modo-btn.active{border-color:var(--blue);background:var(--ice);color:var(--blue)}
+.modo-btn:hover{border-color:var(--sky)}
+
 /* LAYOUT */
 #app{max-width:900px;margin:0 auto;padding:16px 12px 40px}
 
@@ -274,6 +286,37 @@ table.ct tr.amb td{background:var(--amber-light)}
     </div>
   </div>
 
+  <!-- Modo de carga -->
+  <div class="card">
+    <div class="card-head"><span class="ico">📥</span>FUENTE DE DATOS ODOO</div>
+    <div class="card-body">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <button class="modo-btn active" id="btn_modo_api" onclick="setModo('api')">🔗 API Directa<br><span style="font-size:10px;font-weight:400">Automático</span></button>
+        <button class="modo-btn" id="btn_modo_pdf" onclick="setModo('pdf')">📄 Subir PDF<br><span style="font-size:10px;font-weight:400">Reporte Z de Odoo</span></button>
+      </div>
+      <!-- API Key Anthropic (solo para modo PDF) -->
+      <div id="apikey_wrap" style="display:none;margin-bottom:10px">
+        <div class="fl">
+          <label>API Key Anthropic (para leer el PDF)</label>
+          <input type="password" id="apikey" placeholder="sk-ant-..." oninput="localStorage.setItem('sw_ant_key',this.value)" style="background:var(--gray)">
+        </div>
+      </div>
+      <!-- Dropzone PDF -->
+      <div id="pdf_wrap" style="display:none">
+        <div id="dropzone" onclick="document.getElementById('fi').click()"
+          ondragover="event.preventDefault();this.classList.add('over')"
+          ondragleave="this.classList.remove('over')"
+          ondrop="handleDrop(event)">
+          <div class="dz-icon">📄</div>
+          <strong>Arrastra el PDF aquí o toca para seleccionar</strong>
+          <p>Reporte Z / Detalles de ventas de Odoo</p>
+          <div id="fileInfo"></div>
+        </div>
+        <input type="file" id="fi" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+      </div>
+    </div>
+  </div>
+
   <!-- Generar -->
   <button class="btn-main" id="genBtn" onclick="generate()">
     <div id="spinner"></div>
@@ -492,6 +535,8 @@ function ls(k, v){ if(v!==undefined) localStorage.setItem(k,v); else return loca
 window.onload = () => {
   const k = ls('sw_odoo_key');
   if(k) document.getElementById('odoo_key').value = k;
+  const ak = localStorage.getItem('sw_ant_key');
+  if(ak) document.getElementById('apikey').value = ak;
   document.getElementById('inp_fecha').value = new Date().toLocaleDateString('en-CA');
   buildMaqInputs();
   renderGastos();
@@ -606,6 +651,123 @@ function setStatus(msg, cls=''){
   el.textContent = msg; el.className = 'status ' + cls;
 }
 
+// ── MODO (API / PDF) ──────────────────────────────────────
+let modoActual = 'api';
+let pdfFile = null;
+
+function setModo(modo){
+  modoActual = modo;
+  document.getElementById('btn_modo_api').classList.toggle('active', modo==='api');
+  document.getElementById('btn_modo_pdf').classList.toggle('active', modo==='pdf');
+  document.getElementById('pdf_wrap').style.display    = modo==='pdf' ? 'block' : 'none';
+  document.getElementById('apikey_wrap').style.display = modo==='pdf' ? 'block' : 'none';
+  const genTxt = document.getElementById('genTxt');
+  genTxt.textContent = modo==='api' ? '🔗 Conectar Odoo y Generar Corte' : '📄 Procesar PDF y Generar Corte';
+  // cargar key guardada
+  if(modo==='pdf'){
+    const saved = localStorage.getItem('sw_ant_key');
+    if(saved) document.getElementById('apikey').value = saved;
+  }
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+}
+
+function handleFile(f){
+  if(!f || f.type !== 'application/pdf'){ alert('Selecciona un archivo PDF'); return; }
+  pdfFile = f;
+  const info = document.getElementById('fileInfo');
+  info.innerHTML = `<span style="color:var(--green)">✓ ${f.name} (${(f.size/1024).toFixed(1)} KB)</span>`;
+  document.getElementById('dropzone').style.borderColor = 'var(--green)';
+}
+
+function toB64(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function parsePdfConClaude(file){
+  const antKey = document.getElementById('apikey').value.trim();
+  if(!antKey) throw new Error('Ingresa tu API Key de Anthropic para procesar el PDF');
+  const b64 = await toB64(file);
+  const prompt = `Eres un extractor de datos de reportes de ventas POS de Odoo (autolavado "Starwash").
+Analiza este PDF y extrae EXACTAMENTE los datos de ventas, adicionales y pagos.
+
+Responde SOLO con un objeto JSON con esta estructura exacta (sin markdown, solo JSON puro):
+{
+  "sesion": "nombre de sesión o fecha",
+  "ventas": {
+    "auto_bas": 0, "cam_bas": 0, "pickup_bas": 0,
+    "auto_plus": 0, "auto_pro": 0,
+    "cam_plus": 0, "cam_pro": 0,
+    "pickup_plus": 0, "pickup_pro": 0,
+    "express": 0, "fiscalia": 0, "motos": 0
+  },
+  "adics": {
+    "tapetes": 0, "motor": 0, "mano": 0, "plus_cera": 0, "pro_cera": 0
+  },
+  "cortesias": {
+    "taller": 0, "ayuntamiento": 0, "familiar": 0, "seguro": 0
+  },
+  "pagos": {
+    "efe": 0, "tar": 0, "trans": 0
+  }
+}
+
+Mapea los productos así:
+- "Auto Básico" → auto_bas, "Camioneta Básica/Cam. Básica" → cam_bas, "Pick-Up Básico/PickUp Básico" → pickup_bas
+- "Auto Plus" → auto_plus, "Auto Pro" → auto_pro
+- "Cam. Plus/Camioneta Plus" → cam_plus, "Cam. Pro/Camioneta Pro" → cam_pro
+- "Pick-Up Plus/PickUp Plus" → pickup_plus, "Pick-Up Pro/PickUp Pro" → pickup_pro
+- "Express" → express, "Fiscalía" → fiscalia, "Motos" → motos
+- Adicionales: tapetes, motor, lavado a mano, plus cera, pro cera+tapetes
+- Cortesías: taller, ayuntamiento, familiar, seguro de lluvia
+- Pagos: efectivo/cash → efe, tarjeta/card → tar, transferencia/transfer → trans
+
+Usa las cantidades (qty) no los montos. Si un dato no aparece pon 0.`;
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': antKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [{
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: b64 }
+        }, {
+          type: 'text',
+          text: prompt
+        }]
+      }]
+    })
+  });
+  if(!resp.ok){
+    const err = await resp.json().catch(()=>({}));
+    throw new Error(`Anthropic API: ${resp.status} — ${err.error?.message || ''}`);
+  }
+  const data = await resp.json();
+  const text = data.content[0].text.trim();
+  // Limpiar posible markdown ```json ... ```
+  const clean = text.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'');
+  return JSON.parse(clean);
+}
+
 async function generate(){
   const fecha = document.getElementById('inp_fecha').value;
   if(!fecha){ alert('Selecciona la fecha.'); return; }
@@ -613,20 +775,38 @@ async function generate(){
   const btn = document.getElementById('genBtn');
   const spin = document.getElementById('spinner');
   btn.disabled = true; spin.style.display = 'block';
-  document.getElementById('genTxt').textContent = 'Cargando datos de Odoo...';
 
   try {
-    setStatus('Conectando con Odoo...', 'loading');
-    const od = await cargarDatosOdoo(fecha);
-    buildCorte(od);
-    setStatus('✅ Datos cargados correctamente', 'ok');
+    if(modoActual === 'pdf'){
+      // ── MODO PDF ──
+      if(!pdfFile){ alert('Sube el PDF del Reporte Z de Odoo primero.'); return; }
+      document.getElementById('genTxt').textContent = 'Analizando PDF con IA...';
+      setStatus('Procesando PDF con Claude...', 'loading');
+      const od = await parsePdfConClaude(pdfFile);
+      buildCorte(od);
+      setStatus('✅ PDF procesado correctamente', 'ok');
+    } else {
+      // ── MODO API ──
+      document.getElementById('genTxt').textContent = 'Cargando datos de Odoo...';
+      setStatus('Conectando con Odoo...', 'loading');
+      const od = await cargarDatosOdoo(fecha);
+      buildCorte(od);
+      setStatus('✅ Datos cargados desde Odoo', 'ok');
+    }
   } catch(e) {
-    setStatus('⚠️ Sin conexión Odoo — modo manual', 'err');
-    console.warn('Odoo error:', e);
-    buildCorte(null); // modo offline
+    if(modoActual === 'api'){
+      setStatus('⚠️ Sin conexión Odoo — modo manual. ' + e.message, 'err');
+      console.warn('Odoo error:', e);
+      buildCorte(null);
+    } else {
+      setStatus('❌ Error procesando PDF: ' + e.message, 'err');
+      console.error('PDF error:', e);
+    }
   } finally {
     btn.disabled = false; spin.style.display = 'none';
-    document.getElementById('genTxt').textContent = '🔗 Conectar Odoo y Generar Corte';
+    document.getElementById('genTxt').textContent = modoActual === 'pdf'
+      ? '📄 Procesar PDF y Generar Corte'
+      : '🔗 Conectar Odoo y Generar Corte';
   }
 }
 
