@@ -7,8 +7,10 @@
 <style>
 :root{
   --navy:#0F2A45;--blue:#1A6BAA;--sky:#4DA3D4;--ice:#E8F4FD;
-  --teal:#0D7A6F;--amber:#E8A020;--amber-light:#FEF6E4;
-  --red:#C0392B;--red-light:#FDECEA;--green:#1E7C45;--green-light:#E8F5EE;
+  --teal:#0D7A6F;--teal-light:#E0F5F2;
+  --amber:#E8A020;--amber-light:#FEF6E4;
+  --red:#C0392B;--red-light:#FDECEA;
+  --green:#1E7C45;--green-light:#E8F5EE;
   --gray:#F4F6F9;--border:#D0DDE8;--text:#1A2733;--muted:#6B7F8E;
   --white:#fff;--radius:8px;--shadow:0 2px 8px #0F2A4518;
 }
@@ -16,146 +18,144 @@
 body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;background:#E4EDF5;color:var(--text);min-height:100vh}
 
 /* TOPBAR */
-#topbar{background:var(--navy);padding:0 20px;display:flex;align-items:center;gap:16px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px #0008}
-#topbar .logo{color:var(--sky);font-size:18px;font-weight:700;white-space:nowrap}
+#topbar{background:var(--navy);padding:0 16px;display:flex;align-items:center;gap:10px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px #0008}
+#topbar .logo{color:var(--sky);font-size:17px;font-weight:700;white-space:nowrap}
 #topbar .logo span{color:#fff}
 #topbar .spacer{flex:1}
-.api-wrap label{color:#9BBDD4;font-size:11px;margin-right:6px}
-#apikey{background:#1C3A54;border:1px solid #2D5A7A;color:#fff;border-radius:5px;padding:5px 10px;font-size:12px;width:220px}
+#topbar button{background:#1C3A54;border:1px solid #2D5A7A;color:#9BBDD4;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap}
+#topbar button:hover{background:#2D5A7A;color:#fff}
 
 /* LAYOUT */
-#app{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+#app{max-width:900px;margin:0 auto;padding:16px 12px 40px}
 
 /* CARDS */
-.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
-.card-head{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--navy);color:#fff;font-weight:700;font-size:13px}
-.card-head .badge{background:var(--sky);color:var(--navy);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
-.card-body{padding:14px 16px}
-.hint{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:10px}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.card-head{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--navy);color:#fff;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.card-head .ico{font-size:15px}
+.card-body{padding:12px 14px}
+.hint{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px}
 
-/* FORM GRID */
-.fg{display:grid;gap:10px}
-.fg-2{grid-template-columns:1fr 1fr}
-.fg-3{grid-template-columns:1fr 1fr 1fr}
-.fg-4{grid-template-columns:1fr 1fr 1fr 1fr}
-@media(max-width:580px){.fg-2,.fg-3,.fg-4{grid-template-columns:1fr 1fr}}
-.fl{display:flex;flex-direction:column;gap:4px}
-.fl label{font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px}
-.fl input{border:1px solid var(--border);border-radius:5px;padding:7px 10px;font-size:13px;background:var(--amber-light);color:var(--text);outline:none}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+@media(max-width:560px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+
+/* FIELD */
+.fl{display:flex;flex-direction:column;gap:3px}
+.fl label{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px}
+.fl input,.fl select{border:1px solid var(--border);border-radius:5px;padding:6px 9px;font-size:13px;color:var(--text);outline:none;background:var(--amber-light)}
 .fl input:focus{border-color:var(--sky);background:#fff}
-.fl input::placeholder{color:#bbb}
+.fl input[readonly]{background:var(--teal-light);color:var(--teal);font-weight:700;border-color:#a8d8d2;cursor:default}
+.fl input.odoo-val{background:var(--ice);color:var(--navy);font-weight:700;border-color:#b0ccde}
 
-/* DROPZONE */
-#dropzone{border:2px dashed var(--sky);border-radius:10px;background:#fff;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
-#dropzone:hover,#dropzone.over{background:var(--ice);border-color:var(--blue)}
-#dropzone .dz-icon{font-size:32px;margin-bottom:6px}
-#dropzone strong{color:var(--navy);font-size:14px}
-#dropzone p{color:var(--muted);font-size:11px;margin-top:3px}
-#fileInfo{margin-top:6px;font-size:12px;color:var(--teal);font-weight:600}
+/* TABLA MÁQUINA */
+.maq-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.maq-table th{background:var(--navy);color:#fff;padding:6px 8px;text-align:center;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.maq-table th.left{text-align:left}
+.maq-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:center}
+.maq-table td.prog-name{text-align:left;font-weight:700;color:var(--navy);background:var(--gray)}
+.maq-table td.sub-prog{text-align:left;padding-left:16px;font-size:11px;color:var(--muted);background:var(--gray)}
+.maq-table input{width:88px;border:1px solid var(--border);border-radius:4px;padding:5px 6px;font-size:13px;text-align:center;background:var(--amber-light);outline:none}
+.maq-table input:focus{border-color:var(--sky);background:#fff}
+.maq-table td.vend{font-weight:700;color:var(--teal);font-size:14px}
+.maq-table tr:last-child td{border-bottom:none}
+.maq-table tfoot td{background:var(--navy);color:#fff;font-weight:700;padding:7px 8px}
 
-/* GASTOS / NOTAS */
-.list-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-.list-row input.li{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;background:var(--gray)}
-.list-row input.lm{width:110px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:right;background:var(--amber-light)}
-.list-row button.del{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:2px 5px}
+/* TABLA CT */
+table.ct{width:100%;border-collapse:collapse;font-size:12.5px}
+table.ct th{background:var(--ice);color:var(--blue);font-weight:700;padding:6px 8px;text-align:center;border:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+table.ct th.left{text-align:left}
+table.ct td{padding:6px 9px;border:1px solid var(--border)}
+table.ct td.lbl{font-weight:600;background:var(--gray);color:var(--navy);white-space:nowrap}
+table.ct td.r{text-align:right;font-variant-numeric:tabular-nums}
+table.ct td.c{text-align:center}
+table.ct tr.tot td{background:var(--navy);color:#fff;font-weight:700}
+table.ct tr.pos td{background:var(--green-light)}
+table.ct tr.neg td{background:var(--red-light)}
+table.ct tr.amb td{background:var(--amber-light)}
+.ct input.ei{border:none;background:transparent;font:inherit;outline:none;text-align:right;width:100%;padding:0 2px}
+.ct input.ei:focus{background:var(--amber-light);border-radius:3px}
+.ct input.ei.c{text-align:center}
+
+/* GASTOS */
+.gasto-row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.gasto-row input.gc{flex:1;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;background:var(--gray)}
+.gasto-row input.gm{width:100px;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;text-align:right;background:var(--amber-light)}
+.gasto-row button.del{background:none;border:none;color:var(--red);cursor:pointer;font-size:17px;line-height:1;padding:2px 4px}
 .btn-add{background:var(--ice);border:1px dashed var(--sky);color:var(--blue);border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;margin-top:4px}
-
-/* SVC toggle */
-.toggle-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.toggle-row span{font-size:13px;font-weight:600;color:var(--navy)}
-.tbtn{padding:5px 16px;border-radius:5px;border:2px solid var(--border);background:var(--gray);color:var(--muted);font-weight:700;cursor:pointer;font-size:12px;transition:all .15s}
-.tbtn.active-si{background:var(--teal);border-color:var(--teal);color:#fff}
-.tbtn.active-no{background:var(--red);border-color:var(--red);color:#fff}
-
-/* PAQ table in form */
-.paq-table{width:100%;border-collapse:collapse;font-size:12px}
-.paq-table th{background:var(--ice);color:var(--blue);font-weight:700;padding:6px 8px;text-align:center;border:1px solid var(--border);font-size:11px}
-.paq-table td{padding:5px 6px;border:1px solid var(--border);text-align:center}
-.paq-table input{width:100%;border:none;background:transparent;font:inherit;text-align:center;outline:none;padding:2px}
-.paq-table input:focus{background:var(--amber-light);border-radius:3px}
-.paq-table td.pname{font-weight:600;background:var(--gray);color:var(--navy)}
-
-/* GENERATE BUTTON */
-#genBtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);transition:background .15s;margin-top:4px}
-#genBtn:hover{background:var(--navy)}
-#genBtn:disabled{background:#aaa;cursor:not-allowed}
-#spinner{display:none;width:20px;height:20px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── CORTE OUTPUT ── */
-#corteWrap{display:none}
+.btn-add:hover{background:var(--border)}
 
 /* KPIs */
-.kpi-section{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
-.kpi-row{display:grid;gap:10px}
-.kpi-row.r4{grid-template-columns:repeat(4,1fr)}
-.kpi-row.r3{grid-template-columns:repeat(3,1fr)}
-.kpi-row.r6{grid-template-columns:repeat(6,1fr)}
-@media(max-width:600px){.kpi-row.r4,.kpi-row.r6{grid-template-columns:repeat(2,1fr)}.kpi-row.r3{grid-template-columns:repeat(3,1fr)}}
-.kpi{border-radius:var(--radius);padding:12px 14px;text-align:center;box-shadow:var(--shadow)}
-.kpi .kl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:4px}
-.kpi .kv{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.kpi-grid{display:grid;gap:8px;margin-bottom:12px}
+.kpi-grid.k3{grid-template-columns:repeat(3,1fr)}
+.kpi-grid.k4{grid-template-columns:repeat(4,1fr)}
+.kpi-grid.k5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:560px){.kpi-grid.k3,.kpi-grid.k4,.kpi-grid.k5{grid-template-columns:repeat(2,1fr)}}
+.kpi{border-radius:var(--radius);padding:10px 12px;text-align:center}
+.kpi .kl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.85;margin-bottom:3px}
+.kpi .kv{font-size:19px;font-weight:800;letter-spacing:-.3px}
 .kpi.navy{background:var(--navy);color:#fff}
 .kpi.teal{background:var(--teal);color:#fff}
-.kpi.amber-k{background:var(--amber);color:#fff}
+.kpi.amber{background:var(--amber);color:#fff}
 .kpi.green{background:var(--green);color:#fff}
-.kpi.red-k{background:var(--red);color:#fff}
+.kpi.red{background:var(--red);color:#fff}
 .kpi.sky{background:var(--sky);color:var(--navy)}
-.kpi.dark2{background:#1C3A54;color:#fff}
+.kpi.dark{background:#1C3A54;color:#fff}
+.kpi.ok{background:var(--green);color:#fff}
+.kpi.warn{background:var(--amber);color:#fff}
+.kpi.err{background:var(--red);color:#fff}
 
-/* Tables */
-table.ct{width:100%;border-collapse:collapse;font-size:12.5px}
-table.ct th{background:var(--ice);color:var(--blue);font-weight:700;padding:7px 10px;text-align:center;border:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-table.ct td{padding:6px 10px;border:1px solid var(--border)}
-table.ct td.lbl{font-weight:600;background:var(--gray);white-space:nowrap;color:var(--navy)}
-table.ct td.right{text-align:right;font-variant-numeric:tabular-nums}
-table.ct td.center{text-align:center}
-table.ct tr.sub td{background:var(--green-light);font-weight:700}
-table.ct tr.amb td{background:var(--amber-light)}
-table.ct tr.red-r td{background:var(--red-light)}
+/* BOTONES */
+.btn-main{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);margin-top:4px}
+.btn-main:hover{background:var(--navy)}
+.btn-main:disabled{background:#aaa;cursor:not-allowed}
+#spinner{display:none;width:18px;height:18px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* Two col */
-#twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:580px){#twoCol{grid-template-columns:1fr}}
-
-/* Alert */
-#alertBox{display:none;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
-#alertBox .ah{background:var(--sky);color:var(--navy);padding:9px 16px;font-weight:700;font-size:13px}
-#alertBox .ab{padding:14px 16px;font-size:13px;line-height:1.9;background:var(--navy);color:#fff}
-
-/* Actions */
-#actions{display:none;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
-.btn-sec{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.btn-sec{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
 .btn-sec:hover{opacity:.85}
+.b-save{background:#7B2FBE;color:#fff}
+.b-send{background:#25D366;color:#fff}
 .b-print{background:#475569;color:#fff}
-.b-excel{background:var(--teal);color:#fff}
 .b-reset{background:#94A3B8;color:#fff}
-.b-analyze{background:var(--amber);color:#fff}
 
-/* Notas */
-.nota-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
-.ei{width:100%;border:none;background:transparent;font:inherit;text-align:right;padding:0;outline:none;color:var(--text)}
-.ei:focus{background:var(--amber-light);border-radius:3px;padding:0 3px}
-.ei.center{text-align:center}
-.foto-zone:hover{background:var(--ice)!important;border-color:var(--sky)!important}
-.nota-row input.ni{flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;background:var(--gray)}
-.nota-row button{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:2px 5px;margin-top:2px}
+/* STATUS */
+.status{font-size:12px;color:var(--muted);margin-top:6px;text-align:center;min-height:18px}
+.status.ok{color:var(--teal)}
+.status.err{color:var(--red)}
+.status.loading{color:var(--amber)}
 
-.hist-item{background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:background .15s}
+/* SECTION output */
+#corteWrap{display:none}
+.sec-title{display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-weight:700;color:var(--navy);font-size:13px;text-transform:uppercase;letter-spacing:.4px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* DIFF indicator */
+.diff-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+.diff-ok{background:var(--green-light);color:var(--green)}
+.diff-warn{background:var(--amber-light);color:#a06000}
+.diff-err{background:var(--red-light);color:var(--red)}
+
+/* HISTORIAL */
+#histPanel{display:none;position:fixed;top:52px;right:0;width:380px;height:calc(100vh - 52px);background:#fff;box-shadow:-4px 0 20px #0003;z-index:99;overflow-y:auto}
+.hist-head{background:var(--navy);color:#fff;padding:11px 14px;display:flex;align-items:center;justify-content:space-between}
+.hist-item{border:1px solid var(--border);border-radius:7px;padding:9px 12px;margin-bottom:7px;cursor:pointer;transition:background .15s}
 .hist-item:hover{background:var(--ice)}
-.hist-item .hi-fecha{font-weight:700;color:var(--navy);font-size:13px}
-.hist-item .hi-meta{font-size:11px;color:var(--muted);margin-top:2px}
-.hist-item .hi-kpis{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
-.hist-kpi{background:var(--navy);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700}
-.hist-kpi.green{background:var(--green)}
-.hist-kpi.red{background:var(--red)}
-.hist-kpi.amber{background:var(--amber)}
+.hist-item .hf{font-weight:700;color:var(--navy)}
+.hist-item .hm{font-size:11px;color:var(--muted);margin-top:2px}
+.hist-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.chip{padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:var(--navy);color:#fff}
+.chip.g{background:var(--green)}
+.chip.r{background:var(--red)}
+.chip.a{background:var(--amber)}
+
 @media print{
   body{background:#fff}
-  #topbar,#inputSection,#actions,.btn-add,.del,.hint,#alertBox{display:none!important}
+  #topbar,#inputSection,.btn-add,.del,.actions,#histPanel,.btn-main{display:none!important}
   #corteWrap{display:block!important}
   .card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
-  .kpi{border:1px solid #ccc;color:#000!important;background:#f9f9f9!important}
 }
 </style>
 </head>
@@ -163,2138 +163,1041 @@ table.ct tr.red-r td{background:var(--red-light)}
 
 <div id="topbar">
   <div class="logo">⚡ Star<span>Wash</span></div>
-  <button onclick="toggleHistorial()" style="background:#1C3A54;border:1px solid #2D5A7A;color:#9BBDD4;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600" id="btnHistorial">📋 Historial</button>
-  <button onclick="window.abrirEditorCorte()" style="background:#1C3A54;border:1px solid #2D5A7A;color:#9BBDD4;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600">✏️ Editar</button>
+  <button onclick="toggleHist()">📋 Historial</button>
   <div class="spacer"></div>
-  <div class="api-wrap">
-    <label>API Key:</label>
-    <input id="apikey" type="password" placeholder="sk-ant-..." oninput="localStorage.setItem('sw_key',this.value)">
-  </div>
+  <label style="color:#9BBDD4;font-size:11px;margin-right:4px">API Odoo:</label>
+  <input id="odoo_key" type="password" placeholder="key..." oninput="ls('sw_odoo_key',this.value)"
+    style="background:#1C3A54;border:1px solid #2D5A7A;color:#fff;border-radius:5px;padding:4px 8px;font-size:12px;width:140px;outline:none">
 </div>
 
-<div id="historialPanel" style="display:none;position:fixed;top:54px;right:0;width:420px;height:calc(100vh - 54px);background:#fff;box-shadow:-4px 0 20px #0003;z-index:99;overflow-y:auto;display:none">
-  <div style="background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between">
-    <span style="font-weight:700;font-size:14px">📋 Historial de Cortes</span>
-    <button onclick="toggleHistorial()" style="background:none;border:none;color:#9BBDD4;cursor:pointer;font-size:18px">×</button>
+<!-- HISTORIAL PANEL -->
+<div id="histPanel">
+  <div class="hist-head">
+    <span style="font-weight:700">📋 Historial de Cortes</span>
+    <button onclick="toggleHist()" style="background:none;border:none;color:#9BBDD4;cursor:pointer;font-size:18px">×</button>
   </div>
-  <div style="padding:12px">
-    <button onclick="cargarHistorial()" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;cursor:pointer;font-weight:600;margin-bottom:12px">🔄 Actualizar</button>
-    <div id="historialLista"></div>
+  <div style="padding:10px">
+    <button onclick="cargarHist()" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600;margin-bottom:10px">🔄 Actualizar</button>
+    <div id="histLista"></div>
   </div>
 </div>
 
 <div id="app">
 
-<!-- ══════════════ SECCIÓN DE ENTRADA ══════════════ -->
+<!-- ══ INPUT SECTION ══ -->
 <div id="inputSection">
-
-  <!-- ODOO LOADER -->
-  <div id="odooSection" style="margin-bottom:16px;">
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button onclick="cargarSesionesOdoo()" style="background:#714B67;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600;">
-        🔗 Cargar sesiones recientes de Odoo
-      </button>
-      <span id="odooStatus" style="font-size:13px;color:#666;"></span>
-    </div>
-    <div id="odooSesiones" style="margin-top:10px;display:none;">
-      <p style="font-size:13px;color:#444;margin-bottom:6px;">Selecciona la sesión correcta:</p>
-      <div id="odooListaSesiones"></div>
-    </div>
-  </div>
-
-  <!-- PDF -->
-  <div id="dropzone" onclick="document.getElementById('fi').click()"
-    ondragover="event.preventDefault();this.classList.add('over')"
-    ondragleave="this.classList.remove('over')"
-    ondrop="handleDrop(event)">
-    <div class="dz-icon">📄</div>
-    <strong>Sube el Reporte Z de Odoo</strong>
-    <p>Arrastra el PDF aquí o haz clic para seleccionar</p>
-    <div id="fileInfo"></div>
-  </div>
-  <input type="file" id="fi" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
 
   <!-- Datos generales -->
   <div class="card">
-    <div class="card-head"><div class="badge">📋</div>DATOS GENERALES</div>
+    <div class="card-head"><span class="ico">📋</span>DATOS GENERALES</div>
     <div class="card-body">
-      <div class="fg fg-3">
-        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha" onchange="cargarInicioPaquetes()"></div>
+      <div class="g3">
+        <div class="fl"><label>Fecha</label><input type="date" id="inp_fecha"></div>
         <div class="fl"><label>Responsable</label><input type="text" id="inp_resp" placeholder="Nombre"></div>
-        <div class="fl"><label>Apertura de Caja ($)</label><input type="number" id="inp_apertura" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Fondo extra aportado ($)</label><input type="number" id="inp_fondo" placeholder="0" oninput="recalcFormInputs()" title="Dinero propio que metiste a caja y no viene de ventas"></div>
+        <div class="fl"><label>Sesión Odoo</label><input type="text" id="inp_sesion" placeholder="POS/00525" class="odoo-val"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lectura de máquina TÚNEL -->
+  <div class="card">
+    <div class="card-head"><span class="ico">🔢</span>LECTURA DE TÚNEL — 6 PROGRAMAS</div>
+    <div class="card-body">
+      <p class="hint">Captura Inicio y Final del contador físico de la máquina. El Final de hoy es el Inicio de mañana.</p>
+      <table class="maq-table">
+        <thead>
+          <tr>
+            <th class="left" style="width:34%">Programa</th>
+            <th>Inicio</th>
+            <th>Final</th>
+            <th>Autos</th>
+          </tr>
+        </thead>
+        <tbody id="maq_body"></tbody>
+        <tfoot>
+          <tr>
+            <td style="text-align:left">TOTAL MÁQUINA</td>
+            <td></td><td></td>
+            <td id="maq_total" style="text-align:center">0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cortesías y otros -->
+  <div class="card">
+    <div class="card-head"><span class="ico">🎫</span>CORTESÍAS Y OTROS</div>
+    <div class="card-body">
+      <p class="hint">Estos pasan por la máquina pero no generan cobro en Odoo.</p>
+      <div class="g3">
+        <div class="fl"><label>Cortesía Taller</label><input type="number" id="inp_ct" placeholder="0" oninput="recalcMaq()"></div>
+        <div class="fl"><label>Cortesía Ayuntamiento</label><input type="number" id="inp_ca" placeholder="0" oninput="recalcMaq()"></div>
+        <div class="fl"><label>Cortesía Familiar</label><input type="number" id="inp_cf" placeholder="0" oninput="recalcMaq()"></div>
+        <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seg" placeholder="0" oninput="recalcMaq()"></div>
+        <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0" oninput="recalcMaq()"></div>
+        <div class="fl"><label>Regresos</label><input type="number" id="inp_reg" placeholder="0" oninput="recalcMaq()"></div>
       </div>
     </div>
   </div>
 
   <!-- Control de efectivo -->
   <div class="card">
-    <div class="card-head"><div class="badge">💵</div>CONTROL DE EFECTIVO</div>
+    <div class="card-head"><span class="ico">💵</span>EFECTIVO</div>
     <div class="card-body">
-      <p class="hint">Apertura = morralla que quedó ayer. Billetes = total de billetes contados.</p>
-      <div class="fg fg-3">
-        <div class="fl"><label>Morralla ($)</label><input type="number" id="inp_morralla" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Billetes ($)</label><input type="number" id="inp_billetes" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Corte Terminal ($)</label><input type="number" id="inp_terminal" placeholder="0" oninput="recalcFormInputs()"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Otros conteos -->
-  <div class="card">
-    <div class="card-head"><div class="badge">🚗</div>OTROS CONTEOS</div>
-    <div class="card-body">
-      <p class="hint">Cortesías y seguros pasan por máquina pero no cobran. Lavados a mano y regresos se descuentan de máquina esperada.</p>
-      <div class="fg fg-3">
-        <div class="fl"><label>Cortesías Taller</label><input type="number" id="inp_cortes_taller" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Cortesías Ayuntamiento</label><input type="number" id="inp_cortes_ayto" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Cortesías Familiar</label><input type="number" id="inp_cortes_familiar" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Seguro de Lluvia</label><input type="number" id="inp_seguro" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Lavados a Mano</label><input type="number" id="inp_lavm" placeholder="0" oninput="recalcFormInputs()"></div>
-        <div class="fl"><label>Regresos</label><input type="number" id="inp_regresos" placeholder="0" oninput="recalcFormInputs()"></div>
+      <p class="hint">Cuenta físicamente el dinero en caja.</p>
+      <div class="g3">
+        <div class="fl"><label>Apertura ($)</label><input type="number" id="inp_apertura" placeholder="0"></div>
+        <div class="fl"><label>Morralla ($)</label><input type="number" id="inp_morralla" placeholder="0"></div>
+        <div class="fl"><label>Billetes ($)</label><input type="number" id="inp_billetes" placeholder="0"></div>
+        <div class="fl"><label>Corte Terminal ($)</label><input type="number" id="inp_terminal" placeholder="0"></div>
+        <div class="fl"><label>Fondo Extra ($)</label><input type="number" id="inp_fondo" placeholder="0" title="Dinero propio que pusiste en caja, no viene de ventas"></div>
       </div>
     </div>
   </div>
 
   <!-- Gastos -->
   <div class="card">
-    <div class="card-head"><div class="badge">💸</div>GASTOS</div>
+    <div class="card-head"><span class="ico">💸</span>GASTOS</div>
     <div class="card-body">
       <div id="gastos_list"></div>
       <button class="btn-add" onclick="addGasto()">+ Agregar gasto</button>
     </div>
   </div>
 
-  <!-- Servicios manuales -->
-  <div class="card">
-    <div class="card-head"><div class="badge">✨</div>SERVICIOS MANUALES <span style="font-weight:400;font-size:11px;opacity:.7;margin-left:6px">— opcional</span></div>
-    <div class="card-body">
-      <div class="toggle-row">
-        <span>¿Hubo servicio de pulido o encerado?</span>
-        <button class="tbtn active-no" id="btn_si" onclick="toggleSvc(true)">Sí</button>
-        <button class="tbtn active-no" id="btn_no" onclick="toggleSvc(false)">No</button>
-      </div>
-      <div id="svc_body" style="display:none">
-        <div style="display:flex;gap:8px;padding:6px 8px;background:var(--ice);border-radius:5px;border:1px solid var(--border);margin-bottom:6px">
-          <span style="flex:1;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Servicio</span>
-          <span style="width:90px;text-align:right;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Precio</span>
-          <span style="width:70px;text-align:center;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Cantidad</span>
-          <span style="width:90px;text-align:right;font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Total</span>
-          <span style="width:30px"></span>
-        </div>
-        <div id="svc_list"></div>
-        <button class="btn-add" onclick="addSvc()">+ Agregar servicio</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Lectura de máquina -->
-  <div class="card">
-    <div class="card-head"><div class="badge">🔢</div>LECTURA DE LA MÁQUINA</div>
-    <div class="card-body">
-      <p class="hint">El Final de hoy es el Inicio de mañana.</p>
-      <!-- Foto de lectura -->
-      <div style="margin-bottom:12px">
-        <label style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">📸 Foto de la Lectura</label>
-        <div id="foto_dropzone" onclick="document.getElementById('foto_input').click()"
-          style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--gray);transition:all .2s"
-          ondragover="event.preventDefault();this.style.background='var(--ice)'"
-          ondragleave="this.style.background='var(--gray)'"
-          ondrop="handleFotoDrop(event)">
-          <div id="foto_preview" style="display:none">
-            <img id="foto_img" style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:6px">
-            <div style="font-size:12px;color:var(--teal);font-weight:600" id="foto_name"></div>
-          </div>
-          <div id="foto_placeholder">
-            <div style="font-size:24px;margin-bottom:4px">📷</div>
-            <div style="font-size:12px;color:var(--muted)">Toca para subir foto de la lectura</div>
-          </div>
-        </div>
-        <input type="file" id="foto_input" accept="image/*" capture="environment" style="display:none" onchange="handleFotoFile(this.files[0])">
-      </div>
-      <table class="paq-table">
-        <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
-        <tbody id="paq_input_body"></tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- Notas -->
   <div class="card">
-    <div class="card-head"><div class="badge">📝</div>NOTAS</div>
+    <div class="card-head"><span class="ico">📝</span>NOTAS</div>
     <div class="card-body">
       <div id="notas_list"></div>
       <button class="btn-add" onclick="addNota()">+ Agregar nota</button>
     </div>
   </div>
 
-  <button id="genBtn" onclick="generate()">
+  <!-- Generar -->
+  <button class="btn-main" id="genBtn" onclick="generate()">
     <div id="spinner"></div>
-    <span>🔍 Leer PDF y Generar Corte</span>
+    <span id="genTxt">🔗 Conectar Odoo y Generar Corte</span>
   </button>
+  <div class="status" id="gen_status"></div>
 
 </div><!-- /inputSection -->
 
-<!-- ══════════════ CORTE OUTPUT ══════════════ -->
+<!-- ══ CORTE OUTPUT ══ -->
 <div id="corteWrap">
 
-  <!-- Header info -->
-  <div style="background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 18px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:14px">
-    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">Fecha</div>
-    <div style="font-size:14px;font-weight:700" id="out_fecha">—</div>
-    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-left:12px">Sesión</div>
-    <div style="font-size:14px;font-weight:700" id="out_sesion">—</div>
-    <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-left:12px">Responsable</div>
-    <div style="font-size:14px;font-weight:700" id="out_resp">—</div>
-  </div>
-
-  <!-- KPIs -->
-  <div class="kpi-section">
-    <!-- Fila 1: Caja -->
-    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr)">
-      <div class="kpi dark2"><div class="kl">Apertura</div><div class="kv" id="k_apertura">$0</div></div>
-      <div class="kpi dark2"><div class="kl">Morralla</div><div class="kv" id="k_morralla">$0</div></div>
-      <div class="kpi dark2"><div class="kl">Billetes</div><div class="kv" id="k_billetes">$0</div></div>
-      <div class="kpi dark2"><div class="kl">Terminal</div><div class="kv" id="k_terminal">$0</div></div>
-      <div class="kpi teal"><div class="kl">Total en Caja</div><div class="kv" id="k_tcaja_kpi">$0</div></div>
-      <div class="kpi navy"><div class="kl">Total Cobrado</div><div class="kv" id="k_cobrado">$0</div></div>
-    </div>
-    <!-- Fila 2: Autos -->
-    <div class="kpi-row r4">
-      <div class="kpi green"><div class="kl">Autos Pagados</div><div class="kv" id="k_pagados">0</div></div>
-      <div class="kpi sky"><div class="kl">Cortesías Total</div><div class="kv" id="k_cortes_total">0</div></div>
-      <div class="kpi teal"><div class="kl">Total Entraron</div><div class="kv" id="k_entraron">0</div></div>
-      <div class="kpi navy"><div class="kl">Máquina</div><div class="kv" id="k_maq_total">0</div></div>
-    </div>
-    <!-- Fila 3: Ventas -->
-    <div class="kpi-row r4">
-      <div class="kpi navy"><div class="kl">Total Tickets</div><div class="kv" id="k_tickets">$0</div></div>
-      <div class="kpi teal"><div class="kl">Efectivo</div><div class="kv" id="k_efe">$0</div></div>
-      <div class="kpi amber-k"><div class="kl">Tarjeta</div><div class="kv" id="k_tar">$0</div></div>
-      <div class="kpi sky"><div class="kl">Transferencia</div><div class="kv" id="k_trans">$0</div></div>
-    </div>
-    <!-- Fila 4: Diferencias + resumen -->
-    <div class="kpi-row r3">
-      <div class="kpi" id="k_dif_card" style="background:var(--green);color:#fff"><div class="kl">Dif. Dinero</div><div class="kv" id="k_dif">$0</div></div>
-      <div class="kpi" id="k_maq_card" style="background:var(--green);color:#fff"><div class="kl">Dif. Máquina</div><div class="kv" id="k_maq_dif">0</div></div>
-      <div class="kpi" id="k_resumen_card" style="background:var(--green);color:#fff;cursor:default">
-        <div class="kl">Resumen del Corte</div>
-        <div style="font-size:13px;font-weight:700;margin-top:4px;line-height:1.4" id="k_resumen_txt">—</div>
-      </div>
-    </div>
-    <!-- Máq. esperada y gastos — info secundaria -->
-    <div class="kpi-row r3" style="opacity:.8">
-      <div class="kpi navy"><div class="kl">Máq. Esperada</div><div class="kv" id="k_maq_esp">0</div></div>
-      <div class="kpi red-k"><div class="kl">Total Gastos</div><div class="kv" id="k_gastos_kpi">$0</div></div>
-      <div class="kpi green"><div class="kl">Autos Pagados</div><div class="kv" id="k_pagados2">0</div></div>
+  <!-- Header -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-body" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:10px 14px">
+      <div><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Fecha</span><div style="font-size:15px;font-weight:800" id="o_fecha">—</div></div>
+      <div><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Sesión</span><div style="font-size:14px;font-weight:700;color:var(--blue)" id="o_sesion">—</div></div>
+      <div><span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Responsable</span><div style="font-size:14px;font-weight:700" id="o_resp">—</div></div>
+      <div style="margin-left:auto"><span id="o_hora" style="font-size:11px;color:var(--muted)"></span></div>
     </div>
   </div>
 
-  <!-- AI Alert -->
-  <div id="alertBox">
-    <div class="ah">🤖 Análisis del Corte</div>
-    <div class="ab" id="alertContent"></div>
+  <!-- KPIs principales -->
+  <div class="kpi-grid k4">
+    <div class="kpi navy"><div class="kl">Total Cobrado</div><div class="kv" id="k_cobrado">$0</div></div>
+    <div class="kpi teal"><div class="kl">Total en Caja</div><div class="kv" id="k_tcaja">$0</div></div>
+    <div class="kpi navy" id="k_dif_card"><div class="kl">Diferencia</div><div class="kv" id="k_dif">$0</div></div>
+    <div class="kpi navy"><div class="kl">Total Gastos</div><div class="kv" id="k_gastos">$0</div></div>
+  </div>
+  <div class="kpi-grid k4">
+    <div class="kpi green"><div class="kl">Autos Pagados</div><div class="kv" id="k_pagados">0</div></div>
+    <div class="kpi sky"><div class="kl">Cortesías</div><div class="kv" id="k_cortes">0</div></div>
+    <div class="kpi teal"><div class="kl">Total Entraron</div><div class="kv" id="k_entraron">0</div></div>
+    <div class="kpi navy" id="k_maq_card"><div class="kl">Dif. Máquina</div><div class="kv" id="k_maq_dif">0</div></div>
   </div>
 
-  <!-- 1. Ventas -->
+  <!-- 1. Ventas por paquete (Odoo) -->
+  <div class="sec-title"><span class="ico">📦</span>VENTAS POR PAQUETE — Odoo</div>
   <div class="card">
-    <div class="card-head"><div class="badge">1</div>VENTAS POR CATEGORÍA — Odoo</div>
-    <div class="card-body">
+    <div class="card-body" style="padding:0">
       <table class="ct">
-        <thead><tr><th>Categoría</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <thead><tr><th class="left" style="padding-left:9px">Paquete</th><th>Precio</th><th>Cant.</th><th>Total</th></tr></thead>
         <tbody id="body_ventas"></tbody>
-        <tfoot><tr class="sub"><td colspan="2" class="lbl">SUBTOTAL LAVADOS</td><td class="center" id="sv_cant">0</td><td class="right" id="sv_tot">$0.00</td></tr></tfoot>
+        <tfoot>
+          <tr class="tot"><td class="lbl" colspan="2">SUBTOTAL LAVADOS</td><td class="c" id="sv_cant">0</td><td class="r" id="sv_tot">$0</td></tr>
+        </tfoot>
       </table>
     </div>
   </div>
 
-  <!-- 2. Adicionales -->
+  <!-- 2. Adicionales (Odoo) -->
+  <div class="sec-title"><span class="ico">✨</span>ADICIONALES — Odoo</div>
   <div class="card">
-    <div class="card-head"><div class="badge">2</div>ADICIONALES — Odoo</div>
-    <div class="card-body">
+    <div class="card-body" style="padding:0">
       <table class="ct">
-        <thead><tr><th>Adicional</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
+        <thead><tr><th class="left" style="padding-left:9px">Adicional</th><th>Precio</th><th>Cant.</th><th>Total</th></tr></thead>
         <tbody id="body_adics"></tbody>
-        <tfoot><tr class="sub"><td colspan="2" class="lbl">SUBTOTAL ADICIONALES</td><td class="center" id="sa_cant">0</td><td class="right" id="sa_tot">$0.00</td></tr></tfoot>
+        <tfoot>
+          <tr class="tot"><td class="lbl" colspan="2">SUBTOTAL ADICIONALES</td><td class="c" id="sa_cant">0</td><td class="r" id="sa_tot">$0</td></tr>
+        </tfoot>
       </table>
     </div>
   </div>
 
-  <!-- 3. Servicios manuales (editable) -->
-  <div class="card" id="svc_out_card">
-    <div class="card-head"><div class="badge">3</div>SERVICIOS MANUALES <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
-    <div class="card-body">
-      <table class="ct">
-        <thead><tr><th>Servicio</th><th>Precio</th><th>Cantidad</th><th>Total</th></tr></thead>
-        <tbody id="body_svc_out"></tbody>
-        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL SERVICIOS MANUALES</td><td class="right" id="tot_svc_out">$0.00</td></tr></tfoot>
-      </table>
-      <button onclick="svcs.push({n:'',p:0,q:1});recalcSvcOut()" style="background:none;border:1px dashed var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px">+ Agregar servicio</button>
-    </div>
-  </div>
-
-  <!-- 4. Otros -->
+  <!-- 3. Lectura de túnel -->
+  <div class="sec-title"><span class="ico">🔢</span>LECTURA DE TÚNEL</div>
   <div class="card">
-    <div class="card-head"><div class="badge">4</div>OTROS</div>
-    <div class="card-body">
+    <div class="card-body" style="padding:0">
       <table class="ct">
-        <tr><td class="lbl">Cortesías Taller</td><td><input class="ei center" type="number" id="out_ct" value="" oninput="recalcOut()"></td>
-            <td class="lbl">Cortesías Ayuntamiento</td><td><input class="ei center" type="number" id="out_ca" value="" oninput="recalcOut()"></td></tr>
-        <tr><td class="lbl">Cortesías Familiar</td><td><input class="ei center" type="number" id="out_cf" value="" oninput="recalcOut()"></td>
-            <td></td><td></td></tr>
-            <td></td><td></td></tr>
-        <tr><td class="lbl">Seguro de Lluvia</td><td><input class="ei center" type="number" id="out_seg" value="0" oninput="recalcOut()"></td>
-            <td class="lbl">Lavados a Mano</td><td><input class="ei center" type="number" id="out_lavm" value="0" oninput="recalcOut()"></td></tr>
-        <tr><td class="lbl">Regresos</td><td><input class="ei center" type="number" id="out_reg" value="0" oninput="recalcOut()"></td><td></td><td></td></tr>
+        <thead>
+          <tr><th class="left" style="padding-left:9px">Programa</th><th>Inicio</th><th>Final</th><th>Autos</th><th>Odoo</th><th>Dif.</th></tr>
+        </thead>
+        <tbody id="o_maq_body"></tbody>
+        <tfoot>
+          <tr class="tot">
+            <td class="lbl" colspan="2">TOTAL MÁQUINA</td>
+            <td class="c" id="o_maq_fin_tot">—</td>
+            <td class="c" id="o_maq_autos_tot">0</td>
+            <td class="c" id="o_maq_odoo_tot">0</td>
+            <td class="c" id="o_maq_dif_tot">0</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
 
-  <!-- 5+6 Control efectivo + Formas de pago -->
-  <div id="twoCol">
+  <!-- 4. Cortesías -->
+  <div class="sec-title"><span class="ico">🎫</span>CORTESÍAS Y OTROS</div>
+  <div class="card">
+    <div class="card-body" style="padding:0">
+      <table class="ct">
+        <tr><td class="lbl">Cortesía Taller</td><td class="c"><input class="ei c" type="number" id="o_ct" oninput="recalcOut()"></td>
+            <td class="lbl">Cortesía Ayuntamiento</td><td class="c"><input class="ei c" type="number" id="o_ca" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Cortesía Familiar</td><td class="c"><input class="ei c" type="number" id="o_cf" oninput="recalcOut()"></td>
+            <td class="lbl">Seguro de Lluvia</td><td class="c"><input class="ei c" type="number" id="o_seg" oninput="recalcOut()"></td></tr>
+        <tr><td class="lbl">Lavados a Mano</td><td class="c"><input class="ei c" type="number" id="o_lavm" oninput="recalcOut()"></td>
+            <td class="lbl">Regresos</td><td class="c"><input class="ei c" type="number" id="o_reg" oninput="recalcOut()"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5 + 6. Efectivo y Pagos -->
+  <div class="sec-title"><span class="ico">💵</span>CAJA Y FORMAS DE PAGO</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div class="card">
-      <div class="card-head"><div class="badge">5</div>CONTROL DE EFECTIVO</div>
-      <div class="card-body">
+      <div class="card-head"><span class="ico">💵</span>CONTROL DE EFECTIVO</div>
+      <div class="card-body" style="padding:0">
         <table class="ct">
-          <tr class="amb"><td class="lbl">Morralla</td><td><input class="ei" type="number" id="out_morralla_inp" oninput="recalcOut()" placeholder="0"></td></tr>
-          <tr class="amb"><td class="lbl">Billetes</td><td><input class="ei" type="number" id="out_billetes_inp" oninput="recalcOut()" placeholder="0"></td></tr>
-          <tr class="amb"><td class="lbl">Corte Terminal</td><td><input class="ei" type="number" id="out_terminal_inp" oninput="recalcOut()" placeholder="0"></td></tr>
-          <tr class="amb"><td class="lbl">Transferencia</td><td class="right" id="out_trans_caja">$0.00</td></tr>
-          <tr class="amb"><td class="lbl">+ Gastos</td><td class="right" id="out_gastos_caja">$0.00</td></tr>
-          <tr class="red-r"><td class="lbl">− Apertura de Caja</td><td><input class="ei" type="number" id="out_apertura_inp" oninput="recalcOut()" placeholder="0"></td></tr>
-          <tr class="sub"><td class="lbl">TOTAL EN CAJA</td><td class="right" id="out_total_caja">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">Morralla</td><td><input class="ei" type="number" id="o_morralla" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Billetes</td><td><input class="ei" type="number" id="o_billetes" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Corte Terminal</td><td><input class="ei" type="number" id="o_terminal" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="amb"><td class="lbl">Transferencia</td><td class="r" id="o_trans_caja">$0</td></tr>
+          <tr class="amb"><td class="lbl">+ Gastos</td><td class="r" id="o_gastos_caja">$0</td></tr>
+          <tr style="background:var(--red-light)"><td class="lbl">− Apertura</td><td><input class="ei" type="number" id="o_apertura" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr style="background:var(--red-light)"><td class="lbl">− Fondo Extra</td><td><input class="ei" type="number" id="o_fondo" oninput="recalcOut()" placeholder="0"></td></tr>
+          <tr class="tot"><td class="lbl">TOTAL EN CAJA</td><td class="r" id="o_total_caja">$0</td></tr>
         </table>
       </div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="badge">6</div>FORMAS DE PAGO — Odoo</div>
-      <div class="card-body">
+      <div class="card-head"><span class="ico">💳</span>FORMAS DE PAGO — Odoo</div>
+      <div class="card-body" style="padding:0">
         <table class="ct">
-          <tr class="amb"><td class="lbl">Efectivo</td><td class="right" id="out_efe">$0.00</td></tr>
-          <tr class="amb"><td class="lbl">Tarjeta</td><td class="right" id="out_tar">$0.00</td></tr>
-          <tr class="amb"><td class="lbl">Transferencia</td><td class="right" id="out_trans">$0.00</td></tr>
-          <tr class="amb"><td class="lbl">Servicios Manuales</td><td class="right" id="out_svc_pagos">$0.00</td></tr>
-          <tr class="sub"><td class="lbl">TOTAL COBRADO</td><td class="right" id="out_total_cobrado">$0.00</td></tr>
-          <tr><td colspan="2" style="padding:3px;border:none"></td></tr>
-          <tr><td class="lbl">Diferencia con Caja</td><td class="right" id="out_dif_caja" style="font-weight:700">$0.00</td></tr>
+          <tr class="amb"><td class="lbl">Efectivo</td><td class="r" id="o_efe">$0</td></tr>
+          <tr class="amb"><td class="lbl">Tarjeta</td><td class="r" id="o_tar">$0</td></tr>
+          <tr class="amb"><td class="lbl">Transferencia</td><td class="r" id="o_trans">$0</td></tr>
+          <tr class="tot"><td class="lbl">TOTAL COBRADO</td><td class="r" id="o_total_cobrado">$0</td></tr>
+          <tr><td class="lbl">Dif. vs Caja</td><td class="r" id="o_dif_caja" style="font-weight:700">—</td></tr>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- 7. Gastos -->
+  <!-- 7. Gastos (editable) -->
+  <div class="sec-title"><span class="ico">💸</span>GASTOS</div>
   <div class="card">
-    <div class="card-head"><div class="badge">7</div>GASTOS <span style="font-weight:400;font-size:11px;opacity:.7;margin-left:6px">— editable</span></div>
     <div class="card-body">
-      <div id="gastos_out_list"></div>
+      <div id="o_gastos_list"></div>
       <button class="btn-add" onclick="addGastoOut()">+ Agregar gasto</button>
-      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--red-light);border-radius:5px;padding:7px 12px;margin-top:8px;font-weight:700;color:var(--red)">
-        <span>TOTAL GASTOS</span><span id="tot_gastos_out">$0.00</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--red-light);border-radius:5px;padding:6px 12px;margin-top:8px;font-weight:700;color:var(--red)">
+        <span>TOTAL GASTOS</span><span id="o_tot_gastos">$0</span>
       </div>
     </div>
   </div>
 
-  <!-- 8. Lectura máquina -->
-  <div class="card">
-    <div class="card-head"><div class="badge">8</div>LECTURA DE LA MÁQUINA <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
-    <div class="card-body">
-      <table class="ct">
-        <thead><tr><th>Paquete</th><th>Inicio</th><th>Final</th><th>Vendidos</th><th>Total $</th></tr></thead>
-        <tbody id="body_paq_out">
-          <tr><td>Paquete 1</td><td><input id="out_pi_ini_1" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_1" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_1" style="text-align:center">0</td><td class="right" id="out_pi_mon_1">$0</td></tr>
-          <tr><td>Paquete 2</td><td><input id="out_pi_ini_2" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_2" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_2" style="text-align:center">0</td><td class="right" id="out_pi_mon_2">$0</td></tr>
-          <tr><td>Paquete 3</td><td><input id="out_pi_ini_3" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_3" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_3" style="text-align:center">0</td><td class="right" id="out_pi_mon_3">$0</td></tr>
-          <tr><td>Paquete 4</td><td><input id="out_pi_ini_4" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_4" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_4" style="text-align:center">0</td><td class="right" id="out_pi_mon_4">$0</td></tr>
-          <tr><td>Paquete 5</td><td><input id="out_pi_ini_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_5" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_5" style="text-align:center">0</td><td class="right" id="out_pi_mon_5">$0</td></tr>
-          <tr><td>Paquete 6</td><td><input id="out_pi_ini_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td><input id="out_pi_fin_6" class="ei" type="number" placeholder="0" oninput="recalcPaqOut()"></td><td id="out_pi_vend_6" style="text-align:center">0</td><td class="right" id="out_pi_mon_6">$0</td></tr>
-        </tbody>
-        <tfoot><tr class="sub"><td colspan="3" class="lbl">TOTAL MÁQUINA</td><td class="center" id="tp_cant">0</td><td class="right" id="tp_mon"></td></tr></tfoot>
-      </table>
-    </div>
-  </div>
-
-  <!-- 9. Foto de lectura (editable en corteWrap) -->
-  <div class="card">
-    <div class="card-head"><div class="badge">📸</div>FOTO DE LECTURA <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
-    <div class="card-body">
-      <div id="foto_dropzone_out" onclick="document.getElementById('foto_input_out').click()"
-        style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--gray)"
-        ondragover="event.preventDefault()"
-        ondrop="handleFotoDropOut(event)">
-        <div id="foto_preview_out" style="display:none">
-          <img id="foto_img_out" style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:6px">
-          <div style="font-size:12px;color:var(--teal);font-weight:600" id="foto_name_out"></div>
-        </div>
-        <div id="foto_placeholder_out">
-          <div style="font-size:24px">📸</div>
-          <div style="font-size:12px;color:var(--muted)">Toca para subir foto de la lectura</div>
-        </div>
-      </div>
-      <input type="file" id="foto_input_out" accept="image/*" capture="environment" style="display:none" onchange="handleFotoFileOut(this.files[0])">
-    </div>
-  </div>
-
-  <!-- 10. Notas -->
+  <!-- 8. Notas -->
+  <div class="sec-title"><span class="ico">📝</span>NOTAS</div>
   <div class="card" id="notas_out_card">
-    <div class="card-head"><div class="badge">📝</div>NOTAS <span style="font-size:11px;font-weight:400;opacity:0.7">— editable</span></div>
     <div class="card-body">
-      <div id="notas_out"></div>
-      <button onclick="notas.push('');recalcOut()" style="background:none;border:1px dashed var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px">+ Agregar nota</button>
+      <div id="o_notas"></div>
+      <button onclick="notas.push('');renderNotasOut()" class="btn-add">+ Agregar nota</button>
     </div>
   </div>
 
-  <!-- Actions -->
-  <div id="actions">
-    <button class="btn-sec" id="btnGuardarLecturas" style="background:#0d6efd;color:#fff" onclick="window.guardarSoloLecturas()">🔢 Guardar Lecturas (prueba)</button>
-    <button class="btn-sec" id="btnGuardar" style="background:#7B2FBE;color:#fff" onclick="window.guardarCorte()">💾 Guardar Corte</button>
-    <button class="btn-sec" id="btnEnviarReporte" style="background:#25D366;color:#fff" onclick="window.enviarReporte()">📤 Enviar Reporte</button>
-    <button class="btn-sec b-analyze" onclick="runAudit()">🔍 Analizar Corte</button>
+  <!-- Acciones -->
+  <div class="actions" id="actions">
+    <button class="btn-sec b-save" onclick="guardarCorte()">💾 Guardar Corte</button>
+    <button class="btn-sec b-send" onclick="enviarReporte()">📤 Enviar Reporte</button>
     <button class="btn-sec b-print" onclick="window.print()">🖨️ Imprimir</button>
-    <button class="btn-sec b-excel" onclick="exportXLSX()">📥 Descargar Excel</button>
     <button class="btn-sec b-reset" onclick="resetAll()">🔄 Nuevo Corte</button>
   </div>
 
 </div><!-- /corteWrap -->
 </div><!-- /app -->
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
-const VENTAS=[
-  {name:"Autos",                           price:110, pagado:true},
-  {name:"Camionetas Chicas y Medianas",    price:120, pagado:true},
-  {name:"Pick-Ups, Minivans, SUV Grandes", price:140, pagado:true},
-  {name:"Lavado Express",                  price:90,  pagado:true},
-  {name:"Fiscalía",                        price:80,  pagado:true},
-  {name:"Motos",                           price:60,  pagado:false},
+// ═══════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════
+const FIREBASE_PROJECT = 'starwash-cortes';
+const ODOO_BASE = 'https://starwash.odoo.com';
+
+// Paquetes vendidos en Odoo — mapeo exacto por nombre de producto
+const PAQUETES = [
+  {key:'auto_bas',   name:'Auto Básico',           price:110, prog:1},
+  {key:'cam_bas',    name:'Cam. Básica',            price:120, prog:2},
+  {key:'pickup_bas', name:'Pick-Up Básico',         price:140, prog:3},
+  {key:'auto_plus',  name:'Auto Plus',              price:140, prog:4},
+  {key:'auto_pro',   name:'Auto Pro',               price:170, prog:4},
+  {key:'cam_plus',   name:'Cam. Plus',              price:160, prog:5},
+  {key:'cam_pro',    name:'Cam. Pro',               price:190, prog:5},
+  {key:'pickup_plus',name:'Pick-Up Plus',           price:175, prog:6},
+  {key:'pickup_pro', name:'Pick-Up Pro',            price:210, prog:6},
+  {key:'express',    name:'Express',                price:90,  prog:null},
+  {key:'fiscalia',   name:'Fiscalía',               price:80,  prog:null},
+  {key:'motos',      name:'Motos',                  price:60,  prog:null},
 ];
-const ADICS=[
-  {name:"Lavado de Tapetes Solo", price:40},
-  {name:"Lavado de Motor",        price:60},
-  {name:"Lavado a Mano",          price:20},
-  {name:"Plus + Cera",            price:20},
-  {name:"Pro Cera + Tapetes",     price:50},
+const ADICIONALES = [
+  {key:'tapetes',    name:'Lavado de Tapetes Solo', price:40},
+  {key:'motor',      name:'Lavado de Motor',        price:60},
+  {key:'mano',       name:'Lavado a Mano',          price:20},
+  {key:'plus_cera',  name:'Plus + Cera',            price:20},
+  {key:'pro_cera',   name:'Pro Cera + Tapetes',     price:50},
 ];
 
-let gastos=[], svcs=[], notas=[], pdfFile=null, fotoFile=null, hasSvc=false;
-let D={}; // all data after generate
-var FIREBASE_PROJECT = 'starwash-cortes'; // global
+// Programas del túnel
+const PROGRAMAS = [
+  {prog:1, name:'Prog 1 — Auto Básico'},
+  {prog:2, name:'Prog 2 — Cam. Básica'},
+  {prog:3, name:'Prog 3 — Pick-Up Básico'},
+  {prog:4, name:'Prog 4 — Auto Plus / Pro'},
+  {prog:5, name:'Prog 5 — Cam. Plus / Pro'},
+  {prog:6, name:'Prog 6 — Pick-Up Plus / Pro'},
+];
 
-window.onload=()=>{
-  const k=localStorage.getItem('sw_key'); if(k) document.getElementById('apikey').value=k;
-  document.getElementById('inp_fecha').value=new Date().toISOString().slice(0,10);
-  renderGastos(); renderSvcs(); buildPaqInputs(); renderNotas();
+// ═══════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════
+let gastos = [], notas = [], D = {};
+
+function ls(k, v){ if(v!==undefined) localStorage.setItem(k,v); else return localStorage.getItem(k)||''; }
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.onload = () => {
+  const k = ls('sw_odoo_key');
+  if(k) document.getElementById('odoo_key').value = k;
+  document.getElementById('inp_fecha').value = new Date().toLocaleDateString('en-CA');
+  buildMaqInputs();
+  renderGastos();
+  renderNotas();
+  addGasto(); // empezar con un gasto vacío
 };
 
-// ── FILE ──────────────────────────────────────────────────────────────────────
-function handleDrop(ev){ev.preventDefault();document.getElementById('dropzone').classList.remove('over');handleFile(ev.dataTransfer.files[0]);}
-function handleFile(f){
-  if(!f||f.type!=='application/pdf'){alert('Por favor sube un PDF.');return;}
-  pdfFile=f;
-  document.getElementById('fileInfo').innerHTML=`✔ ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
-}
-function recalcFormInputs(){
-  // Only runs during input phase (before corte is generated)
-  if(document.getElementById('corteWrap').style.display==='block') return;
-  
-  const ct=parseFloat(document.getElementById('inp_cortes_taller')?.value)||0;
-  const ca=parseFloat(document.getElementById('inp_cortes_ayto')?.value)||0;
-  const cf=parseFloat(document.getElementById('inp_cortes_familiar')?.value)||0;
-  const seg=parseFloat(document.getElementById('inp_seguro')?.value)||0;
-  const lavm=parseFloat(document.getElementById('inp_lavm')?.value)||0;
-  const reg=parseFloat(document.getElementById('inp_regresos')?.value)||0;
-  const apertura=parseFloat(document.getElementById('inp_apertura')?.value)||0;
-  const morralla=parseFloat(document.getElementById('inp_morralla')?.value)||0;
-  const billetes=parseFloat(document.getElementById('inp_billetes')?.value)||0;
-  const terminal=parseFloat(document.getElementById('inp_terminal')?.value)||0;
-  const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
-  const fondo=parseFloat(document.getElementById('inp_fondo')?.value)||0;
-  const totalCaja=morralla+billetes+terminal+(parseFloat(document.getElementById('inp_trans')?.value)||0)+totGastos-apertura-fondo;
-  
-  // Update caja KPIs
-  const setK=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
-  setK('k_apertura','$'+Math.round(apertura/1000*10)/10+'K');
-  setK('k_morralla','$'+Math.round(morralla/1000*10)/10+'K');
-  setK('k_billetes','$'+Math.round(billetes/1000*10)/10+'K');
-  setK('k_terminal','$'+Math.round(terminal/1000*10)/10+'K');
+// ═══════════════════════════════════════════════════════
+// MÁQUINA — INPUTS
+// ═══════════════════════════════════════════════════════
+function buildMaqInputs(){
+  const tb = document.getElementById('maq_body');
+  tb.innerHTML = '';
+  PROGRAMAS.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="prog-name">${p.name}</td>
+      <td><input id="pi_ini_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()"></td>
+      <td><input id="pi_fin_${p.prog}" type="number" placeholder="0" oninput="recalcMaq()"></td>
+      <td class="vend" id="pi_vend_${p.prog}">—</td>`;
+    tb.appendChild(tr);
+  });
+  recalcMaq();
 }
 
-async function cargarInicioPaquetes(){
-  const fecha = document.getElementById('inp_fecha').value;
-  if(!fecha) return;
-  
-  // Calcular fecha anterior
-  const d = new Date(fecha + 'T12:00:00');
-  d.setDate(d.getDate() - 1);
-  const fechaAyer = d.toISOString().slice(0,10);
-  
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
-  
-  try{
-    const r = await fetch(`${url}?pageSize=30&orderBy=timestamp+desc`);
-    const data = await r.json();
-    const docs = data.documents || [];
-    
-    // Buscar corte del día anterior
-    let corteAyer = null;
-    for(const doc of docs){
-      const fields = doc.fields || {};
-      const f = fields.fecha?.stringValue || '';
-      if(f === fechaAyer){
-        corteAyer = doc;
-        break;
-      }
-    }
-    
-    if(!corteAyer){
-      console.log('No hay corte del día anterior:', fechaAyer);
-      return;
-    }
-    
-    // Extraer paquetes del corte anterior
-    // Los paquetes están guardados en la lectura de máquina
-    // Buscar en los campos del documento
-    const fields = corteAyer.fields || {};
-    
-    // Los finales del día anterior son los inicios de hoy
-    // Buscar en el historial el documento y leer paquetes
-    const docId = corteAyer.name.split('/').pop();
-    const docUrl = `${url}/${docId}`;
-    const docR = await fetch(docUrl);
-    const docData = await docR.json();
-    const docFields = docData.fields || {};
-    
-    // Los paquetes se guardan como array en firebase
-    // Reconstruir desde los inputs del día anterior guardados
-    // Por ahora mostramos aviso de que se encontró el corte anterior
-    console.log('Corte anterior encontrado:', fechaAyer, docId);
-    
-    // Intentar leer paquetes guardados
-    // En el HTML guardamos los finales en pi_fin_1..6
-    // Los buscamos en Firestore — se guardaron en el array de paquetes o en campos separados
-    // Como no guardamos paquetes en Firebase aún, mostramos aviso
-    // Leer paquetes_finales del corte anterior
-    const paqField = docFields.paquetes_finales;
-    if(paqField && paqField.arrayValue){
-      const paquetes = paqField.arrayValue.values || [];
-      paquetes.forEach((p, i)=>{
-        const fields_p = p.mapValue?.fields || {};
-        const finalVal = fields_p.final?.integerValue || fields_p.final?.doubleValue || 0;
-        // Llenar tanto el input original como el nuevo out_pi_ini_
-        const inp = document.getElementById(`pi_ini_${i+1}`);
-        const inpOut = document.getElementById(`out_pi_ini_${i+1}`);
-        if(finalVal) {
-          if(inp){ inp.value = finalVal; inp.style.background = 'var(--teal-light)'; }
-          if(inpOut){ inpOut.value = finalVal; inpOut.style.background = 'var(--teal-light)'; inpOut.title = `Cargado del corte del ${fechaAyer}`; }
-        }
-      });
-      // Update vendidos
-      document.querySelectorAll('#paq_input_body tr').forEach((tr,i)=>{
-        const ini = parseFloat(document.getElementById(`pi_ini_${i+1}`)?.value)||0;
-        const fin = parseFloat(document.getElementById(`pi_fin_${i+1}`)?.value)||0;
-        const vend = document.getElementById(`pi_vend_${i+1}`);
-        if(vend) vend.textContent = Math.max(0, fin-ini);
-      });
-      mostrarAvisoInicios(fechaAyer);
-    } else {
-      console.log('No hay paquetes_finales guardados para', fechaAyer);
-    }
-    
-    // Cargar morralla de ayer como apertura de hoy
-    const cajaField = docFields.caja;
-    if(cajaField && cajaField.mapValue){
-      const cajaFields = cajaField.mapValue.fields || {};
-      const morrallaAyer = cajaFields.morralla?.integerValue || cajaFields.morralla?.doubleValue || 0;
-      if(morrallaAyer){
-        const inpApertura = document.getElementById('inp_apertura');
-        if(inpApertura && !inpApertura.value){
-          inpApertura.value = morrallaAyer;
-          inpApertura.style.background = 'var(--teal-light)';
-          inpApertura.title = `Morralla del corte del ${fechaAyer}`;
-        }
-      }
-    }
-    
-  } catch(e){
-    console.warn('Error cargando inicios:', e);
-  }
+function recalcMaq(){
+  let total = 0;
+  PROGRAMAS.forEach(p => {
+    const ini = parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0;
+    const fin = parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0;
+    const vend = Math.max(0, fin - ini);
+    const el = document.getElementById(`pi_vend_${p.prog}`);
+    if(el) el.textContent = (ini||fin) ? vend : '—';
+    total += vend;
+  });
+  document.getElementById('maq_total').textContent = total || 0;
 }
 
-function mostrarAvisoInicios(fecha){
-  // Mostrar banner informativo
-  let banner = document.getElementById('banner_inicios');
-  if(!banner){
-    banner = document.createElement('div');
-    banner.id = 'banner_inicios';
-    banner.style.cssText = 'background:var(--teal);color:#fff;padding:8px 14px;border-radius:7px;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:8px';
-    const paqCard = document.querySelector('.card-head .badge');
-    const cards = document.querySelectorAll('.card');
-    // Insert before paquetes section
-    for(const card of cards){
-      if(card.innerHTML.includes('LECTURA DE LA MÁQUINA')){
-        card.querySelector('.card-body').insertBefore(banner, card.querySelector('.card-body').firstChild);
-        break;
-      }
-    }
-  }
-  banner.innerHTML = `✅ Se encontró corte del ${fecha} — captura los Finales de hoy y los Inicios se tomarán del día anterior al guardar.`;
-}
-
-function handleFotoDropOut(ev){
-  ev.preventDefault();
-  handleFotoFileOut(ev.dataTransfer.files[0]);
-}
-function handleFotoFileOut(f){
-  if(!f||!f.type.startsWith('image/')) return;
-  fotoFile = f;
-  const r = new FileReader();
-  r.onload = e => {
-    document.getElementById('foto_img_out').src = e.target.result;
-    document.getElementById('foto_name_out').textContent = f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)';
-    document.getElementById('foto_preview_out').style.display = 'block';
-    document.getElementById('foto_placeholder_out').style.display = 'none';
-    document.getElementById('foto_dropzone_out').style.borderColor = 'var(--teal)';
-    // Sincronizar con la foto del inputSection
-    document.getElementById('foto_img').src = e.target.result;
-    document.getElementById('foto_name').textContent = f.name;
-    document.getElementById('foto_preview').style.display = 'block';
-    document.getElementById('foto_placeholder').style.display = 'none';
-  };
-  r.readAsDataURL(f);
-}
-
-function handleFotoDrop(ev){
-  ev.preventDefault();
-  document.getElementById('foto_dropzone').style.background='var(--gray)';
-  handleFotoFile(ev.dataTransfer.files[0]);
-}
-function handleFotoFile(f){
-  if(!f||!f.type.startsWith('image/')){alert('Por favor sube una imagen.');return;}
-  fotoFile=f;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    document.getElementById('foto_img').src=e.target.result;
-    document.getElementById('foto_name').textContent=f.name+' ('+( f.size/1024).toFixed(1)+' KB)';
-    document.getElementById('foto_preview').style.display='block';
-    document.getElementById('foto_placeholder').style.display='none';
-    document.getElementById('foto_dropzone').style.borderColor='var(--teal)';
-  };
-  reader.readAsDataURL(f);
-}
-function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('Error'));r.readAsDataURL(f);});}
-
-// ── INPUT FORMS ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// GASTOS
+// ═══════════════════════════════════════════════════════
 function renderGastos(){
-  const el=document.getElementById('gastos_list');el.innerHTML='';
-  if(!gastos.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos aún.</p>';return;}
-  gastos.forEach((g,i)=>{
-    const d=document.createElement('div');d.className='list-row';
-    d.innerHTML=`<input class="li" type="text" value="${g.c}" placeholder="Concepto" oninput="gastos[${i}].c=this.value">
-      <input class="lm" type="number" value="${g.m||''}" placeholder="0.00" oninput="gastos[${i}].m=parseFloat(this.value)||0">
+  const el = document.getElementById('gastos_list'); el.innerHTML = '';
+  if(!gastos.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos.</p>'; return; }
+  gastos.forEach((g,i) => {
+    const d = document.createElement('div'); d.className = 'gasto-row';
+    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value">
+      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0">
       <button class="del" onclick="gastos.splice(${i},1);renderGastos()">×</button>`;
     el.appendChild(d);
   });
 }
-function addGasto(){gastos.push({c:'',m:0});renderGastos();}
+function addGasto(){ gastos.push({c:'',m:0}); renderGastos(); setTimeout(()=>{ const ins=document.querySelectorAll('.gc'); if(ins.length) ins[ins.length-1].focus(); },50); }
 
-function renderSvcs(){
-  const el=document.getElementById('svc_list');el.innerHTML='';
-  svcs.forEach((s,i)=>{
-    const d=document.createElement('div');d.className='list-row';
-    const tot=(s.p||0)*(s.q||0);
-    d.innerHTML=`<input class="li" type="text" value="${s.n}" placeholder="Ej: Pulido de Vestiduras" oninput="svcs[${i}].n=this.value;updateSvcTot(${i})">
-      <input class="lm" type="number" value="${s.p||''}" placeholder="$0.00" oninput="svcs[${i}].p=parseFloat(this.value)||0;updateSvcTot(${i})">
-      <input style="width:70px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:12px;text-align:center;background:var(--amber-light)" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;updateSvcTot(${i})">
-      <span id="svctot_${i}" style="width:80px;text-align:right;font-size:12px;font-weight:700;color:var(--green);padding:6px 4px">$${tot.toLocaleString('es-MX',{minimumFractionDigits:2})}</span>
-      <button class="del" onclick="svcs.splice(${i},1);renderSvcs()">×</button>`;
+function addGastoOut(){
+  gastos.push({c:'',m:0}); renderGastosOut();
+}
+function renderGastosOut(){
+  const el = document.getElementById('o_gastos_list'); el.innerHTML = '';
+  gastos.forEach((g,i) => {
+    const d = document.createElement('div'); d.className = 'gasto-row';
+    d.innerHTML = `<input class="gc" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value;recalcOut()">
+      <input class="gm" type="number" value="${g.m||''}" placeholder="$0" oninput="gastos[${i}].m=parseFloat(this.value)||0;recalcOut()">
+      <button class="del" onclick="gastos.splice(${i},1);renderGastosOut();recalcOut()">×</button>`;
     el.appendChild(d);
   });
-}
-function addSvc(){svcs.push({n:'',p:0,q:1});renderSvcs();}
-function updateSvcTot(i){
-  const tot=(svcs[i].p||0)*(svcs[i].q||0);
-  const el=document.getElementById('svctot_'+i);
-  if(el) el.textContent='$'+tot.toLocaleString('es-MX',{minimumFractionDigits:2});
-  // update grand total
-  const grandTot=svcs.reduce((s,v)=>s+(v.p||0)*(v.q||0),0);
-  const el2=document.getElementById('tot_svc_lbl');
-  if(el2) el2.textContent='$'+grandTot.toLocaleString('es-MX',{minimumFractionDigits:2});
-}
-function toggleSvc(val){
-  hasSvc=val;
-  document.getElementById('svc_body').style.display=val?'block':'none';
-  document.getElementById('btn_si').className='tbtn '+(val?'active-si':'');
-  document.getElementById('btn_no').className='tbtn '+(val?'':'active-no');
-  if(!val){svcs=[];renderSvcs();}
-}
-
-function buildPaqInputs(){
-  const tb=document.getElementById('paq_input_body');tb.innerHTML='';
-  for(let i=1;i<=6;i++){
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="pname">Paquete ${i}</td>
-      <td><input id="pi_ini_${i}" type="number" placeholder="0"></td>
-      <td><input id="pi_fin_${i}" type="number" placeholder="0"></td>
-      <td id="pi_vend_${i}" style="color:var(--muted)">—</td>
-      <td><input id="pi_mon_${i}" type="number" placeholder="$0"></td>`;
-    tb.appendChild(tr);
-    ['pi_ini_','pi_fin_'].forEach(p=>{
-      document.getElementById(p+i).addEventListener('input',()=>{
-        const ini=parseFloat(document.getElementById('pi_ini_'+i).value)||0;
-        const fin=parseFloat(document.getElementById('pi_fin_'+i).value)||0;
-        document.getElementById('pi_vend_'+i).textContent=Math.max(0,fin-ini);
-      });
-    });
-  }
-}
-
-function renderNotas(){
-  const el=document.getElementById('notas_list');el.innerHTML='';
-  if(!notas.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin notas.</p>';return;}
-  notas.forEach((n,i)=>{
-    const d=document.createElement('div');d.className='nota-row';
-    d.innerHTML=`<span style="color:var(--muted);font-size:11px;min-width:20px;padding-top:7px">${i+1}.</span>
-      <input class="ni" type="text" value="${n}" placeholder="Escribe una nota..." oninput="notas[${i}]=this.value">
-      <button onclick="notas.splice(${i},1);renderNotas()">×</button>`;
-    el.appendChild(d);
-  });
-}
-function addNota(){notas.push('');renderNotas();setTimeout(()=>{const ins=document.querySelectorAll('.nota-row input.ni');if(ins.length)ins[ins.length-1].focus();},50);}
-
-// ── GENERATE ──────────────────────────────────────────────────────────────────
-async function generate(){
-  if(!pdfFile){alert('Primero sube el Reporte Z de Odoo.');return;}
-  const key=document.getElementById('apikey').value.trim();
-  if(!key){alert('Ingresa tu API Key de Anthropic.');return;}
-  document.getElementById('spinner').style.display='block';
-  document.getElementById('genBtn').disabled=true;
-
-  try{
-    const b64=await toB64(pdfFile);
-    const prompt=`Extrae datos del Reporte Z de Odoo de Star Wash. Devuelve SOLO JSON válido, sin texto extra ni markdown.
-
-DIFERENCIA EXACTA entre adicionales:
-- "Lavado de Tapetes Solo" = tapetes únicamente $40 → campo: tapetes_solo
-- "Lavado a Mano" = lavado manual extra $20 → campo: mano
-- "Lavado de Motor" = motor $60 → campo: motor
-- "Plus + Cera" = solo cera $20 → campo: plus_cera
-- "Pro Cera + Tapetes" = cera más tapetes $50 → campo: pro_cera_tapetes
-
-JSON:
-{
-  "sesion":"POS/XXXXX",
-  "fecha":"DD/MM/YYYY",
-  "ventas":{"autos":0,"camionetas":0,"pickups":0,"express":0,"fiscalia":0,"motos":0},
-  "adicionales":{"tapetes_solo":0,"motor":0,"mano":0,"plus_cera":0,"pro_cera_tapetes":0},
-  "pagos":{"efectivo":0,"tarjeta":0,"transferencia":0},
-  "cortesias":{"taller":0,"ayuntamiento":0,"familiar":0},
-  "gastos_odoo":[{"concepto":"","monto":0}]
-}
-- En "pagos": sección "Pagos" del reporte — Efectivo POS/X, Tarjeta POS/X, Transferencia POS/X
-- En "cortesias": busca sección "Cortesias" — "Cortesía Taller" → taller, "Cortesía Ayuntamiento" → ayuntamiento, "Cortesía Familiar" → familiar
-- En "gastos_odoo": líneas "out-" del control de sesión
-- Si algo no aparece pon 0. No inventes.`;
-
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,messages:[{role:'user',content:[
-        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
-        {type:'text',text:prompt}
-      ]}]})
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.status);}
-    const data=await res.json();
-    const txt=data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
-    const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
-
-    // Merge Odoo gastos into user gastos if gastos is empty
-    if(gastos.length===0 && parsed.gastos_odoo?.length){
-      gastos=parsed.gastos_odoo.filter(g=>g.concepto&&g.monto>0).map(g=>({c:g.concepto,m:g.monto}));
-    }
-
-    // Apply cortesias from PDF to inputs
-    if(parsed.cortesias){
-      const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
-      setV('inp_cortes_taller',   parsed.cortesias.taller);
-      setV('inp_cortes_ayto',     parsed.cortesias.ayuntamiento);
-      setV('inp_cortes_familiar', parsed.cortesias.familiar);
-    }
-
-    buildCorte(parsed);
-    await runAudit();
-  }catch(e){alert('Error: '+e.message);}
-  finally{document.getElementById('spinner').style.display='none';document.getElementById('genBtn').disabled=false;}
-}
-
-// ── BUILD CORTE ───────────────────────────────────────────────────────────────
-function buildCorte(od){
-  // Store odoo data
-  D.sesion=od.sesion||'—';
-  // Set fecha from PDF if available
-  if(od.fecha){
-    const p=od.fecha.split('/');
-    if(p.length===3){
-      const fechaISO=`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-      document.getElementById('inp_fecha').value=fechaISO;
-      // Auto-load previous day machine readings
-      setTimeout(cargarInicioPaquetes, 200);
-    }
-  }
-  D.ventas=[od.ventas?.autos||0,od.ventas?.camionetas||0,od.ventas?.pickups||0,od.ventas?.express||0,od.ventas?.fiscalia||0,od.ventas?.motos||0];
-  D.adics=[od.adicionales?.tapetes_solo||0,od.adicionales?.motor||0,od.adicionales?.mano||0,od.adicionales?.plus_cera||0,od.adicionales?.pro_cera_tapetes||0];
-  D.efe=od.pagos?.efectivo||0; D.tar=od.pagos?.tarjeta||0; D.trans=od.pagos?.transferencia||0;
-
-  // Header
-  const fecha=document.getElementById('inp_fecha').value;
-  document.getElementById('out_fecha').textContent=fecha||'—';
-  document.getElementById('out_sesion').textContent=D.sesion;
-  document.getElementById('out_resp').textContent=document.getElementById('inp_resp')?.value||'—';
-
-  // Ventas table
-  let totLav=0,cantPagados=0,cantLav=0;
-  const vb=document.getElementById('body_ventas');vb.innerHTML='';
-  D.ventas.forEach((q,i)=>{
-    const t=q*VENTAS[i].price;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${VENTAS[i].name}</td><td class="right">$${VENTAS[i].price}.00</td><td class="center">${q}</td><td class="right">${fmt(t)}</td>`;
-    vb.appendChild(tr);
-    totLav+=t;
-    if(VENTAS[i].pagado) cantPagados+=q;
-    cantLav+=q;
-  });
-  document.getElementById('sv_cant').textContent=cantPagados;
-  document.getElementById('sv_tot').textContent=fmt(totLav);
-
-  // Adics table
-  let totAd=0,cantAd=0;
-  const ab=document.getElementById('body_adics');ab.innerHTML='';
-  D.adics.forEach((q,i)=>{
-    const t=q*ADICS[i].price;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${ADICS[i].name}</td><td class="right">$${ADICS[i].price}.00</td><td class="center">${q}</td><td class="right">${fmt(t)}</td>`;
-    ab.appendChild(tr);
-    totAd+=t;cantAd+=q;
-  });
-  document.getElementById('sa_cant').textContent=cantAd;
-  document.getElementById('sa_tot').textContent=fmt(totAd);
-
-  // Servicios manuales
-  let totSvc=0;
-  if(svcs.length&&hasSvc){
-    const sb=document.getElementById('body_svc_out');sb.innerHTML='';
-    svcs.forEach((s,i)=>{
-      const t=(s.p||0)*(s.q||0);totSvc+=t;
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td><input style="width:100%;border:none;background:transparent;font:inherit;outline:none" type="text" value="${s.n||''}" placeholder="Servicio" oninput="svcs[${i}].n=this.value"></td>
-        <td><input class="ei" style="text-align:right" type="number" value="${s.p||''}" placeholder="$0" oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
-        <td><input class="ei center" type="number" value="${s.q||''}" placeholder="1" oninput="svcs[${i}].q=parseFloat(this.value)||0;recalcSvcOut()"></td>
-        <td class="right" id="svc_out_tot_${i}">${fmt(t)}</td>`;
-      sb.appendChild(tr);
-    });
-    document.getElementById('tot_svc_out').textContent=fmt(totSvc);
-    document.getElementById('svc_out_card').style.display='block';
-  }
-
-  // Totales
-  const totalTix=totLav+totAd+totSvc;
-  const totPagos=D.efe+D.tar+D.trans+totSvc;
-
-  // Conteos otros
-  const ct=parseFloat(document.getElementById('inp_cortes_taller').value)||0;
-  const ca=parseFloat(document.getElementById('inp_cortes_ayto').value)||0;
-  const cf=parseFloat(document.getElementById('inp_cortes_familiar')?.value)||0;
-  const seg=parseFloat(document.getElementById('inp_seguro').value)||0;
-  const lavm=parseFloat(document.getElementById('inp_lavm').value)||0;
-  const reg=parseFloat(document.getElementById('inp_regresos').value)||0;
-  document.getElementById('out_ct').value=ct||'';
-  document.getElementById('out_ca').value=ca||'';
-  document.getElementById('out_cf').value=cf||'';
-  document.getElementById('out_seg').value=seg||'';
-  document.getElementById('out_lavm').value=lavm||'';
-  document.getElementById('out_reg').value=reg||'';
-
-  // Control de efectivo
-  const apertura=parseFloat(document.getElementById('inp_apertura').value)||0;
-  const morralla=parseFloat(document.getElementById('inp_morralla').value)||0;
-  const billetes=parseFloat(document.getElementById('inp_billetes').value)||0;
-  const terminal=parseFloat(document.getElementById('inp_terminal').value)||0;
-  const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
-  const totalCaja=morralla+billetes+terminal+D.trans+totGastos-apertura;
-
-  
-  
-  
-  document.getElementById('out_trans_caja').textContent=fmt(D.trans);
-  document.getElementById('out_gastos_caja').textContent=fmt(totGastos);
-  
-  document.getElementById('out_total_caja').textContent=fmt(totalCaja);
-
-  // Formas de pago
-  document.getElementById('out_efe').textContent=fmt(D.efe);
-  document.getElementById('out_tar').textContent=fmt(D.tar);
-  document.getElementById('out_trans').textContent=fmt(D.trans);
-  document.getElementById('out_svc_pagos').textContent=fmt(totSvc);
-  document.getElementById('out_total_cobrado').textContent=fmt(totPagos);
-  const difCaja=totPagos-totalCaja;
-  const difEl=document.getElementById('out_dif_caja');
-  difEl.textContent=difCaja===0?'✅ Cuadra':(difCaja>0?'+':'')+fmt(difCaja);
-  difEl.style.color=difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)';
-
-  // Gastos — editable (rendered after DOM is ready)
-  // Populate caja inputs
-  document.getElementById('out_morralla_inp').value=morralla||'';
-  document.getElementById('out_billetes_inp').value=billetes||'';
-  document.getElementById('out_terminal_inp').value=terminal||'';
-  document.getElementById('out_apertura_inp').value=apertura||'';
-  // Populate otros
-  document.getElementById('out_ct').value=ct||'';
-  document.getElementById('out_ca').value=ca||'';
-  document.getElementById('out_seg').value=seg||'';
-  document.getElementById('out_lavm').value=lavm||'';
-  document.getElementById('out_reg').value=reg||'';
-
-  // Lectura máquina - llenar los inputs fijos de la tabla (out_pi_ini_/out_pi_fin_)
-  let maqVend=0;
-  for(let i=1;i<=6;i++){
-    const ini=parseFloat(document.getElementById('pi_ini_'+i)?.value)||0;
-    const fin=parseFloat(document.getElementById('pi_fin_'+i)?.value)||0;
-    const vend=Math.max(0,fin-ini);
-    // Llenar inputs fijos del corteWrap
-    const iniEl=document.getElementById('out_pi_ini_'+i);
-    const finEl=document.getElementById('out_pi_fin_'+i);
-    const vendEl=document.getElementById('out_pi_vend_'+i);
-    if(iniEl) iniEl.value=ini;
-    if(finEl) finEl.value=fin;
-    if(vendEl) vendEl.textContent=vend;
-    maqVend+=vend;
-  }
-  document.getElementById('tp_cant').textContent=maqVend;
-
-  // Notas output
-  // Renderizar TODAS las notas (incluyendo vacías recién agregadas)
-  const no=document.getElementById('notas_out');
-  if(no){
-    no.innerHTML='';
-    notas.forEach((n,i)=>{
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';
-      row.innerHTML=`<span style="color:var(--muted);font-size:11px;min-width:16px">${i+1}.</span>
-        <input type="text" value="${(n||'').replace(/"/g,'&quot;')}" 
-          style="flex:1;border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-size:13px;background:var(--gray)"
-          oninput="notas[${i}]=this.value"
-          placeholder="Escribe una nota...">
-        <button onclick="notas.splice(${i},1);recalcOut()" 
-          style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>`;
-      no.appendChild(row);
-    });
-    setTimeout(()=>{const ins=no.querySelectorAll('input');if(ins.length)ins[ins.length-1]?.focus();},50);
-  }
-
-  // Máquina esperada
-  const maqEsp=cantPagados+ct+ca+cf+seg-lavm+reg;
-
-  // KPIs
-  document.getElementById('k_tickets').textContent=fmtK(totalTix);
-  document.getElementById('k_efe').textContent=fmtK(D.efe);
-  document.getElementById('k_tar').textContent=fmtK(D.tar);
-  document.getElementById('k_trans').textContent=fmtK(D.trans);
-  document.getElementById('k_pagados').textContent=cantPagados;
-  document.getElementById('k_pagados2').textContent=cantPagados;
-  document.getElementById('k_entraron').textContent=cantPagados+ct+ca+cf+seg;
-  document.getElementById('k_cortes_total').textContent=ct+ca+cf+seg;
-  document.getElementById('k_tcaja_kpi').textContent=fmtK(totalCaja);
-  document.getElementById('k_gastos_kpi').textContent=fmtK(totGastos);
-  document.getElementById('k_apertura').textContent=fmtK(apertura);
-  document.getElementById('k_morralla').textContent=fmtK(morralla);
-  document.getElementById('k_billetes').textContent=fmtK(billetes);
-  document.getElementById('k_terminal').textContent=fmtK(terminal);
-  document.getElementById('k_maq_total').textContent=maqVend;
-  document.getElementById('k_maq_esp').textContent=maqEsp;
-
-  const difDin=totPagos-totalCaja;
-  document.getElementById('k_dif').textContent=difDin===0?'$0':fmtK(Math.abs(difDin));
-  document.getElementById('k_dif_card').style.background=difDin===0?'var(--green)':Math.abs(difDin)<500?'var(--amber)':'var(--red)';
-
-  const difMaq=maqVend-maqEsp;
-  document.getElementById('k_maq_dif').textContent=difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':'');
-  document.getElementById('k_maq_card').style.background=difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)';
-
-  // Resumen inteligente
-  const resEl=document.getElementById('k_resumen_txt');
-  const resCard=document.getElementById('k_resumen_card');
-  let msgs=[], color='var(--green)';
-  if(difCaja===0 && difMaq===0){
-    msgs.push('✅ Corte exacto');
-  } else {
-    if(difMaq>0){ msgs.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina'); color='var(--amber)'; }
-    else if(difMaq<0){ msgs.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina'); color='var(--amber)'; }
-    if(difCaja>0){ msgs.push('💰 Sobra '+fmt(difCaja)+' en caja'); color='var(--amber)'; }
-    else if(difCaja<0){ msgs.push('❌ Falta '+fmt(Math.abs(difCaja))+' en caja'); color='var(--red)'; }
-  }
-  if(resEl) resEl.innerHTML=msgs.join('<br>');
-  if(resCard) resCard.style.background=color;
-
-  // Store for audit
-  D={...D,totalTix,totPagos,totalCaja,totGastos,totSvc,cantPagados,maqVend,maqEsp,difMaq,difDin,
-     ct,ca,seg,lavm,reg,apertura,morralla,billetes,terminal};
-
-  document.getElementById('inputSection').style.display='none';
-  document.getElementById('corteWrap').style.display='block';
-  document.getElementById('actions').style.display='flex';
-  // Now DOM is ready — render editable gastos and recalc
-  renderGastosOut(true);
-}
-
-// ── AUDIT ─────────────────────────────────────────────────────────────────────
-async function runAudit(){
-  const key=document.getElementById('apikey').value.trim();if(!key)return;
-  const notasAudit=notas.filter(n=>n.trim());
-  const prompt=`Eres el auditor del Autolavado Star Wash. Analiza este corte. Responde en español, máximo 6 líneas, usa ✅⚠️❌.
-
-DATOS:
-- Autos pagados: ${D.cantPagados} | Cortesías Taller: ${D.ct} | Cortesías Ayto: ${D.ca} | Seguro: ${D.seg}
-- Lavados a mano: ${D.lavm} (no pasan máquina) | Regresos: ${D.reg} (cuentan doble)
-- Máquina esperada: ${D.maqEsp} | Máquina real: ${D.maqVend}
-- Diferencia máquina: ${D.difMaq===0?'cuadra exacto':D.difMaq>0?D.difMaq+' de más en máquina = posible auto sin cobrar':Math.abs(D.difMaq)+' de menos en máquina = posible auto cobrado sin pasar'}
-- Total tickets: ${fmt(D.totalTix)} | Total cobrado (Odoo+svc): ${fmt(D.totPagos)}
-- Total en caja (control efectivo): ${fmt(D.totalCaja)}
-- Diferencia dinero: ${D.difDin===0?'cuadra exacto':fmt(D.difDin)}
-- Gastos: ${fmt(D.totGastos)} | Servicios manuales: ${fmt(D.totSvc)}
-${notasAudit.length?'Notas cajera: '+notasAudit.join(' | '):''}
-Regla: difMaq>0=falta cobrar, difMaq<0=cobró sin pasar máquina. Sé concreto con números.`;
-
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:prompt}]})
-    });
-    if(!res.ok)return;
-    const data=await res.json();
-    const txt=data.content.filter(x=>x.type==='text').map(x=>x.text).join('');
-    document.getElementById('alertContent').innerHTML=txt.replace(/\n/g,'<br>');
-    document.getElementById('alertBox').style.display='block';
-  }catch(e){console.warn('Audit:',e);}
-}
-
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function fmt(n){return'$'+(+n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
-function fmtK(n){if(Math.abs(n)>=1000)return'$'+(n/1000).toFixed(1)+'K';return'$'+Math.round(n);}
-
-// ── EXPORT ────────────────────────────────────────────────────────────────────
-function renderGastosOut(doRecalc=false){
-  const el=document.getElementById('gastos_out_list');if(!el)return;
-  el.innerHTML='';
-  if(!gastos.length){el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin gastos.</p>';}
-  gastos.forEach((g,i)=>{
-    const d=document.createElement('div');d.className='list-row';
-    d.innerHTML=`<input class="li" type="text" value="${g.c||''}" placeholder="Concepto" oninput="gastos[${i}].c=this.value;recalcOut()">
-      <input class="lm" type="number" value="${g.m||''}" placeholder="0.00" oninput="gastos[${i}].m=parseFloat(this.value)||0;recalcOut()">
-      <button class="del" onclick="gastos.splice(${i},1);renderGastosOut(true)">×</button>`;
-    el.appendChild(d);
-  });
-  if(doRecalc)recalcOut();
-}
-function addGastoOut(){gastos.push({c:'',m:0});renderGastosOut(true);}
-
-function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
-function setStyle(id,prop,val){const el=document.getElementById(id);if(el)el.style[prop]=val;}
-function recalcSvcOut(){
-  let totSvc=0;
-  svcs.forEach((s,i)=>{
-    const t=(s.p||0)*(s.q||0); totSvc+=t;
-    const el=document.getElementById('svc_out_tot_'+i);
-    if(el) el.textContent=fmt(t);
-  });
-  set('tot_svc_out',fmt(totSvc));
-  // Update totals that depend on svc
-  D.totSvc=totSvc;
-  const totPagos=(D.efe||0)+(D.tar||0)+(D.trans||0)+totSvc;
-  D.totPagos=totPagos;
-  set('out_svc_pagos',fmt(totSvc));
-  set('out_total_cobrado',fmt(totPagos));
-  set('k_tickets',fmtK((D.totalTix||0)-((D.totSvc||0))+totSvc));
-  // Recalc diff
   recalcOut();
 }
 
-function recalcSvcOut(){
-  const tbody = document.getElementById('body_svc_out');
-  if(!tbody) return;
-  tbody.innerHTML = '';
-  let total = 0;
-  svcs.forEach((s,i)=>{
-    const t = (s.p||0)*(s.q||1);
-    total += t;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="text" value="${(s.n||'').replace(/"/g,'&quot;')}" placeholder="Servicio" 
-        style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px"
-        oninput="svcs[${i}].n=this.value"></td>
-      <td><input type="number" value="${s.p||''}" placeholder="$0"
-        style="width:80px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:right"
-        oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
-      <td><input type="number" value="${s.q||1}" min="1"
-        style="width:60px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:center"
-        oninput="svcs[${i}].q=parseFloat(this.value)||1;recalcSvcOut()"></td>
-      <td style="text-align:right;padding:4px 8px">${fmt(t)}
-        <button onclick="svcs.splice(${i},1);recalcSvcOut()" 
-          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px">×</button></td>`;
-    tbody.appendChild(tr);
+// ═══════════════════════════════════════════════════════
+// NOTAS
+// ═══════════════════════════════════════════════════════
+function renderNotas(){
+  const el = document.getElementById('notas_list'); el.innerHTML = '';
+  if(!notas.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px;font-style:italic">Sin notas.</p>'; return; }
+  notas.forEach((n,i) => {
+    const d = document.createElement('div'); d.className = 'gasto-row';
+    d.innerHTML = `<input class="gc" type="text" value="${n||''}" placeholder="Nota..." oninput="notas[${i}]=this.value">
+      <button class="del" onclick="notas.splice(${i},1);renderNotas()">×</button>`;
+    el.appendChild(d);
   });
-  const totEl = document.getElementById('tot_svc_out');
-  if(totEl) totEl.textContent = fmt(total);
-  D.totSvc = total;
-  // Sincronizar con inputSection
-  renderSvcs();
+}
+function addNota(){ notas.push(''); renderNotas(); setTimeout(()=>{ const ins=document.querySelectorAll('#notas_list .gc'); if(ins.length) ins[ins.length-1].focus(); },50); }
+function renderNotasOut(){
+  const el = document.getElementById('o_notas'); el.innerHTML = '';
+  notas.forEach((n,i) => {
+    const d = document.createElement('div'); d.className = 'gasto-row';
+    d.innerHTML = `<input class="gc" type="text" value="${n||''}" placeholder="Nota..." oninput="notas[${i}]=this.value">
+      <button class="del" onclick="notas.splice(${i},1);renderNotasOut()">×</button>`;
+    el.appendChild(d);
+  });
 }
 
-function recalcPaqOut(){
-  let ct=0,mt=0;
-  for(let i=1;i<=6;i++){
-    const ini=parseFloat(document.getElementById('out_pi_ini_'+i)?.value)||0;
-    const fin=parseFloat(document.getElementById('out_pi_fin_'+i)?.value)||0;
-    const vend=Math.max(0,fin-ini);
-    const el=document.getElementById('out_pi_vend_'+i);
-    if(el) el.textContent=vend;
-    ct+=vend;
-  }
-  set('tp_cant',ct); set('tp_mon',fmt(mt));
-  set('k_maq_total',ct);
-  // Update D and recalc maq dif
-  D.maqVend=ct;
-  const cantPagados=D.cantPagados||0;
-  const ct2=parseFloat(document.getElementById('out_ct')?.value)||0;
-  const ca2=parseFloat(document.getElementById('out_ca')?.value)||0;
-  const cf2=parseFloat(document.getElementById('out_cf')?.value)||0;
-  const seg2=parseFloat(document.getElementById('out_seg')?.value)||0;
-  const lavm2=parseFloat(document.getElementById('out_lavm')?.value)||0;
-  const reg2=parseFloat(document.getElementById('out_reg')?.value)||0;
-  const maqEsp=cantPagados+ct2+ca2+cf2+seg2-lavm2+reg2;
-  const difMaq=ct-maqEsp;
-  D.difMaq=difMaq; D.maqEsp=maqEsp;
-  set('k_maq_esp',maqEsp);
-  set('k_maq_dif',difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':''));
-  setStyle('k_maq_card','background',difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)');
-  // Update resumen
-  const resEl=document.getElementById('k_resumen_txt');
-  const resCard=document.getElementById('k_resumen_card');
-  const difDin=D.difDin||0;
-  let msgs=[],color='var(--green)';
-  if(difDin===0&&difMaq===0){msgs.push('✅ Corte exacto');}
-  else{
-    if(difMaq>0){msgs.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina');color='var(--amber)';}
-    else if(difMaq<0){msgs.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina');color='var(--amber)';}
-    if(difDin>0){msgs.push('💰 Sobra '+fmt(difDin)+' en caja');color='var(--amber)';}
-    else if(difDin<0){msgs.push('❌ Falta '+fmt(Math.abs(difDin))+' en caja');color='var(--red)';}
-  }
-  if(resEl) resEl.innerHTML=msgs.join('<br>');
-  if(resCard) resCard.style.background=color;
+// ═══════════════════════════════════════════════════════
+// ODOO — CONECTAR Y CARGAR DATOS
+// ═══════════════════════════════════════════════════════
+async function odooRPC(model, method, args, kwargs){
+  const key = document.getElementById('odoo_key').value.trim();
+  const url = `${ODOO_BASE}/web/dataset/call_kw`;
+  const body = { jsonrpc:'2.0', method:'call', id:1, params:{ model, method, args, kwargs:{...kwargs, context:{lang:'es_MX',tz:'America/Merida'}}}};
+  const headers = {'Content-Type':'application/json'};
+  if(key) headers['Authorization'] = `Bearer ${key}`;
+  const r = await fetch(url, {method:'POST', headers, body:JSON.stringify(body), credentials:'include'});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const j = await r.json();
+  if(j.error) throw new Error(j.error.data?.message || j.error.message || 'Error Odoo');
+  return j.result;
 }
 
+function setStatus(msg, cls=''){
+  const el = document.getElementById('gen_status');
+  el.textContent = msg; el.className = 'status ' + cls;
+}
+
+async function generate(){
+  const fecha = document.getElementById('inp_fecha').value;
+  if(!fecha){ alert('Selecciona la fecha.'); return; }
+
+  const btn = document.getElementById('genBtn');
+  const spin = document.getElementById('spinner');
+  btn.disabled = true; spin.style.display = 'block';
+  document.getElementById('genTxt').textContent = 'Cargando datos de Odoo...';
+
+  try {
+    setStatus('Conectando con Odoo...', 'loading');
+    const od = await cargarDatosOdoo(fecha);
+    buildCorte(od);
+    setStatus('✅ Datos cargados correctamente', 'ok');
+  } catch(e) {
+    setStatus('⚠️ Sin conexión Odoo — modo manual', 'err');
+    console.warn('Odoo error:', e);
+    buildCorte(null); // modo offline
+  } finally {
+    btn.disabled = false; spin.style.display = 'none';
+    document.getElementById('genTxt').textContent = '🔗 Conectar Odoo y Generar Corte';
+  }
+}
+
+async function cargarDatosOdoo(fecha){
+  // Convertir fecha local a rango UTC (UTC-6 → sumar 6h)
+  const fechaInicio = fecha + ' 06:00:00'; // medianoche CDMX en UTC
+  const fechaFin    = fecha + ' 29:59:59'; // 23:59:59 CDMX en UTC (siguiente día 05:59:59 UTC)
+  // Simplificado: buscar orders donde date_order en [fecha 06:00 UTC, fecha+1 06:00 UTC]
+  const d0 = new Date(fecha + 'T06:00:00Z');
+  const d1 = new Date(d0.getTime() + 24*60*60*1000);
+  const utcStart = d0.toISOString().slice(0,19).replace('T',' ');
+  const utcEnd   = d1.toISOString().slice(0,19).replace('T',' ');
+
+  // 1. Buscar sesiones del día
+  const sesiones = await odooRPC('pos.session', 'search_read',
+    [[['start_at','>=',utcStart],['start_at','<',utcEnd]]],
+    {fields:['name','start_at','stop_at','state'], limit:5}
+  );
+
+  const sesionName = sesiones.length ? sesiones[0].name : (document.getElementById('inp_sesion').value || '—');
+  if(sesiones.length && !document.getElementById('inp_sesion').value){
+    document.getElementById('inp_sesion').value = sesionName;
+  }
+
+  const sesionIds = sesiones.map(s => s.id);
+  if(!sesionIds.length) throw new Error('No se encontraron sesiones POS para ' + fecha);
+
+  // 2. Cargar órdenes de la sesión
+  const orders = await odooRPC('pos.order', 'search_read',
+    [[['session_id','in',sesionIds],['state','in',['paid','done','invoiced']]]],
+    {fields:['name','lines','amount_total','payment_ids'], limit:500}
+  );
+
+  const orderIds = orders.map(o => o.id);
+
+  // 3. Cargar líneas de productos
+  const lines = await odooRPC('pos.order.line', 'search_read',
+    [[['order_id','in',orderIds]]],
+    {fields:['product_id','qty','price_unit','order_id'], limit:2000}
+  );
+
+  // 4. Cargar pagos
+  const pagos_list = await odooRPC('pos.payment', 'search_read',
+    [[['pos_order_id','in',orderIds]]],
+    {fields:['payment_method_id','amount'], limit:2000}
+  );
+
+  // Procesar productos
+  const ventas = {}; PAQUETES.forEach(p => ventas[p.key] = 0);
+  const adics = {};  ADICIONALES.forEach(a => adics[a.key] = 0);
+  const cortesias = {taller:0, ayuntamiento:0, familiar:0, seguro:0};
+
+  lines.forEach(l => {
+    const pname = (l.product_id[1] || '').toLowerCase();
+    const qty = Math.round(l.qty || 0);
+    // Mapear por nombre de producto
+    const mapped = mapProducto(pname);
+    if(mapped.type === 'venta')    ventas[mapped.key] = (ventas[mapped.key]||0) + qty;
+    else if(mapped.type === 'adic')  adics[mapped.key]  = (adics[mapped.key]||0)  + qty;
+    else if(mapped.type === 'corte') cortesias[mapped.key] = (cortesias[mapped.key]||0) + qty;
+  });
+
+  // Procesar pagos
+  let efe=0, tar=0, trans=0;
+  pagos_list.forEach(p => {
+    const pm = (p.payment_method_id[1]||'').toLowerCase();
+    const amt = p.amount || 0;
+    if(pm.includes('efectivo') || pm.includes('cash')) efe += amt;
+    else if(pm.includes('tarjeta') || pm.includes('card') || pm.includes('credit') || pm.includes('debit')) tar += amt;
+    else if(pm.includes('transfer')) trans += amt;
+    else efe += amt; // default cash
+  });
+
+  return { sesion:sesionName, ventas, adics, cortesias, pagos:{efe, tar, trans} };
+}
+
+function mapProducto(nombre){
+  const n = nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  // Ventas
+  if(n.includes('auto') && n.includes('basico'))  return {type:'venta', key:'auto_bas'};
+  if(n.includes('auto') && n.includes('plus'))    return {type:'venta', key:'auto_plus'};
+  if(n.includes('auto') && n.includes('pro'))     return {type:'venta', key:'auto_pro'};
+  if((n.includes('camioneta')||n.includes('cam')) && n.includes('basic')) return {type:'venta', key:'cam_bas'};
+  if((n.includes('camioneta')||n.includes('cam')) && n.includes('plus'))  return {type:'venta', key:'cam_plus'};
+  if((n.includes('camioneta')||n.includes('cam')) && n.includes('pro'))   return {type:'venta', key:'cam_pro'};
+  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('basic')) return {type:'venta', key:'pickup_bas'};
+  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('plus'))  return {type:'venta', key:'pickup_plus'};
+  if((n.includes('pick') || n.includes('pickup') || n.includes('minivan') || n.includes('suv')) && n.includes('pro'))   return {type:'venta', key:'pickup_pro'};
+  if(n.includes('express'))  return {type:'venta', key:'express'};
+  if(n.includes('fiscal'))   return {type:'venta', key:'fiscalia'};
+  if(n.includes('moto'))     return {type:'venta', key:'motos'};
+  // Adicionales
+  if(n.includes('tapete') && !n.includes('cera')) return {type:'adic', key:'tapetes'};
+  if(n.includes('motor'))  return {type:'adic', key:'motor'};
+  if(n.includes('mano'))   return {type:'adic', key:'mano'};
+  if(n.includes('plus') && n.includes('cera') && !n.includes('pro')) return {type:'adic', key:'plus_cera'};
+  if(n.includes('pro') && (n.includes('cera')||n.includes('tapete'))) return {type:'adic', key:'pro_cera'};
+  // Cortesías
+  if(n.includes('taller'))      return {type:'corte', key:'taller'};
+  if(n.includes('ayuntamiento')||n.includes('ayto')) return {type:'corte', key:'ayuntamiento'};
+  if(n.includes('familiar'))    return {type:'corte', key:'familiar'};
+  if(n.includes('seguro'))      return {type:'corte', key:'seguro'};
+  return {type:'otro', key:'otro'};
+}
+
+// ═══════════════════════════════════════════════════════
+// BUILD CORTE
+// ═══════════════════════════════════════════════════════
+function buildCorte(od){
+  // Datos de Odoo o vacíos
+  const V = od?.ventas  || {};
+  const A = od?.adics   || {};
+  const C = od?.cortesias || {};
+  const P = od?.pagos   || {efe:0, tar:0, trans:0};
+  D = {od, V, A, C, P};
+
+  // Header
+  const fecha = document.getElementById('inp_fecha').value;
+  document.getElementById('o_fecha').textContent = formatFecha(fecha);
+  document.getElementById('o_sesion').textContent = od?.sesion || document.getElementById('inp_sesion').value || '—';
+  document.getElementById('o_resp').textContent = document.getElementById('inp_resp').value || '—';
+  document.getElementById('o_hora').textContent = new Date().toLocaleString('es-MX');
+
+  // Tabla ventas
+  let totLav=0, cantPagados=0;
+  const vb = document.getElementById('body_ventas'); vb.innerHTML = '';
+  PAQUETES.forEach(paq => {
+    const q = Math.round(V[paq.key] || 0);
+    const t = q * paq.price;
+    const pagoVal = paq.key !== 'motos'; // motos no cuentan como pagados para máquina
+    if(pagoVal) cantPagados += q;
+    totLav += t;
+    if(!q && !od) return; // modo offline: no mostrar filas vacías
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${paq.name}</td><td class="r">${fmt(paq.price)}</td><td class="c">${q}</td><td class="r">${fmt(t)}</td>`;
+    vb.appendChild(tr);
+  });
+  document.getElementById('sv_cant').textContent = cantPagados;
+  document.getElementById('sv_tot').textContent = fmt(totLav);
+
+  // Tabla adicionales
+  let totAd=0, cantAd=0;
+  const ab = document.getElementById('body_adics'); ab.innerHTML = '';
+  ADICIONALES.forEach(ad => {
+    const q = Math.round(A[ad.key] || 0);
+    const t = q * ad.price;
+    totAd += t; cantAd += q;
+    if(!q && !od) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${ad.name}</td><td class="r">${fmt(ad.price)}</td><td class="c">${q}</td><td class="r">${fmt(t)}</td>`;
+    ab.appendChild(tr);
+  });
+  document.getElementById('sa_cant').textContent = cantAd;
+  document.getElementById('sa_tot').textContent = fmt(totAd);
+
+  // Tabla máquina con diferencia vs Odoo
+  // Calcular cuántos vendió Odoo por programa
+  const odooPorProg = {};
+  PROGRAMAS.forEach(p => odooPorProg[p.prog] = 0);
+  PAQUETES.forEach(paq => {
+    if(paq.prog) odooPorProg[paq.prog] = (odooPorProg[paq.prog]||0) + Math.round(V[paq.key]||0);
+  });
+
+  const omBody = document.getElementById('o_maq_body'); omBody.innerHTML = '';
+  let totMaqAutos=0, totMaqOdoo=0;
+  PROGRAMAS.forEach(p => {
+    const ini = parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0;
+    const fin = parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0;
+    const autos = Math.max(0, fin - ini);
+    const odooQ = odooPorProg[p.prog] || 0;
+    const dif = autos - odooQ;
+    totMaqAutos += autos; totMaqOdoo += odooQ;
+    const difClass = dif===0 ? 'diff-ok' : Math.abs(dif)<=2 ? 'diff-warn' : 'diff-err';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="lbl">${p.name}</td>
+      <td class="c">${ini||'—'}</td><td class="c">${fin||'—'}</td>
+      <td class="c" style="font-weight:700;color:var(--teal)">${autos||'—'}</td>
+      <td class="c">${odooQ}</td>
+      <td class="c"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
+    omBody.appendChild(tr);
+  });
+  document.getElementById('o_maq_autos_tot').textContent = totMaqAutos || 0;
+  document.getElementById('o_maq_odoo_tot').textContent = totMaqOdoo;
+  const difTot = totMaqAutos - totMaqOdoo;
+  document.getElementById('o_maq_dif_tot').innerHTML = `<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
+
+  // Cortesías
+  setVal('o_ct',  C.taller       || document.getElementById('inp_ct')?.value  || 0);
+  setVal('o_ca',  C.ayuntamiento || document.getElementById('inp_ca')?.value  || 0);
+  setVal('o_cf',  C.familiar     || document.getElementById('inp_cf')?.value  || 0);
+  setVal('o_seg', C.seguro       || document.getElementById('inp_seg')?.value || 0);
+  setVal('o_lavm',document.getElementById('inp_lavm')?.value || 0);
+  setVal('o_reg', document.getElementById('inp_reg')?.value  || 0);
+
+  // Efectivo
+  setVal('o_morralla', document.getElementById('inp_morralla')?.value || 0);
+  setVal('o_billetes', document.getElementById('inp_billetes')?.value || 0);
+  setVal('o_terminal', document.getElementById('inp_terminal')?.value || 0);
+  setVal('o_apertura', document.getElementById('inp_apertura')?.value || 0);
+  setVal('o_fondo',    document.getElementById('inp_fondo')?.value    || 0);
+
+  // Pagos Odoo
+  document.getElementById('o_efe').textContent   = fmt(P.efe);
+  document.getElementById('o_tar').textContent   = fmt(P.tar);
+  document.getElementById('o_trans').textContent = fmt(P.trans);
+
+  // Gastos
+  renderGastosOut();
+
+  // Notas
+  renderNotasOut();
+
+  // Store para recalc
+  D.totLav = totLav;
+  D.totAd  = totAd;
+  D.cantPagados = cantPagados;
+  D.maqVend = totMaqAutos;
+  D.maqOdoo = totMaqOdoo;
+  D.efe  = P.efe;
+  D.tar  = P.tar;
+  D.trans= P.trans;
+
+  recalcOut();
+
+  // Mostrar corte
+  document.getElementById('inputSection').style.display = 'none';
+  document.getElementById('corteWrap').style.display    = 'block';
+  document.getElementById('actions').style.display      = 'flex';
+  window.scrollTo(0,0);
+}
+
+function setVal(id, v){
+  const el = document.getElementById(id);
+  if(el) el.value = v||'';
+}
+
+// ═══════════════════════════════════════════════════════
+// RECALC OUTPUT
+// ═══════════════════════════════════════════════════════
 function recalcOut(){
+  const v = id => parseFloat(document.getElementById(id)?.value)||0;
+
+  const morralla  = v('o_morralla');
+  const billetes  = v('o_billetes');
+  const terminal  = v('o_terminal');
+  const apertura  = v('o_apertura');
+  const fondo     = v('o_fondo');
+  const trans     = D.trans || 0;
+  const totGastos = gastos.reduce((s,g)=>s+(g.m||0),0);
+
+  const totalCaja = morralla + billetes + terminal + trans + totGastos - apertura - fondo;
+
+  const ct  = v('o_ct');
+  const ca  = v('o_ca');
+  const cf  = v('o_cf');
+  const seg = v('o_seg');
+  const lavm= v('o_lavm');
+  const reg = v('o_reg');
+
+  const totalCobrado = (D.efe||0) + (D.tar||0) + (D.trans||0);
+  const totLav = D.totLav || 0;
+  const totAd  = D.totAd  || 0;
+  const cantPagados = D.cantPagados || 0;
+  const totalCortes = ct + ca + cf + seg;
+  const totalEntraron = cantPagados + totalCortes;
+  const maqEsp = cantPagados + ct + ca + cf + seg - lavm + reg;
+  const maqVend = D.maqVend || 0;
+  const difMaq = maqVend - maqEsp;
+  const difDinero = totalCobrado - totalCaja;
+
+  // Actualizar caja
+  document.getElementById('o_trans_caja').textContent = fmt(trans);
+  document.getElementById('o_gastos_caja').textContent = fmt(totGastos);
+  document.getElementById('o_total_caja').textContent = fmt(totalCaja);
+  document.getElementById('o_total_cobrado').textContent = fmt(totalCobrado);
+  document.getElementById('o_tot_gastos').textContent = fmt(totGastos);
+
+  const difCajaEl = document.getElementById('o_dif_caja');
+  if(difCajaEl){
+    if(Math.abs(difDinero)<1){ difCajaEl.innerHTML='<span class="diff-badge diff-ok">✅ Cuadra</span>'; }
+    else if(Math.abs(difDinero)<500){ difCajaEl.innerHTML=`<span class="diff-badge diff-warn">${difDinero>=0?'+':''}${fmt(difDinero)}</span>`; }
+    else { difCajaEl.innerHTML=`<span class="diff-badge diff-err">${difDinero>=0?'+':''}${fmt(difDinero)}</span>`; }
+  }
+
+  // KPIs
+  document.getElementById('k_cobrado').textContent = fmtK(totalCobrado);
+  document.getElementById('k_tcaja').textContent   = fmtK(totalCaja);
+  document.getElementById('k_gastos').textContent  = fmtK(totGastos);
+  document.getElementById('k_pagados').textContent = cantPagados;
+  document.getElementById('k_cortes').textContent  = totalCortes;
+  document.getElementById('k_entraron').textContent= totalEntraron;
+
+  const kDif = document.getElementById('k_dif');
+  const kDifCard = document.getElementById('k_dif_card');
+  if(kDif){
+    kDif.textContent = (difDinero>=0?'+':'') + fmtK(difDinero);
+    kDifCard.className = 'kpi ' + (Math.abs(difDinero)<1 ? 'ok' : Math.abs(difDinero)<500 ? 'warn' : 'err');
+  }
+
+  const kMaqDif = document.getElementById('k_maq_dif');
+  const kMaqCard = document.getElementById('k_maq_card');
+  if(kMaqDif){
+    kMaqDif.textContent = (difMaq>=0?'+':'') + difMaq;
+    kMaqCard.className = 'kpi ' + (difMaq===0 ? 'ok' : Math.abs(difMaq)<=3 ? 'warn' : 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GUARDAR EN FIREBASE
+// ═══════════════════════════════════════════════════════
+async function guardarCorte(){
+  const fecha = document.getElementById('inp_fecha').value;
+  if(!fecha){ alert('Selecciona la fecha.'); return; }
+
+  const v = id => parseFloat(document.getElementById(id)?.value)||0;
+  const morralla = v('o_morralla'), billetes=v('o_billetes'), terminal=v('o_terminal');
+  const apertura=v('o_apertura'), fondo=v('o_fondo');
   const totGastos=gastos.reduce((s,g)=>s+(g.m||0),0);
-  set('tot_gastos_out',fmt(totGastos));
-  set('out_gastos_caja',fmt(totGastos));
+  const totalCaja=morralla+billetes+terminal+(D.trans||0)+totGastos-apertura-fondo;
+  const totalCobrado=(D.efe||0)+(D.tar||0)+(D.trans||0);
 
-  const morralla=parseFloat(document.getElementById('out_morralla_inp')?.value)||0;
-  const billetes=parseFloat(document.getElementById('out_billetes_inp')?.value)||0;
-  const terminal=parseFloat(document.getElementById('out_terminal_inp')?.value)||0;
-  const apertura=parseFloat(document.getElementById('out_apertura_inp')?.value)||0;
-  const trans=D.trans||0;
-  const totalCaja=morralla+billetes+terminal+trans+totGastos-apertura;
-  set('out_total_caja',fmt(totalCaja));
+  // Recoger lecturas máquina
+  const paqFinales = PROGRAMAS.map(p => ({
+    prog: p.prog,
+    nombre: p.name,
+    inicio: parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0,
+    final:  parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0,
+    autos:  Math.max(0,(parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0)-(parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0))
+  }));
 
-  const totSvc=hasSvc?svcs.reduce((s,v)=>s+(v.p||0)*(v.q||0),0):0;
-  const totPagos=(D.efe||0)+(D.tar||0)+trans+totSvc;
-  set('out_svc_pagos',fmt(totSvc));
-  set('out_total_cobrado',fmt(totPagos));
+  const docId = fecha.replace(/-/g,'');
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
 
-  const difCaja=totPagos-totalCaja;
-  const difEl=document.getElementById('out_dif_caja');
-  if(difEl){
-    difEl.textContent=difCaja===0?'✅ Cuadra':(difCaja>0?'+':'')+fmt(difCaja);
-    difEl.style.color=difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)';
+  const fsVal = (v, tipo='string') => {
+    if(tipo==='int')    return {integerValue: String(Math.round(v||0))};
+    if(tipo==='double') return {doubleValue: v||0};
+    if(tipo==='bool')   return {booleanValue: !!v};
+    if(tipo==='arr')    return {arrayValue:{values:v}};
+    if(tipo==='map')    return {mapValue:{fields:v}};
+    return {stringValue: String(v||'')};
+  };
+
+  const paqFs = paqFinales.map(p => fsVal({
+    prog: fsVal(p.prog,'int'), nombre: fsVal(p.nombre),
+    inicio: fsVal(p.inicio,'int'), final: fsVal(p.final,'int'), autos: fsVal(p.autos,'int')
+  },'map'));
+
+  const gastoFs = gastos.filter(g=>g.c||g.m).map(g => fsVal({
+    concepto: fsVal(g.c), monto: fsVal(g.m,'int')
+  },'map'));
+
+  const body = {fields:{
+    fecha:       fsVal(fecha),
+    sesion:      fsVal(document.getElementById('o_sesion').textContent),
+    responsable: fsVal(document.getElementById('inp_resp').value),
+    timestamp:   fsVal(new Date().toISOString()),
+    // ventas Odoo
+    ventas_odoo: fsVal(Object.entries(D.V||{}).reduce((o,[k,v])=>{o[k]=fsVal(v,'int');return o;},{}), 'map'),
+    adics_odoo:  fsVal(Object.entries(D.A||{}).reduce((o,[k,v])=>{o[k]=fsVal(v,'int');return o;},{}), 'map'),
+    // pagos
+    pagos: fsVal({efe:fsVal(D.efe,'int'),tar:fsVal(D.tar,'int'),trans:fsVal(D.trans,'int')},'map'),
+    // caja
+    caja: fsVal({morralla:fsVal(morralla,'int'),billetes:fsVal(billetes,'int'),terminal:fsVal(terminal,'int'),apertura:fsVal(apertura,'int'),fondo:fsVal(fondo,'int'),total:fsVal(totalCaja,'int')},'map'),
+    total_cobrado: fsVal(totalCobrado,'int'),
+    total_caja:    fsVal(totalCaja,'int'),
+    diferencia:    fsVal(totalCobrado-totalCaja,'int'),
+    total_gastos:  fsVal(totGastos,'int'),
+    gastos:        fsVal(gastoFs,'arr'),
+    // cortesías
+    cortesias: fsVal({taller:fsVal(v('o_ct'),'int'),ayuntamiento:fsVal(v('o_ca'),'int'),familiar:fsVal(v('o_cf'),'int'),seguro:fsVal(v('o_seg'),'int')},'map'),
+    // máquina
+    paquetes_finales: fsVal(paqFs,'arr'),
+    maquina_total:    fsVal(D.maqVend||0,'int'),
+    // notas
+    notas: fsVal(notas.filter(n=>n).map(n=>fsVal(n)),'arr'),
+  }};
+
+  try{
+    const r = await fetch(url, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    alert('✅ Corte guardado correctamente en Firebase');
+  }catch(e){
+    alert('Error guardando: '+e.message);
   }
-
-  const ct=parseFloat(document.getElementById('out_ct')?.value)||0;
-  const ca=parseFloat(document.getElementById('out_ca')?.value)||0;
-  const cf=parseFloat(document.getElementById('out_cf')?.value)||0;
-  const seg=parseFloat(document.getElementById('out_seg')?.value)||0;
-  const lavm=parseFloat(document.getElementById('out_lavm')?.value)||0;
-  const reg=parseFloat(document.getElementById('out_reg')?.value)||0;
-  const cantPagados=D.cantPagados||0;
-  const maqEsp=cantPagados+ct+ca+cf+seg-lavm+reg;
-  const maqVend=D.maqVend||0;
-  const difMaq=maqVend-maqEsp;
-  set('k_maq_esp',maqEsp);
-  set('k_maq_dif',difMaq===0?'✅ OK':(difMaq>0?'+':'')+difMaq+' auto'+(Math.abs(difMaq)>1?'s':''));
-  setStyle('k_maq_card','background',difMaq===0?'var(--green)':Math.abs(difMaq)<=2?'var(--amber)':'var(--red)');
-  set('k_tcaja_kpi',fmtK(totalCaja));
-  set('k_gastos_kpi',fmtK(totGastos));
-  set('k_apertura',fmtK(apertura));
-  set('k_morralla',fmtK(morralla));
-  set('k_billetes',fmtK(billetes));
-  set('k_terminal',fmtK(terminal));
-  set('k_dif',difCaja===0?'$0':fmtK(Math.abs(difCaja)));
-  setStyle('k_dif_card','background',difCaja===0?'var(--green)':Math.abs(difCaja)<500?'var(--amber)':'var(--red)');
-  D={...D,totGastos,totalCaja,totPagos,totSvc,morralla,billetes,terminal,apertura,difDin:difCaja,difMaq,maqEsp,ct,ca,seg,lavm,reg};
-  // Update resumen
-  const resEl2=document.getElementById('k_resumen_txt');
-  const resCard2=document.getElementById('k_resumen_card');
-  let msgs2=[], color2='var(--green)';
-  if(difCaja===0 && difMaq===0){ msgs2.push('✅ Corte exacto'); }
-  else {
-    if(difMaq>0){ msgs2.push('⚠️ Faltan '+difMaq+' auto'+(difMaq>1?'s':'')+' en máquina'); color2='var(--amber)'; }
-    else if(difMaq<0){ msgs2.push('⚠️ Sobran '+Math.abs(difMaq)+' auto'+(Math.abs(difMaq)>1?'s':'')+' en máquina'); color2='var(--amber)'; }
-    if(difCaja>0){ msgs2.push('💰 Sobra '+fmt(difCaja)+' en caja'); color2='var(--amber)'; }
-    else if(difCaja<0){ msgs2.push('❌ Falta '+fmt(Math.abs(difCaja))+' en caja'); color2='var(--red)'; }
-  }
-  if(resEl2) resEl2.innerHTML=msgs2.join('<br>');
-  if(resCard2) resCard2.style.background=color2;
 }
 
-function exportXLSX(){
-  const fecha=document.getElementById('inp_fecha').value||'--';
-  const rows=[
-    ['AUTOLAVADO STAR WASH — CORTE DEL DÍA'],
-    ['Fecha:',fecha,'Sesión:',D.sesion,'Responsable:',document.getElementById('inp_resp').value],
-    [],['RESUMEN'],
-    ['Autos Pagados',D.cantPagados,'Máq. Esperada',D.maqEsp,'Máq. Real',D.maqVend,'Dif. Máquina',D.difMaq],
-    ['Total Tickets',D.totalTix,'Total Cobrado',D.totPagos,'Total Caja',D.totalCaja,'Diferencia',D.difDin],
-    [],['1. VENTAS'],['Categoría','Precio','Cantidad','Total'],
-    ...VENTAS.map((v,i)=>[v.name,v.price,D.ventas[i],D.ventas[i]*v.price]),
-    [],['2. ADICIONALES'],['Adicional','Precio','Cantidad','Total'],
-    ...ADICS.map((a,i)=>[a.name,a.price,D.adics[i],D.adics[i]*a.price]),
-    [],['3. SERVICIOS MANUALES'],['Servicio','Precio','Cant','Total'],
-    ...svcs.map(s=>[s.n,s.p,s.q,(s.p||0)*(s.q||0)]),
-    [],['4. OTROS'],
-    ['Cortesías Taller',D.ct,'Cortesías Ayto',D.ca,'Seguro',D.seg,'Lavados a Mano',D.lavm,'Regresos',D.reg],
-    [],['5. CONTROL EFECTIVO'],
-    ['Morralla',D.morralla],['Billetes',D.billetes],['Terminal',D.terminal],
-    ['Transferencia',D.trans],['Gastos','-'+D.totGastos],['Apertura','-'+D.apertura],
-    ['Total en Caja',D.totalCaja],
-    [],['6. FORMAS DE PAGO'],
-    ['Efectivo',D.efe],['Tarjeta',D.tar],['Transferencia',D.trans],['Svc Manuales',D.totSvc],
-    ['Total Cobrado',D.totPagos],
-    [],['7. GASTOS'],['Concepto','Monto'],
-    ...gastos.map(g=>[g.c,g.m]),['TOTAL',D.totGastos],
-  ];
-  rows.push([],['8. LECTURA MÁQUINA'],['Paquete','Inicio','Final','Vendidos','Total $']);
-  for(let i=1;i<=6;i++){
-    const ini=parseFloat(document.getElementById('pi_ini_'+i)?.value)||0;
-    const fin=parseFloat(document.getElementById('pi_fin_'+i)?.value)||0;
-    const mon=parseFloat(document.getElementById('pi_mon_'+i)?.value)||0;
-    rows.push([`Paquete ${i}`,ini,fin,Math.max(0,fin-ini),mon]);
+// ═══════════════════════════════════════════════════════
+// ENVIAR REPORTE (Telegram via bot)
+// ═══════════════════════════════════════════════════════
+async function enviarReporte(){
+  const fecha = document.getElementById('inp_fecha').value;
+  const v = id => parseFloat(document.getElementById(id)?.value)||0;
+  const totGastos = gastos.reduce((s,g)=>s+(g.m||0),0);
+  const totalCobrado = (D.efe||0)+(D.tar||0)+(D.trans||0);
+  const totalCaja = v('o_morralla')+v('o_billetes')+v('o_terminal')+(D.trans||0)+totGastos-v('o_apertura')-v('o_fondo');
+  const dif = totalCobrado-totalCaja;
+
+  const resumen =
+`⭐ *CORTE STAR WASH — ${formatFecha(fecha)}*
+Sesión: ${document.getElementById('o_sesion').textContent}
+
+💰 *Totales*
+• Cobrado (Odoo): ${fmt(totalCobrado)}
+• En Caja: ${fmt(totalCaja)}
+• Diferencia: ${dif>=0?'+':''}${fmt(dif)} ${Math.abs(dif)<50?'✅':Math.abs(dif)<500?'⚠️':'❌'}
+
+💳 *Formas de pago*
+• Efectivo: ${fmt(D.efe||0)}
+• Tarjeta: ${fmt(D.tar||0)}
+• Transferencia: ${fmt(D.trans||0)}
+
+🚗 *Vehículos*
+• Autos pagados: ${D.cantPagados||0}
+• Cortesías: ${v('o_ct')+v('o_ca')+v('o_cf')+v('o_seg')}
+• Total entraron: ${(D.cantPagados||0)+v('o_ct')+v('o_ca')+v('o_cf')+v('o_seg')}
+• Máquina (lectura): ${D.maqVend||0}
+
+💸 *Gastos*: ${fmt(totGastos)}
+${gastos.filter(g=>g.c&&g.m).map(g=>`  • ${g.c}: ${fmt(g.m)}`).join('\n')}
+
+👤 Responsable: ${document.getElementById('inp_resp').value||'—'}`;
+
+  if(navigator.share){
+    navigator.share({title:'Corte Star Wash', text:resumen}).catch(()=>copyToClipboard(resumen));
+  } else {
+    copyToClipboard(resumen);
+    alert('📋 Reporte copiado al portapapeles');
   }
-  if(notas.filter(n=>n).length){rows.push([],['NOTAS']);notas.filter(n=>n).forEach((n,i)=>rows.push([i+1,n]));}
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:32},{wch:12},{wch:12},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws,'Corte');
-  XLSX.writeFile(wb,`Corte_StarWash_${fecha}.xlsx`);
 }
 
-// ── RESET ─────────────────────────────────────────────────────────────────────
+function copyToClipboard(txt){
+  const el=document.createElement('textarea');
+  el.value=txt; el.style.position='fixed'; el.style.opacity='0';
+  document.body.appendChild(el); el.select();
+  document.execCommand('copy'); document.body.removeChild(el);
+}
+
+// ═══════════════════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════════════════
+function toggleHist(){
+  const p = document.getElementById('histPanel');
+  p.style.display = p.style.display==='none'||!p.style.display ? 'block' : 'none';
+  if(p.style.display==='block') cargarHist();
+}
+
+async function cargarHist(){
+  const el = document.getElementById('histLista');
+  el.innerHTML = '<p style="color:var(--muted);font-size:12px">Cargando...</p>';
+  try{
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=30`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const docs = (data.documents||[]).sort((a,b)=>{
+      const fa = a.fields?.fecha?.stringValue||'';
+      const fb = b.fields?.fecha?.stringValue||'';
+      return fb.localeCompare(fa);
+    });
+    if(!docs.length){ el.innerHTML='<p style="color:var(--muted);font-size:12px">Sin cortes guardados.</p>'; return; }
+    el.innerHTML='';
+    docs.forEach(doc=>{
+      const f = doc.fields||{};
+      const fecha = f.fecha?.stringValue||'';
+      const cob   = parseInt(f.total_cobrado?.integerValue||0);
+      const dif   = parseInt(f.diferencia?.integerValue||0);
+      const maq   = parseInt(f.maquina_total?.integerValue||0);
+      const sesion= f.sesion?.stringValue||'';
+      const div = document.createElement('div');
+      div.className='hist-item';
+      div.onclick = () => cargarCorteHist(doc);
+      div.innerHTML=`
+        <div class="hf">📅 ${formatFecha(fecha)}</div>
+        <div class="hm">${sesion}</div>
+        <div class="hist-chips">
+          <span class="chip">${fmt(cob)}</span>
+          <span class="chip ${Math.abs(dif)<50?'g':Math.abs(dif)<500?'a':'r'}">${dif>=0?'+':''}${fmt(dif)}</span>
+          <span class="chip">🚗 ${maq}</span>
+        </div>`;
+      el.appendChild(div);
+    });
+  }catch(e){
+    el.innerHTML=`<p style="color:var(--red);font-size:12px">Error: ${e.message}</p>`;
+  }
+}
+
+function cargarCorteHist(doc){
+  const f = doc.fields||{};
+  // Pre-llenar fecha e inputs del historial
+  const fecha = f.fecha?.stringValue||'';
+  document.getElementById('inp_fecha').value = fecha;
+  document.getElementById('inp_resp').value = f.responsable?.stringValue||'';
+  document.getElementById('inp_sesion').value = f.sesion?.stringValue||'';
+
+  // Cargar lecturas de máquina del historial
+  const paqFinales = f.paquetes_finales?.arrayValue?.values||[];
+  paqFinales.forEach(p=>{
+    const pm = p.mapValue?.fields||{};
+    const prog   = parseInt(pm.prog?.integerValue||0);
+    const inicio = parseInt(pm.inicio?.integerValue||0);
+    const final  = parseInt(pm.final?.integerValue||0);
+    if(prog>=1&&prog<=6){
+      const iniEl=document.getElementById(`pi_ini_${prog}`);
+      const finEl=document.getElementById(`pi_fin_${prog}`);
+      if(iniEl) iniEl.value=inicio||'';
+      if(finEl) finEl.value=final||'';
+    }
+  });
+  recalcMaq();
+
+  // Gastos
+  const gastosFs = f.gastos?.arrayValue?.values||[];
+  gastos = gastosFs.map(g=>{
+    const gf = g.mapValue?.fields||{};
+    return {c:gf.concepto?.stringValue||'', m:parseInt(gf.monto?.integerValue||0)};
+  });
+  renderGastos();
+
+  // Notas
+  notas = (f.notas?.arrayValue?.values||[]).map(n=>n.stringValue||'');
+  renderNotas();
+
+  // Caja
+  const caja = f.caja?.mapValue?.fields||{};
+  document.getElementById('inp_morralla').value = parseInt(caja.morralla?.integerValue||0)||'';
+  document.getElementById('inp_billetes').value = parseInt(caja.billetes?.integerValue||0)||'';
+  document.getElementById('inp_terminal').value = parseInt(caja.terminal?.integerValue||0)||'';
+  document.getElementById('inp_apertura').value = parseInt(caja.apertura?.integerValue||0)||'';
+  document.getElementById('inp_fondo').value    = parseInt(caja.fondo?.integerValue||0)||'';
+
+  toggleHist();
+  alert(`Datos del ${formatFecha(fecha)} cargados. Presiona "Generar Corte" para actualizar con datos de Odoo.`);
+}
+
+// ═══════════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════════
 function resetAll(){
-  pdfFile=null;fotoFile=null;gastos=[];svcs=[];notas=[];hasSvc=false;D={};
-  document.getElementById('foto_preview').style.display='none';
-  document.getElementById('foto_placeholder').style.display='block';
-  document.getElementById('foto_dropzone').style.borderColor='var(--border)';
-  document.getElementById('fileInfo').innerHTML='';
+  if(!confirm('¿Nuevo corte? Se limpiarán todos los datos.')) return;
+  gastos=[]; notas=[]; D={};
+  document.getElementById('inputSection').style.display='block';
   document.getElementById('corteWrap').style.display='none';
   document.getElementById('actions').style.display='none';
-  document.getElementById('alertBox').style.display='none';
-  document.getElementById('svc_out_card').style.display='none';
-  document.getElementById('notas_out_card').style.display='none';
-  document.getElementById('inputSection').style.display='block';
-  ['inp_resp','inp_apertura','inp_morralla','inp_billetes','inp_terminal',
-   'inp_cortes_taller','inp_cortes_ayto','inp_seguro','inp_lavm','inp_regresos']
-    .forEach(id=>document.getElementById(id).value='');
-  document.getElementById('inp_fecha').value=new Date().toISOString().slice(0,10);
-  toggleSvc(false);
-  renderGastos();renderSvcs();buildPaqInputs();renderNotas();
-}
-
-
-// ── ODOO INTEGRATION (vía Railway proxy) ─────────────────────────────────────
-const BOT_BASE = 'https://worker-production-d35e.up.railway.app';
-
-async function cargarSesionesOdoo(){
-  const status = document.getElementById('odooStatus');
-  const seccion = document.getElementById('odooSesiones');
-  const lista = document.getElementById('odooListaSesiones');
-  
-  status.textContent = '⏳ Conectando con Odoo...';
-  
-  try {
-    const r = await fetch(`${BOT_BASE}/odoo/sesiones`);
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const sesiones = await r.json();
-    if(sesiones.error) throw new Error(sesiones.error);
-    
-    if(!sesiones || sesiones.length === 0){
-      status.textContent = '⚠️ No hay sesiones hoy en Odoo';
-      return;
-    }
-    
-    status.textContent = `✅ ${sesiones.length} sesión(es) encontrada(s)`;
-    seccion.style.display = 'block';
-    
-    lista.innerHTML = sesiones.map(s => {
-      const total = s.total_payments_amount || 0;
-      const fechaObj = s.start_at ? new Date(s.start_at) : null;
-      const hora = fechaObj ? fechaObj.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '--';
-      const fechaDia = fechaObj ? fechaObj.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short'}) : '--';
-      const estado = s.state === 'closed' ? '🔒 Cerrada' : s.state === 'opened' ? '🟢 Abierta' : s.state;
-      const esZero = total === 0 ? ' style="opacity:0.5"' : '';
-      return `<div${esZero} style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:#f5f5f5;border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="cargarSesionOdoo(${s.id})">
-        <span style="font-weight:600;color:#714B67">${s.name}</span>
-        <span style="color:#333">💰 $${total.toLocaleString('es-MX')}</span>
-        <span style="color:#666;font-size:13px">${fechaDia} ${hora}</span>
-        <span style="font-size:12px;color:#999">${estado}</span>
-        ${total === 0 ? '<span style="font-size:11px;color:#e57373;margin-left:auto">⚠️ posible error</span>' : '<span style="margin-left:auto;color:#714B67;font-weight:600">→ Cargar</span>'}
-      </div>`;
-    }).join('');
-    
-  } catch(e) {
-    status.textContent = '❌ Error: ' + e.message;
-    console.error(e);
-  }
-}
-
-async function cargarSesionOdoo(sessionId){
-  const status = document.getElementById('odooStatus');
-  status.textContent = '⏳ Cargando datos de la sesión...';
-
-  try {
-    const r = await fetch(`${BOT_BASE}/odoo/sesion/${sessionId}`);
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    if(data.error) throw new Error(data.error);
-
-    const sesion = data.sesion;
-    const pagos = data.pagos;
-    const lineas = data.lineas;
-
-    // Agrupar pagos por método
-    const pagosPorMetodo = {};
-    pagos.forEach(p => {
-      const metodo = (p.payment_method_id[1] || '').toLowerCase();
-      pagosPorMetodo[metodo] = (pagosPorMetodo[metodo] || 0) + p.amount;
-    });
-
-    const efectivo = Object.entries(pagosPorMetodo).find(([k]) => k.includes('efectivo') || k.includes('cash'))?.[1] || 0;
-    const tarjeta  = Object.entries(pagosPorMetodo).find(([k]) => k.includes('tarjeta') || k.includes('card') || k.includes('banco'))?.[1] || 0;
-    const trans    = Object.entries(pagosPorMetodo).find(([k]) => k.includes('transfer'))?.[1] || 0;
-
-    // Clasificar ventas por nombre de producto
-    const ventas = [0,0,0,0,0,0]; // autos,camionetas,pickups,express,fiscalia,motos
-    const adics  = [0,0,0,0,0];   // tapetes,motor,mano,plus_cera,pro_cera
-    let cortes_taller = 0, cortes_ayto = 0, cortes_familiar = 0;
-
-    lineas.forEach(l => {
-      const nom = (l.product_id[1] || '').toLowerCase();
-      const qty = l.qty || 0;
-      if(nom.includes('cortesía taller') || nom.includes('cortesia taller')) cortes_taller += qty;
-      else if(nom.includes('cortesía ayuntamiento') || nom.includes('cortesia ayuntamiento') || nom.includes('ayto')) cortes_ayto += qty;
-      else if(nom.includes('cortesía familiar') || nom.includes('cortesia familiar')) cortes_familiar += qty;
-      else if(nom.includes('auto') && !nom.includes('camioneta') && !nom.includes('pick')) ventas[0] += qty;
-      else if(nom.includes('camioneta')) ventas[1] += qty;
-      else if(nom.includes('pick') || nom.includes('suv') || nom.includes('minivan')) ventas[2] += qty;
-      else if(nom.includes('express')) ventas[3] += qty;
-      else if(nom.includes('fiscal')) ventas[4] += qty;
-      else if(nom.includes('moto')) ventas[5] += qty;
-      else if(nom.includes('tapete') && !nom.includes('cera')) adics[0] += qty;
-      else if(nom.includes('motor')) adics[1] += qty;
-      else if(nom.includes('mano')) adics[2] += qty;
-      else if(nom.includes('plus') || (nom.includes('cera') && !nom.includes('pro') && !nom.includes('tapete'))) adics[3] += qty;
-      else if(nom.includes('pro') || (nom.includes('cera') && nom.includes('tapete'))) adics[4] += qty;
-    });
-
-    const fecha = sesion.start_at ? sesion.start_at.split(' ')[0] : new Date().toISOString().split('T')[0];
-
-    // Llenar campos del formulario
-    document.getElementById('inp_fecha').value = fecha;
-    document.getElementById('inp_resp').value = '';
-
-    // Llenar D directamente (igual que hace generate())
-    D.ventas = ventas;
-    D.adics  = adics;
-    D.efe    = efectivo;
-    D.tar    = tarjeta;
-    D.trans  = trans;
-    D.sesion = sesion.name || '';
-    D.totalTix = sesion.total_payments_amount || 0;
-
-    // Llenar inp_fecha ANTES de ocultar inputSection (buildCorte lo necesita)
-    const inpFecha = document.getElementById('inp_fecha');
-    inpFecha.value = fecha;
-    document.getElementById('inp_resp').value = '';
-    // Cargar inicios de paquetes y apertura del día anterior, luego buildCorte
-    await cargarInicioPaquetes();
-
-    // Mostrar el corteWrap
-    document.getElementById('inputSection').style.display = 'none';
-    document.getElementById('corteWrap').style.display = 'block';
-
-    // Debug
-    console.log('D cargado:', JSON.stringify({
-      ventas: D.ventas,
-      adics: D.adics,
-      efe: D.efe,
-      tar: D.tar,
-      trans: D.trans,
-      totalTix: D.totalTix
-    }));
-
-    // Guardar valores originales de Odoo como referencia inmutable
-    D.odoo_original = {
-      autos: ventas[0], camionetas: ventas[1], pickups: ventas[2],
-      express: ventas[3], fiscalia: ventas[4], motos: ventas[5],
-      cortes_taller: cortes_taller, cortes_ayto: cortes_ayto, cortes_familiar: cortes_familiar,
-      efectivo: efectivo, tarjeta: tarjeta, transferencia: trans,
-      total: sesion.total_payments_amount || 0
-    };
-
-    // Llenar cortesías directamente en los inputs
-    const inpCT = document.getElementById('inp_cortes_taller');
-    const inpCA = document.getElementById('inp_cortes_ayto');
-    const inpCF = document.getElementById('inp_cortes_familiar');
-    if(inpCT) inpCT.value = cortes_taller;
-    if(inpCA) inpCA.value = cortes_ayto;
-    if(inpCF) inpCF.value = cortes_familiar;
-
-    // Construir el corte con los datos de D
-    buildCorte({
-      sesion: D.sesion,
-      fecha: fecha ? fecha.split('-').reverse().join('/') : null,
-      ventas: {
-        autos: D.ventas[0], camionetas: D.ventas[1], pickups: D.ventas[2],
-        express: D.ventas[3], fiscalia: D.ventas[4], motos: D.ventas[5]
-      },
-      adicionales: {
-        tapetes_solo: D.adics[0], motor: D.adics[1], mano: D.adics[2],
-        plus_cera: D.adics[3], pro_cera_tapetes: D.adics[4]
-      },
-      pagos: { efectivo: D.efe, tarjeta: D.tar, transferencia: D.trans }
-    });
-
-    // Ocultar lista de sesiones
-    document.getElementById('odooSesiones').style.display = 'none';
-    status.textContent = `✅ Sesión ${D.sesion} cargada — $${(D.totalTix||0).toLocaleString('es-MX')} en ventas`;
-
-  } catch(e) {
-    status.textContent = '❌ Error cargando sesión: ' + e.message;
-    console.error(e);
-  }
-}
-
-
-// ── TELEGRAM ──────────────────────────────────────────────────────────────────
-window.enviarTelegram = async function(corte){
-  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
-  const CHAT_IDS  = ['1159452620', '8838219142']; // Edwin + papá
-
-  const v = corte.ventas || {};
-  const p = corte.pagos  || {};
-  const c = corte.caja   || {};
-  const t = corte.totales|| {};
-  const m = corte.maquina|| {};
-  const o = corte.otros  || {};
-
-  const autos_pagados = (v.autos||0)+(v.camionetas||0)+(v.pickups||0)+(v.express||0)+(v.fiscalia||0);
-  const total_entraron = autos_pagados+(o.cortes_taller||0)+(o.cortes_ayto||0)+(o.cortes_familiar||0)+(o.seguro||0);
-  const dif_din = t.diferencia_din||0;
-  const dif_maq = m.diferencia||0;
-  const estadoDin = dif_din===0?'✅ Cuadra exacto':(dif_din>0?`⚠️ Sobra $${Math.abs(dif_din).toLocaleString('es-MX')}`:`❌ Falta $${Math.abs(dif_din).toLocaleString('es-MX')}`);
-  const estadoMaq = dif_maq===0?'✅ Cuadra exacto':(dif_maq>0?`⚠️ +${dif_maq} en máquina`:`⚠️ ${Math.abs(dif_maq)} menos en máquina`);
-
-  const fmt = n => `$${parseFloat(n||0).toLocaleString('es-MX',{minimumFractionDigits:2})}`;
-
-  let msg = `⚡ *STAR WASH — CORTE DEL DÍA*
-`;
-  msg += `📅 ${corte.fecha||'—'} | 🔖 ${corte.sesion||'—'}
-`;
-  msg += `👤 ${corte.responsable||'—'}
-
-`;
-  msg += `🚗 *VEHÍCULOS*
-`;
-  msg += `• Autos: ${v.autos||0} | Camionetas: ${v.camionetas||0} | Pick-Ups: ${v.pickups||0}
-`;
-  msg += `• Express: ${v.express||0} | Fiscalía: ${v.fiscalia||0} | Motos: ${v.motos||0}
-`;
-  msg += `• *Autos pagados: ${autos_pagados}* | Cortesías: ${(o.cortes_taller||0)+(o.cortes_ayto||0)+(o.cortes_familiar||0)} (T:${o.cortes_taller||0} A:${o.cortes_ayto||0} F:${o.cortes_familiar||0}) | Seguro: ${o.seguro||0}
-`;
-  msg += `• *Total entraron: ${total_entraron}* | Máquina: ${m.total_vendidos||0}
-`;
-  msg += `• ${estadoMaq}
-
-`;
-  msg += `💵 *BILLETES EN CAJA: ${fmt(c.billetes)}*
-
-`;
-  msg += `💰 *VENTAS ODOO*
-`;
-  msg += `• Total tickets: *${fmt(t.total_tickets)}*
-`;
-  msg += `• Efectivo: ${fmt(p.efectivo)} | Tarjeta: ${fmt(p.tarjeta)} | Trans: ${fmt(p.transferencia)}
-`;
-  msg += `• Total cobrado: *${fmt(t.total_cobrado)}*
-
-`;
-  msg += `🏦 *CONTROL DE CAJA*
-`;
-  msg += `• Apertura: ${fmt(c.apertura)}
-`;
-  msg += `• Morralla: ${fmt(c.morralla)} | Billetes: ${fmt(c.billetes)} | Terminal: ${fmt(c.terminal)}
-`;
-  msg += `• *Total en caja: ${fmt(t.total_caja)}*
-
-`;
-  msg += `📊 *RESULTADO: ${estadoDin}*
-`;
-
-  const gastos = corte.gastos||[];
-  if(gastos.length){
-    msg += `
-💸 *GASTOS: ${fmt(t.total_gastos)}*
-`;
-    gastos.forEach(g=>{ if(g.concepto&&g.monto>0) msg+=`• ${g.concepto}: ${fmt(g.monto)}
-`; });
-  }
-  const notas = (corte.notas||[]).filter(n=>n&&n.trim());
-  if(notas.length){ msg+=`
-📝 *NOTAS*
-`; notas.forEach((n,i)=>msg+=`${i+1}. ${n}
-`); }
-
-  try{
-    for(const CHAT_ID of CHAT_IDS){
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({chat_id: CHAT_ID, text: msg, parse_mode: 'Markdown'})
-      });
-    }
-    console.log('Telegram notificado');
-  } catch(e){ console.warn('Error Telegram:', e); }
-};
-
-window.generarYEnviarPDF = async function(corte){
-  const BOT_TOKEN = '8862800216:AAGo_dp-Po2k_NysaY1ct0AodmMHZQ0sKv4';
-  const CHAT_IDS_PDF = ['1159452620', '8838219142'];
-
-  try{
-    // Forzar recálculo
-    if(typeof recalcOut === 'function') recalcOut();
-    await new Promise(r => setTimeout(r, 200));
-
-    const inputSection = document.getElementById('inputSection');
-    const actions = document.getElementById('actions');
-    const prevInput = inputSection ? inputSection.style.display : '';
-    const prevActions = actions ? actions.style.display : '';
-    if(inputSection) inputSection.style.display = 'none';
-    if(actions) actions.style.display = 'none';
-    await new Promise(r => setTimeout(r, 300));
-
-    const fecha = corte.fecha || 'corte';
-    const nombrePDF = `Corte_StarWash_${fecha}.pdf`;
-    const elemento = document.getElementById('corteWrap');
-    const opt = {
-      margin: [8,8,8,8], filename: nombrePDF,
-      image: {type:'jpeg', quality:0.95},
-      html2canvas: {scale:2, useCORS:true, logging:false, scrollX:0, scrollY:0},
-      jsPDF: {unit:'mm', format:'letter', orientation:'portrait'}
-    };
-    const pdfBlob = await html2pdf().set(opt).from(elemento).outputPdf('blob');
-
-    if(inputSection) inputSection.style.display = prevInput;
-    if(actions) actions.style.display = prevActions;
-
-    for(const cid of CHAT_IDS_PDF){
-      const formData = new FormData();
-      formData.append('chat_id', cid);
-      formData.append('document', pdfBlob, nombrePDF);
-      formData.append('caption', `📋 Corte del día ${fecha} — ${corte.sesion||'—'}`);
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {method:'POST', body:formData});
-    }
-    console.log('PDF enviado');
-  } catch(e){
-    console.warn('Error PDF:', e);
-    const inputSection = document.getElementById('inputSection');
-    const actions = document.getElementById('actions');
-    if(inputSection) inputSection.style.display = '';
-    if(actions) actions.style.display = 'flex';
-  }
-};
-
-window.dispararAuditoria = async function(corte){
-  const BOT_URL = 'https://worker-production-d35e.up.railway.app/corte-nuevo';
-  try{
-    await fetch(BOT_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(corte)
-    });
-    console.log('Auditoría disparada');
-  } catch(e){
-    console.warn('Error disparando auditoría:', e);
-  }
-};
-
-window.abrirCorteHistorial = function(d){
-  // Close historial panel
-  historialVisible = false;
-  document.getElementById('historialPanel').style.display = 'none';
-
-  // Populate D with historical data
-  D = {
-    sesion: d.sesion||'—',
-    ventas: [d.ventas?.autos||0, d.ventas?.camionetas||0, d.ventas?.pickups||0, d.ventas?.express||0, d.ventas?.fiscalia||0, d.ventas?.motos||0],
-    adics:  [d.adicionales?.tapetes_solo||0, d.adicionales?.motor||0, d.adicionales?.mano||0, d.adicionales?.plus_cera||0, d.adicionales?.pro_cera_tapetes||0],
-    efe:    d.pagos?.efectivo||0,
-    tar:    d.pagos?.tarjeta||0,
-    trans:  d.pagos?.transferencia||0,
-    cantPagados: (d.ventas?.autos||0)+(d.ventas?.camionetas||0)+(d.ventas?.pickups||0)+(d.ventas?.express||0)+(d.ventas?.fiscalia||0),
-    maqVend: d.maquina?.total_vendidos||0,
-    maqEsp:  d.maquina?.esperada||0,
-    difMaq:  d.maquina?.diferencia||0,
-    totalTix: d.totales?.total_tickets||0,
-    totPagos: d.totales?.total_cobrado||0,
-    totalCaja: d.totales?.total_caja||0,
-    totGastos: d.totales?.total_gastos||0,
-    totSvc:   (d.servicios_manuales||[]).reduce((s,v)=>s+(v.total||0),0),
-    difDin:   d.totales?.diferencia_din||0,
-    apertura: d.caja?.apertura||0,
-    morralla: d.caja?.morralla||0,
-    billetes: d.caja?.billetes||0,
-    terminal: d.caja?.terminal||0,
-    ct: d.otros?.cortes_taller||0,
-    ca: d.otros?.cortes_ayto||0,
-    cf: d.otros?.cortes_familiar||0,
-    seg: d.otros?.seguro||0,
-    lavm: d.otros?.lavados_mano||0,
-    reg: d.otros?.regresos||0,
-  };
-  
-  // Set svcs and gastos
-  gastos = (d.gastos||[]).map(g=>({c:g.concepto||'',m:g.monto||0}));
-  svcs = (d.servicios_manuales||[]).map(s=>({n:s.nombre||'',p:s.precio||0,q:s.cantidad||1}));
-  hasSvc = svcs.length > 0;
-  notas = d.notas || [];
-
-  // Set fecha
-  if(d.fecha) document.getElementById('inp_fecha').value = d.fecha;
-
-  // Populate manual input fields BEFORE buildCorte reads them
-  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
-  setVal('inp_apertura',   d.caja?.apertura);
-  setVal('inp_morralla',   d.caja?.morralla);
-  setVal('inp_billetes',   d.caja?.billetes);
-  setVal('inp_terminal',   d.caja?.terminal);
-  setVal('inp_cortes_taller',   d.otros?.cortes_taller);
-  setVal('inp_cortes_ayto',     d.otros?.cortes_ayto);
-  setVal('inp_cortes_familiar', d.otros?.cortes_familiar);
-  setVal('inp_seguro',   d.otros?.seguro);
-  setVal('inp_lavm',     d.otros?.lavados_mano);
-  setVal('inp_regresos', d.otros?.regresos);
-  setVal('inp_resp',     d.responsable);
-
-  // Populate paquetes inputs
-  if(d.paquetes_finales){
-    d.paquetes_finales.forEach((p,i)=>{
-      setVal(`pi_ini_${i+1}`, p.inicio);
-      setVal(`pi_fin_${i+1}`, p.final);
-      setVal(`pi_mon_${i+1}`, p.monto);
-    });
-  }
-
-  // Build corte output
-  buildCorte({
-    sesion: d.sesion,
-    fecha:  d.fecha,
-    ventas: {
-      autos: d.ventas?.autos||0, camionetas: d.ventas?.camionetas||0,
-      pickups: d.ventas?.pickups||0, express: d.ventas?.express||0,
-      fiscalia: d.ventas?.fiscalia||0, motos: d.ventas?.motos||0
-    },
-    adicionales: {
-      tapetes_solo: d.adicionales?.tapetes_solo||0, motor: d.adicionales?.motor||0,
-      mano: d.adicionales?.mano||0, plus_cera: d.adicionales?.plus_cera||0,
-      pro_cera_tapetes: d.adicionales?.pro_cera_tapetes||0
-    },
-    pagos: { efectivo: d.pagos?.efectivo||0, tarjeta: d.pagos?.tarjeta||0, transferencia: d.pagos?.transferencia||0 },
-    gastos_odoo: []
+  document.getElementById('inp_fecha').value=new Date().toLocaleDateString('en-CA');
+  document.getElementById('inp_resp').value='';
+  document.getElementById('inp_sesion').value='';
+  ['inp_ct','inp_ca','inp_cf','inp_seg','inp_lavm','inp_reg',
+   'inp_apertura','inp_morralla','inp_billetes','inp_terminal','inp_fondo'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
   });
-  
-  // Show corte
-  document.getElementById('corteWrap').style.display='block';
-  document.getElementById('actions').style.display='flex';
-  
-  // Scroll to top
+  PROGRAMAS.forEach(p=>{
+    ['pi_ini_','pi_fin_'].forEach(pfx=>{
+      const el=document.getElementById(pfx+p.prog); if(el) el.value='';
+    });
+    const vel=document.getElementById('pi_vend_'+p.prog); if(vel) vel.textContent='—';
+  });
+  document.getElementById('maq_total').textContent='0';
+  renderGastos(); renderNotas(); addGasto();
   window.scrollTo(0,0);
-};
-
-function recalcSvcOut(){
-  const tbody = document.getElementById('body_svc_out');
-  if(!tbody) return;
-  tbody.innerHTML = '';
-  let total = 0;
-  svcs.forEach((s,i)=>{
-    const t = (s.p||0)*(s.q||1);
-    total += t;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="text" value="${(s.n||'').replace(/"/g,'&quot;')}" placeholder="Servicio" 
-        style="width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px"
-        oninput="svcs[${i}].n=this.value"></td>
-      <td><input type="number" value="${s.p||''}" placeholder="$0"
-        style="width:80px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:right"
-        oninput="svcs[${i}].p=parseFloat(this.value)||0;recalcSvcOut()"></td>
-      <td><input type="number" value="${s.q||1}" min="1"
-        style="width:60px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:13px;text-align:center"
-        oninput="svcs[${i}].q=parseFloat(this.value)||1;recalcSvcOut()"></td>
-      <td style="text-align:right;padding:4px 8px">${fmt(t)}
-        <button onclick="svcs.splice(${i},1);recalcSvcOut()" 
-          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px">×</button></td>`;
-    tbody.appendChild(tr);
-  });
-  const totEl = document.getElementById('tot_svc_out');
-  if(totEl) totEl.textContent = fmt(total);
-  D.totSvc = total;
-  // Sincronizar con inputSection
-  renderSvcs();
 }
 
-function recalcPaqOut(){
-  // Precios de paquetes (igual que en recalcOut)
-  const precios = D.paqPrecios || [0,0,0,0,0,0];
-  let totalVend = 0, totalMon = 0;
-  for(let i=1;i<=6;i++){
-    const ini = parseFloat(document.getElementById(`out_pi_ini_${i}`)?.value)||0;
-    const fin = parseFloat(document.getElementById(`out_pi_fin_${i}`)?.value)||0;
-    const vend = Math.max(0, fin-ini);
-    const mon = vend * (precios[i-1]||0);
-    const vendEl = document.getElementById(`out_pi_vend_${i}`);
-    const monEl  = document.getElementById(`out_pi_mon_${i}`);
-    if(vendEl) vendEl.textContent = vend;
-    if(monEl)  monEl.textContent  = '$'+mon.toLocaleString('es-MX');
-    totalVend += vend;
-    totalMon  += mon;
-    // Sincronizar con los inputs originales del inputSection
-    const iniOrig = document.getElementById(`pi_ini_${i}`);
-    const finOrig = document.getElementById(`pi_fin_${i}`);
-    if(iniOrig) iniOrig.value = ini;
-    if(finOrig) finOrig.value = fin;
-  }
-  const tpCant = document.getElementById('tp_cant');
-  const tpMon  = document.getElementById('tp_mon');
-  if(tpCant) tpCant.textContent = totalVend;
-  if(tpMon)  tpMon.textContent  = '$'+totalMon.toLocaleString('es-MX');
-  // Actualizar D
-  D.maqVend = totalVend;
-  D.maqEsp  = D.maqEsp || totalVend;
-  D.difMaq  = totalVend - (D.maqEsp||totalVend);
-  // Actualizar KPIs de máquina en el corte
-  const difMaqEl = document.getElementById('dif_maq');
-  if(difMaqEl){
-    if(D.difMaq===0) difMaqEl.innerHTML='<span style="color:var(--green)">✅ OK</span>';
-    else difMaqEl.innerHTML=`<span style="color:var(--amber)">${D.difMaq>0?'+':''}${D.difMaq} autos</span>`;
-  }
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function fmt(n){ return '$'+(n||0).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtK(n){ const a=Math.abs(n); const s=n<0?'-':''; return s+'$'+(a>=1000?(a/1000).toFixed(1)+'K':a.toFixed(0)); }
+function formatFecha(iso){
+  if(!iso) return '—';
+  const [y,m,d]=iso.split('-');
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${parseInt(d)} ${meses[parseInt(m)-1]} ${y}`;
 }
-
-
-// ── EDITOR DE CORTES ──────────────────────────────────────────────────────────
-const EDITOR_PASSWORD = '3098'; // Cambiar por tu contraseña
-let editorDocId = null;
-
-window.abrirEditorCorte = async function(){
-  document.getElementById('modalEditarCorte').style.display = 'block';
-  document.getElementById('editorCorteStep1').style.display = 'block';
-  document.getElementById('editorCorteStep2').style.display = 'none';
-  document.getElementById('editorCorteStep3').style.display = 'none';
-  
-  const lista = document.getElementById('editorCorteList');
-  lista.innerHTML = '<p style="color:#999">Cargando cortes...</p>';
-  
-  try {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=15&orderBy=timestamp%20desc`;
-    const r = await fetch(url);
-    const data = await r.json();
-    const docs = data.documents || [];
-    
-    lista.innerHTML = docs.map(doc => {
-      const docId = doc.name.split('/').pop();
-      const fields = doc.fields || {};
-      const fecha = fields.fecha?.stringValue || '';
-      const sesion = fields.sesion?.stringValue || '';
-      const total = fields.totales?.mapValue?.fields?.total_tickets?.integerValue || '0';
-      const paqFin = fields.paquetes_finales?.arrayValue?.values || [];
-      const tieneLecturas = paqFin.some(p => parseInt(p.mapValue?.fields?.final?.integerValue||0) > 0);
-      
-      return `<div onclick="window.seleccionarCorteEditor('${docId}','${fecha}','${sesion}')" 
-        style="padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;cursor:pointer;background:${tieneLecturas?'#e8f5e9':'#fff8e1'}">
-        <b>${fecha}</b> — ${sesion}<br>
-        <span style="font-size:12px;color:#666">$${parseInt(total).toLocaleString('es-MX')} ${tieneLecturas?'✅ Con lecturas':'⚠️ Sin lecturas'}</span>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    lista.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
-  }
-};
-
-window.seleccionarCorteEditor = function(docId, fecha, sesion){
-  editorDocId = docId;
-  document.getElementById('editorCorteInfo').textContent = fecha + ' — ' + sesion;
-  document.getElementById('editorCorteStep1').style.display = 'none';
-  document.getElementById('editorCorteStep2').style.display = 'block';
-  document.getElementById('editorContrasena').value = '';
-  setTimeout(()=>document.getElementById('editorContrasena').focus(), 100);
-};
-
-window.verificarContrasenaEditor = async function(){
-  const pass = document.getElementById('editorContrasena').value;
-  if(pass !== EDITOR_PASSWORD){ alert('Contraseña incorrecta'); return; }
-  
-  // Cargar datos del corte
-  try {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
-    const r = await fetch(url);
-    const doc = await r.json();
-    const paqFin = doc.fields?.paquetes_finales?.arrayValue?.values || [];
-    
-    const body = document.getElementById('editorPaqBody');
-    body.innerHTML = Array.from({length:6},(_,i)=>{
-      const paq = paqFin[i]?.mapValue?.fields || {};
-      const ini = paq.inicio?.integerValue || 0;
-      const fin = paq.final?.integerValue || 0;
-      const vend = Math.max(0, fin-ini);
-      return `<tr>
-        <td style="padding:8px">Paquete ${i+1}</td>
-        <td style="padding:4px"><input id="edit_ini_${i+1}" type="number" value="${ini}" style="width:70px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:center"></td>
-        <td style="padding:4px"><input id="edit_fin_${i+1}" type="number" value="${fin}" oninput="actualizarVendidosEditor(${i+1})" style="width:70px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:center"></td>
-        <td id="edit_vend_${i+1}" style="padding:8px;text-align:center;font-weight:600">${vend}</td>
-      </tr>`;
-    }).join('');
-    
-    document.getElementById('editorCorteInfo2').textContent = document.getElementById('editorCorteInfo').textContent;
-    document.getElementById('editorCorteStep2').style.display = 'none';
-    document.getElementById('editorCorteStep3').style.display = 'block';
-  } catch(e) {
-    alert('Error cargando corte: ' + e.message);
-  }
-};
-
-window.actualizarVendidosEditor = function(i){
-  const ini = parseFloat(document.getElementById(`edit_ini_${i}`)?.value)||0;
-  const fin = parseFloat(document.getElementById(`edit_fin_${i}`)?.value)||0;
-  const el = document.getElementById(`edit_vend_${i}`);
-  if(el) el.textContent = Math.max(0, fin-ini);
-};
-
-window.guardarEdicionLecturas = async function(){
-  const paquetes = Array.from({length:6},(_,i)=>({
-    num: i+1,
-    inicio: parseFloat(document.getElementById(`edit_ini_${i+1}`)?.value)||0,
-    final:  parseFloat(document.getElementById(`edit_fin_${i+1}`)?.value)||0,
-    vendidos: Math.max(0,(parseFloat(document.getElementById(`edit_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`edit_ini_${i+1}`)?.value)||0)),
-    monto: 0,
-  }));
-  
-  const totalVend = paquetes.reduce((s,p)=>s+p.vendidos,0);
-  
-  function toFirestore(obj) {
-    if(obj === null || obj === undefined) return {nullValue: null};
-    if(typeof obj === 'boolean') return {booleanValue: obj};
-    if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
-    if(typeof obj === 'string') return {stringValue: obj};
-    if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
-    if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
-    return {stringValue: String(obj)};
-  }
-  
-  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${editorDocId}`;
-  
-  const body = {
-    fields: {
-      paquetes_finales: toFirestore(paquetes),
-      maquina: toFirestore({ total_vendidos: totalVend, esperada: totalVend, diferencia: 0 })
-    }
-  };
-  
-  try {
-    const r = await fetch(url + '?updateMask.fieldPaths=paquetes_finales&updateMask.fieldPaths=maquina', {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    });
-    if(r.ok){
-      alert('✅ Lecturas guardadas correctamente');
-      document.getElementById('modalEditarCorte').style.display = 'none';
-    } else {
-      alert('❌ Error: ' + r.status);
-    }
-  } catch(e) {
-    alert('❌ Error: ' + e.message);
-  }
-};
-
-
-window.enviarReporte = async function(){
-  const corte = D.corteGuardado;
-  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
-  const btn = document.getElementById('btnEnviarReporte');
-  btn.textContent = '⏳ Enviando...';
-  btn.disabled = true;
-  try {
-    await enviarTelegram(corte);
-    await generarYEnviarPDF(corte);
-    btn.textContent = '✅ Enviado';
-    btn.style.background = 'var(--green)';
-    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
-  } catch(e) {
-    alert('Error al enviar: ' + e.message);
-    btn.textContent = '📤 Enviar Reporte';
-    btn.disabled = false;
-  }
-};
-
-window.enviarReporte = async function(){
-  const corte = D.corteGuardado;
-  if(!corte){ alert('Primero guarda el corte antes de enviar el reporte.'); return; }
-  const btn = document.getElementById('btnEnviarReporte');
-  btn.textContent = '⏳ Enviando...';
-  btn.disabled = true;
-  try {
-    await enviarTelegram(corte);
-    await generarYEnviarPDF(corte);
-    btn.textContent = '✅ Enviado';
-    btn.style.background = 'var(--green)';
-    setTimeout(()=>{ btn.textContent='📤 Enviar Reporte'; btn.style.background='#25D366'; btn.disabled=false; }, 3000);
-  } catch(e) {
-    alert('Error al enviar: ' + e.message);
-    btn.textContent = '📤 Enviar Reporte';
-    btn.disabled = false;
-  }
-};
-
-window.guardarSoloLecturas = async function(){
-  recalcPaqOut();
-  const fecha = document.getElementById('inp_fecha')?.value || new Date().toLocaleDateString('en-CA', {timeZone: 'America/Mexico_City'});
-  if(!D || !D.sesion){ alert('Primero carga una sesión de Odoo.'); return; }
-  // Buscar el documento existente con esta fecha y sesión
-  const sesionId = D.sesion.replace(/\//g,'-');
-  const urlBuscar = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes?pageSize=50`;
-  let docId = D.docId;
-  if(!docId){
-    try {
-      const rb = await fetch(urlBuscar);
-      const db = await rb.json();
-      const docs = db.documents || [];
-      const match = docs.find(d => {
-        const f = d.fields;
-        return f?.fecha?.stringValue === fecha && f?.sesion?.stringValue === D.sesion;
-      });
-      if(match) docId = match.name.split('/').pop();
-    } catch(e){}
-  }
-  if(!docId){ alert('No se encontró el corte en Firestore. Primero guarda el corte completo.'); return; }
-  
-  const paquetes = Array.from({length:6},(_,i)=>({
-    num: i+1,
-    inicio: parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value)||0,
-    final:  parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value)||0,
-    vendidos: Math.max(0,(parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value)||0)),
-    monto: 0,
-  }));
-  
-  const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
-  
-  function toFirestore(obj) {
-    if(obj === null || obj === undefined) return {nullValue: null};
-    if(typeof obj === 'boolean') return {booleanValue: obj};
-    if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
-    if(typeof obj === 'string') return {stringValue: obj};
-    if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
-    if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
-    return {stringValue: String(obj)};
-  }
-  
-  const data = { fecha, sesion: D.sesion||'', paquetes_finales: paquetes };
-  const body = {fields: Object.fromEntries(Object.entries(data).map(([k,v]) => [k, toFirestore(v)]))};
-  
-  try {
-    const r = await fetch(firestoreUrl, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    });
-    if(r.ok) alert('✅ Lecturas guardadas en Firestore: ' + docId);
-    else alert('❌ Error: ' + r.status);
-  } catch(e) {
-    alert('❌ Error: ' + e.message);
-  }
-};
-
-window.guardarCorte = async function(){
-  if(!D || !D.sesion){ alert('Primero genera el corte.'); return; }
-  // Asegurar que los paquetes estén sincronizados antes de guardar
-  recalcPaqOut();
-  const btn = document.getElementById('btnGuardar');
-  btn.textContent = '⏳ Guardando...';
-  btn.disabled = true;
-  try{
-    const corte = {
-      timestamp:    new Date().toISOString(),
-      fecha:        document.getElementById('inp_fecha')?.value || '',
-      sesion:       D.sesion || '',
-      responsable:  document.getElementById('inp_resp')?.value || '',
-      // Ventas
-      ventas: {
-        autos:      D.ventas?.[0] || 0,
-        camionetas: D.ventas?.[1] || 0,
-        pickups:    D.ventas?.[2] || 0,
-        express:    D.ventas?.[3] || 0,
-        fiscalia:   D.ventas?.[4] || 0,
-        motos:      D.ventas?.[5] || 0,
-      },
-      adicionales: {
-        tapetes_solo:    D.adics?.[0] || 0,
-        motor:           D.adics?.[1] || 0,
-        mano:            D.adics?.[2] || 0,
-        plus_cera:       D.adics?.[3] || 0,
-        pro_cera_tapetes:D.adics?.[4] || 0,
-      },
-      pagos: {
-        efectivo:      D.efe     || 0,
-        tarjeta:       D.tar     || 0,
-        transferencia: D.trans   || 0,
-      },
-      servicios_manuales: svcs.map(s=>({nombre:s.n, precio:s.p, cantidad:s.q, total:(s.p||0)*(s.q||0)})),
-      totales: {
-        total_tickets:  D.totalTix   || 0,
-        total_cobrado:  D.totPagos   || 0,
-        total_caja:     D.totalCaja  || 0,
-        total_gastos:   D.totGastos  || 0,
-        diferencia_din: D.difDin     || 0,
-      },
-      caja: {
-        apertura:  D.apertura  || 0,
-        morralla:  D.morralla  || 0,
-        billetes:  D.billetes  || 0,
-        terminal:  D.terminal  || 0,
-      },
-      otros: {
-        cortes_taller: D.ct  || 0,
-        cortes_ayto:   D.ca  || 0,
-        cortes_familiar: D.cf || 0,
-        seguro:        D.seg || 0,
-        lavados_mano:  D.lavm|| 0,
-        regresos:      D.reg || 0,
-      },
-      maquina: {
-        total_vendidos: D.maqVend || 0,
-        esperada:       D.maqEsp  || 0,
-        diferencia:     D.difMaq  || 0,
-      },
-      gastos: gastos.map(g=>({concepto:g.c, monto:g.m})),
-      notas:  notas.filter(n=>n.trim()),
-      tiene_foto: fotoFile !== null,
-      paquetes_finales: Array.from({length:6},(_,i)=>({
-        num: i+1,
-        inicio: parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value || document.getElementById(`pi_ini_${i+1}`)?.value)||0,
-        final:  parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value || document.getElementById(`pi_fin_${i+1}`)?.value)||0,
-        vendidos: Math.max(0,(parseFloat(document.getElementById(`out_pi_fin_${i+1}`)?.value || document.getElementById(`pi_fin_${i+1}`)?.value)||0)-(parseFloat(document.getElementById(`out_pi_ini_${i+1}`)?.value || document.getElementById(`pi_ini_${i+1}`)?.value)||0)),
-        monto: parseFloat(document.getElementById(`pi_mon_${i+1}`)?.value)||0,
-      })),
-    };
-    const fecha = document.getElementById('inp_fecha')?.value || 'sin-fecha';
-    const sesion = (D.sesion || 'sin-sesion').replace(/\//g,'-');
-    const docId = fecha + '_' + sesion; // ID fijo por sesión — sobreescribe el mismo
-    // Guardar en Firestore via REST API
-    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
-    
-    // Convertir corte a formato Firestore
-    function toFirestore(obj) {
-      if(obj === null || obj === undefined) return {nullValue: null};
-      if(typeof obj === 'boolean') return {booleanValue: obj};
-      if(typeof obj === 'number') return Number.isInteger(obj) ? {integerValue: String(obj)} : {doubleValue: obj};
-      if(typeof obj === 'string') return {stringValue: obj};
-      if(Array.isArray(obj)) return {arrayValue: {values: obj.map(toFirestore)}};
-      if(typeof obj === 'object') return {mapValue: {fields: Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, toFirestore(v)]))}};
-      return {stringValue: String(obj)};
-    }
-    
-    const firestoreBody = {fields: Object.fromEntries(Object.entries(corte).map(([k,v]) => [k, toFirestore(v)]))};
-    
-    const saveResp = await fetch(firestoreUrl + '?updateMask.fieldPaths=' + Object.keys(corte).join('&updateMask.fieldPaths='), {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(firestoreBody)
-    });
-    if(!saveResp.ok) throw new Error('Firestore: ' + saveResp.status);
-    const docRef = {id: docId};
-    D.docId = docId; // Guardar para actualizaciones
-
-    // Detectar discrepancias con Odoo
-    if(D.odoo_original){
-      const orig = D.odoo_original;
-      const alertas = [];
-      const ct_cap = parseInt(document.getElementById('inp_cortes_taller')?.value)||0;
-      const ca_cap = parseInt(document.getElementById('inp_cortes_ayto')?.value)||0;
-      const cf_cap = parseInt(document.getElementById('inp_cortes_familiar')?.value)||0;
-      if(ct_cap !== orig.cortes_taller) alertas.push(`⚠️ Cortesía Taller: Odoo=${orig.cortes_taller} vs Capturado=${ct_cap}`);
-      if(ca_cap !== orig.cortes_ayto)   alertas.push(`⚠️ Cortesía Ayto: Odoo=${orig.cortes_ayto} vs Capturado=${ca_cap}`);
-      if(cf_cap !== orig.cortes_familiar) alertas.push(`⚠️ Cortesía Familiar: Odoo=${orig.cortes_familiar} vs Capturado=${cf_cap}`);
-      if(alertas.length > 0){ corte.alertas_odoo = alertas; D.corteGuardado = corte; }
-    }
-
-    btn.textContent = '✅ Guardado';
-    btn.style.background = 'var(--green)';
-    setTimeout(()=>{ btn.textContent='💾 Guardar Corte'; btn.style.background=''; btn.disabled=false; }, 3000);
-    console.log('Corte guardado con ID:', docRef.id);
-    // Reporte se envía manualmente con el botón "Enviar Reporte"
-    D.corteGuardado = corte; // Guardar para envío posterior
-  } catch(e){
-    alert('Error al guardar: ' + e.message);
-    btn.textContent = '💾 Guardar Corte';
-    btn.disabled = false;
-  }
-};
 </script>
-<!-- Modal Editar Corte -->
-<div id="modalEditarCorte" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;overflow-y:auto">
-  <div style="background:#fff;max-width:500px;margin:40px auto;border-radius:12px;padding:24px">
-    <h3 style="margin:0 0 16px;color:#1a1a2e">✏️ Editar Lectura de Máquina</h3>
-    <div id="editorCorteStep1">
-      <p style="color:#666;font-size:14px">Selecciona el corte a editar:</p>
-      <div id="editorCorteList" style="max-height:300px;overflow-y:auto;margin-bottom:16px"></div>
-      <button onclick="document.getElementById('modalEditarCorte').style.display='none'" style="background:#ddd;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
-    </div>
-    <div id="editorCorteStep2" style="display:none">
-      <p id="editorCorteInfo" style="color:#1a1a2e;font-weight:600;margin-bottom:12px"></p>
-      <p style="color:#666;font-size:14px">Contraseña para editar:</p>
-      <input id="editorContrasena" type="password" placeholder="Contraseña" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:12px;box-sizing:border-box">
-      <div style="display:flex;gap:8px">
-        <button onclick="window.verificarContrasenaEditor()" style="background:#7B2FBE;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;flex:1">Continuar</button>
-        <button onclick="document.getElementById('editorCorteStep2').style.display='none';document.getElementById('editorCorteStep1').style.display='block'" style="background:#ddd;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Atrás</button>
-      </div>
-    </div>
-    <div id="editorCorteStep3" style="display:none">
-      <p id="editorCorteInfo2" style="color:#1a1a2e;font-weight:600;margin-bottom:12px"></p>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-        <thead><tr style="background:#f5f5f5"><th style="padding:8px;text-align:left">Paquete</th><th style="padding:8px;text-align:center">Inicio</th><th style="padding:8px;text-align:center">Final</th><th style="padding:8px;text-align:center">Vendidos</th></tr></thead>
-        <tbody id="editorPaqBody"></tbody>
-      </table>
-      <div style="display:flex;gap:8px">
-        <button onclick="window.guardarEdicionLecturas()" style="background:#198754;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;flex:1">💾 Guardar Lecturas</button>
-        <button onclick="document.getElementById('modalEditarCorte').style.display='none'" style="background:#ddd;border:none;padding:8px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
 </body>
 </html>
