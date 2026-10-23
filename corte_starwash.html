@@ -608,68 +608,88 @@ window.onload = () => {
 //   Turno Día  → busca los finales del turno Noche del día ANTERIOR (o Día anterior si no hay)
 //   Turno Noche → busca los finales del turno Día del MISMO día
 async function cargarInicioPaquetes(){
-  const fecha  = document.getElementById('inp_fecha').value;
+  const fecha = document.getElementById('inp_fecha').value;
   if(!fecha) return;
 
-  // Calcular qué docId buscar según turno
-  // Incluimos también el formato viejo (sin sufijo) como fallback
-  let candidatos = [];
+  // Fechas a buscar según turno:
+  // Turno Noche → quiere los finales del turno Día del MISMO día
+  // Turno Día   → quiere los finales del turno Noche de AYER (o Día de ayer)
+  let fechasBuscar = []; // cada entrada: {fecha:'YYYY-MM-DD', turno:'N'|'D'|null}
   if(turnoActual === 'N'){
-    // Turno noche: busca el turno Día del mismo día
-    const hoy = fecha.replace(/-/g,'');
-    candidatos = [ hoy + '_D', hoy ]; // también formato viejo sin sufijo
+    fechasBuscar = [{fecha, turno:'D'}, {fecha, turno:null}];
   } else {
-    // Turno día: busca turno Noche de ayer, luego Día de ayer como fallback, luego formato viejo
     const ayer = new Date(fecha + 'T12:00:00');
     ayer.setDate(ayer.getDate()-1);
-    const fechaAyer = ayer.toISOString().slice(0,10).replace(/-/g,'');
-    candidatos = [ fechaAyer + '_N', fechaAyer + '_D', fechaAyer ];
+    const fechaAyer = ayer.toISOString().slice(0,10);
+    fechasBuscar = [
+      {fecha:fechaAyer, turno:'N'},
+      {fecha:fechaAyer, turno:'D'},
+      {fecha:fechaAyer, turno:null},
+    ];
   }
 
+  // Listar todos los documentos de cortes y filtrar por campo 'fecha'
+  // (el docId puede tener cualquier formato, el campo fecha es siempre YYYY-MM-DD)
   const base = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes`;
+  let todosLosDocs = [];
+  try{
+    const r = await fetch(`${base}?pageSize=60`);
+    if(!r.ok) return;
+    const data = await r.json();
+    todosLosDocs = data.documents || [];
+  } catch(e){ return; }
 
-  for(const docId of candidatos){
-    try{
-      const r = await fetch(`${base}/${docId}`);
-      if(!r.ok) continue;
-      const doc = await r.json();
-      if(doc.error) continue;
-      const fields = doc.fields || {};
-      const paqField = fields.paquetes_finales;
-      if(!paqField?.arrayValue?.values?.length) continue;
+  // Buscar en orden de prioridad
+  for(const cand of fechasBuscar){
+    // Filtrar docs que tengan campo fecha == cand.fecha
+    const docs = todosLosDocs.filter(doc => {
+      const f = doc.fields?.fecha?.stringValue || '';
+      return f === cand.fecha;
+    });
+    if(!docs.length) continue;
 
-      const paquetes = paqField.arrayValue.values;
-      let alguno = false;
-      paquetes.forEach(p => {
-        const fp = p.mapValue?.fields || {};
-        const prog    = parseInt(fp.prog?.integerValue || 0);
-        const finalVal= parseInt(fp.final?.integerValue || fp.final?.doubleValue || 0);
-        if(prog && finalVal){
-          const inp = document.getElementById(`pi_ini_${prog}`);
-          if(inp && !inp.value){
-            inp.value = finalVal;
-            inp.style.background = 'var(--teal-light)';
-            inp.title = `Cargado del corte ${docId}`;
-            alguno = true;
-          }
+    // Si hay múltiples (varios turnos del mismo día), preferir el que tenga turno coincidente
+    let doc = null;
+    if(cand.turno){
+      doc = docs.find(d => (d.fields?.turno?.stringValue||'') === cand.turno);
+    }
+    if(!doc) doc = docs[docs.length-1]; // tomar el último si no hay coincidencia de turno
+
+    const fields = doc.fields || {};
+    const paqField = fields.paquetes_finales;
+    if(!paqField?.arrayValue?.values?.length) continue;
+
+    const paquetes = paqField.arrayValue.values;
+    let alguno = false;
+    paquetes.forEach((p, idx) => {
+      const fp = p.mapValue?.fields || {};
+      // Soporte para formato nuevo (campo 'prog'), viejo (campo 'num'), o por posición en array
+      const prog = parseInt(fp.prog?.integerValue || fp.num?.integerValue || (idx + 1));
+      const finalVal = parseInt(fp.final?.integerValue || fp.final?.doubleValue || 0);
+      if(prog >= 1 && prog <= 6 && finalVal){
+        const inp = document.getElementById(`pi_ini_${prog}`);
+        if(inp && !inp.value){
+          inp.value = finalVal;
+          inp.style.background = 'var(--teal-light)';
+          inp.title = `Final del corte ${cand.fecha}${cand.turno?' turno '+cand.turno:''}`;
+          alguno = true;
         }
-      });
-
-      if(alguno){
-        // También cargar morralla como apertura si turno Día viene de turno Noche anterior
-        const cajaF = fields.caja?.mapValue?.fields || {};
-        const morralla = parseInt(cajaF.morralla?.integerValue || 0);
-        const inpAp = document.getElementById('inp_apertura');
-        if(morralla && inpAp && !inpAp.value){
-          inpAp.value = morralla;
-          inpAp.style.background = 'var(--teal-light)';
-          inpAp.title = `Morralla del corte ${docId}`;
-        }
-        mostrarBannerInicio(docId);
-        recalcMaq();
-        return; // encontramos, no seguimos buscando
       }
-    } catch(e){ /* silencioso */ }
+    });
+
+    if(alguno){
+      const cajaF = fields.caja?.mapValue?.fields || {};
+      const morralla = parseInt(cajaF.morralla?.integerValue || 0);
+      const inpAp = document.getElementById('inp_apertura');
+      if(morralla && inpAp && !inpAp.value){
+        inpAp.value = morralla;
+        inpAp.style.background = 'var(--teal-light)';
+        inpAp.title = `Morralla del corte ${cand.fecha}`;
+      }
+      mostrarBannerInicio(cand.fecha + (cand.turno ? '_'+cand.turno : ''));
+      recalcMaq();
+      return;
+    }
   }
 }
 
