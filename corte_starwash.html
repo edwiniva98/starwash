@@ -813,6 +813,14 @@ function syncFinFromResumen(prog, val){
   // Actualizar celda AUTOS de esta fila
   const autosEl = document.getElementById(`of_autos_${prog}`);
   if(autosEl) autosEl.textContent = autos||'—';
+  // Actualizar celda DIF de esta fila
+  const odooPorProgRow={};
+  PROGRAMAS.forEach(p2=>odooPorProgRow[p2.prog]=0);
+  PAQUETES.forEach(paq=>{ if(paq.prog) odooPorProgRow[paq.prog]=(odooPorProgRow[paq.prog]||0)+Math.round((D.V||{})[paq.key]||0); });
+  const odooQ = odooPorProgRow[prog]||0;
+  const dif = autos - odooQ;
+  const difEl = document.getElementById(`of_dif_${prog}`);
+  if(difEl){ const dc=dif===0?'diff-ok':Math.abs(dif)<=2?'diff-warn':'diff-err'; difEl.innerHTML=`<span class="diff-badge ${dc}">${dif>=0?'+':''}${dif}</span>`; }
   // Actualizar VEND en la tabla de arriba
   const vendEl = document.getElementById(`pi_vend_${prog}`);
   if(vendEl) vendEl.textContent = (ini||fin) ? autos : '—';
