@@ -977,7 +977,6 @@ function renderPrest() {
       </div>
       <div class="prest-det">
         <span class="prest-chip">Monto original: $${fmt(p.monto)}</span>
-        <span class="prest-chip">Desc. semanal: $${fmt(p.descSem)}</span>
         ${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}
         <button onclick="pedirPinBorrarPrest('${p.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo,#e53);color:var(--rojo,#e53);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
       </div>
