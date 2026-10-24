@@ -355,7 +355,6 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
         <select id="inp-prest-emp"></select>
       </div>
       <div class="field"><label>Monto ($)</label><input id="inp-prest-monto" type="number" placeholder="500" inputmode="decimal"></div>
-      <div class="field"><label>Descuento semanal ($)</label><input id="inp-prest-desc" type="number" placeholder="100" inputmode="decimal"></div>
       <div class="field"><label>Nota (opcional)</label><input id="inp-prest-nota" placeholder="Anticipo, préstamo..."></div>
       <button class="btn-prim" onclick="guardarPrest()">Guardar préstamo</button>
     </div>
@@ -819,8 +818,8 @@ function actualizarStats() {
 }
 
 // ── NÓMINA ────────────────────────────────────────────────────────
-function getPrestDesc(empId) {
-  return S.prestamos.filter(p=>p.empId===empId && p.saldo>0).reduce((s,p)=>s+p.descSem,0);
+function getSaldoPrest(empId) {
+  return S.prestamos.filter(p=>p.empId===empId && p.saldo>0).reduce((s,p)=>s+p.saldo,0);
 }
 function calcTotal(emp) {
   const sem = getSemana();
@@ -844,8 +843,11 @@ function calcTotal(emp) {
   const extraManual = parseFloat(d.extra)||0;
   const extra = extraManual + extraPos;
   const adelanto = parseFloat(d.adelanto)||0;
-  const descPrest = getPrestDesc(emp.id);
-  return { dias, semanal, extra, extraManual, extraPos, adelanto, descPrest, total: semanal + extra - adelanto - descPrest };
+  const abonoPrest = parseFloat(d.abono)||0;
+  const saldoPrest = getSaldoPrest(emp.id);
+  // El abono no puede exceder el saldo real del préstamo
+  const descPrest = Math.min(abonoPrest, saldoPrest);
+  return { dias, semanal, extra, extraManual, extraPos, adelanto, abonoPrest, descPrest, saldoPrest, total: semanal + extra - adelanto - descPrest };
 }
 function puestoClass(p) {
   if(p==='Cajero') return 'pb-cajero';
@@ -858,10 +860,9 @@ function renderNom() {
   let html = ''; let globalTotal = 0;
   const empsOrden = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   empsOrden.forEach(emp=>{
-    const {dias,semanal,extra,extraManual,extraPos,adelanto,descPrest,total} = calcTotal(emp);
+    const {dias,semanal,extra,extraManual,extraPos,adelanto,abonoPrest,descPrest,saldoPrest,total} = calcTotal(emp);
     globalTotal += Math.max(0,total);
     const datos = sem[emp.id]||{pagado:false};
-    const saldoPrest = S.prestamos.filter(p=>p.empId===emp.id&&p.saldo>0).reduce((s,p)=>s+p.saldo,0);
     html += `<div class="nom-row">
       <div class="nom-top">
         <div><span class="nom-nombre">${emp.nombre}</span><span class="nom-puesto">${emp.puesto}</span></div>
@@ -872,8 +873,8 @@ function renderNom() {
         <div class="ni"><div class="ni-l">Semanal</div><div class="ni-v">$${fmt(semanal)}</div></div>
         <div class="ni"><div class="ni-l">Extra${extraPos>0?' (+$'+fmt(extraPos)+' puesto)':''}</div><div class="ni-v verde"><input type="number" inputmode="decimal" placeholder="0" value="${extraManual||''}" onchange="setExtra('${emp.id}',this.value)" onfocus="this.select()"></div></div>
         <div class="ni"><div class="ni-l">Adelanto</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${adelanto||''}" onchange="setAdelanto('${emp.id}',this.value)" onfocus="this.select()"></div></div>
+        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Abono préstamo<br><span style="font-size:10px;color:var(--txt2)">Saldo: $${fmt(saldoPrest)}</span></div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${abonoPrest||''}" onchange="setAbono('${emp.id}',this.value)" onfocus="this.select()"></div></div>`:''}
         ${descPrest>0?`<div class="ni"><div class="ni-l">Desc. préstamo</div><div class="ni-v rojo">-$${fmt(descPrest)}</div></div>`:''}
-        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Saldo préstamo</div><div class="ni-v rojo">$${fmt(saldoPrest)}</div></div>`:''}
         ${(()=>{ const notas=sem[emp.id]&&sem[emp.id].notas; const DIASN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; if(!notas) return ''; const ns=notas.map((n,i)=>n?`${DIASN[i]}: ${n}`:'').filter(Boolean); return ns.length?`<div class="ni" style="grid-column:1/-1"><div class="ni-l">Otro</div><div class="ni-v" style="font-size:12px;color:var(--txt2)">${ns.join(' · ')}</div></div>`:''; })()}
       </div>
       <button class="pagado-btn${datos.pagado?' on':''}" onclick="togglePagado('${emp.id}')">
@@ -899,8 +900,34 @@ function setAdelanto(empId, val) {
 function setAbono(empId, val) {
   const sem = getSemana();
   if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
-  sem[empId].abono = parseFloat(val)||0;
-  guardar(); actualizarTotalNom(empId);
+  const nuevoAbono = parseFloat(val)||0;
+  const abonoAnterior = parseFloat(sem[empId].abono)||0;
+  const diff = nuevoAbono - abonoAnterior;
+  sem[empId].abono = nuevoAbono;
+  // Ajustar saldo de préstamos: distribuir el diff entre préstamos activos (del más antiguo al más nuevo)
+  if(diff !== 0) {
+    let restante = diff;
+    const prests = S.prestamos.filter(p=>p.empId===empId && p.saldo>0);
+    for(const p of prests) {
+      if(restante === 0) break;
+      const ajuste = Math.min(restante, p.saldo);
+      p.saldo = Math.max(0, p.saldo - ajuste);
+      restante -= ajuste;
+    }
+    // Si redujeron el abono (diff negativo), restaurar saldo
+    if(diff < 0) {
+      let aRestaurar = Math.abs(diff);
+      const todosPrests = S.prestamos.filter(p=>p.empId===empId && p.monto>0);
+      for(const p of todosPrests.reverse()) {
+        if(aRestaurar === 0) break;
+        const maxRestaurar = p.monto - p.saldo;
+        const restaurar = Math.min(aRestaurar, maxRestaurar);
+        p.saldo += restaurar;
+        aRestaurar -= restaurar;
+      }
+    }
+  }
+  guardar(); renderNom();
 }
 function togglePagado(empId) {
   const sem = getSemana();
@@ -977,20 +1004,18 @@ function renderPrest() {
 }
 function abrirModalPrest() {
   const sel = document.getElementById('inp-prest-emp');
-  sel.innerHTML = S.empleados.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  sel.innerHTML = S.empleados.filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
   document.getElementById('inp-prest-monto').value = '';
-  document.getElementById('inp-prest-desc').value = '';
   document.getElementById('inp-prest-nota').value = '';
   document.getElementById('modal-prest').hidden = false;
 }
 function guardarPrest() {
   const empId = document.getElementById('inp-prest-emp').value;
   const monto = parseFloat(document.getElementById('inp-prest-monto').value)||0;
-  const desc = parseFloat(document.getElementById('inp-prest-desc').value)||0;
   const nota = document.getElementById('inp-prest-nota').value.trim();
   if(!monto) return;
-  S.prestamos.push({id:'p'+Date.now(), empId, monto, saldo:monto, descSem:desc, nota});
-  guardar(); cerrarModal('modal-prest'); renderPrest();
+  S.prestamos.push({id:'p'+Date.now(), empId, monto, saldo:monto, descSem:0, nota});
+  guardar(); cerrarModal('modal-prest'); renderPrest(); renderNom();
 }
 let _prestBorrarId = null;
 function pedirPinBorrarPrest(prestId) {
@@ -1260,13 +1285,12 @@ function abrirImpresionNom() {
   let grandTotal = 0;
   const emps = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   let html = `<table class="print-table"><thead><tr>
-    <th>Nombre</th><th>Días</th><th>Semanal</th><th>Desc. préstamo</th><th>Saldo préstamo</th><th>Adelanto</th><th>Extra</th><th>Total</th><th>Firma</th>
+    <th>Nombre</th><th>Días</th><th>Semanal</th><th>Abono préstamo</th><th>Saldo préstamo</th><th>Adelanto</th><th>Extra</th><th>Total</th><th>Firma</th>
   </tr></thead><tbody>`;
   emps.forEach(emp=>{
-    const {dias,semanal,extra,adelanto,descPrest,total} = calcTotal(emp);
+    const {dias,semanal,extra,adelanto,descPrest,saldoPrest,total} = calcTotal(emp);
     grandTotal += Math.max(0,total);
     const datos = sem[emp.id]||{pagado:false};
-    const saldoPrest = S.prestamos.filter(p=>p.empId===emp.id&&p.saldo>0).reduce((s,p)=>s+p.saldo,0);
     html += `<tr>
       <td>${emp.nombre}${datos.pagado?' ✓':''}</td>
       <td style="text-align:center">${dias}</td>
