@@ -369,8 +369,8 @@ const CICLO = ['','P','F','M'];
 // ── DATOS INICIALES ──────────────────────────────────────────────
 const EMPLEADOS_INIT = [
   // Puestos especiales
-  {nombre:'TANIA',       puesto:'Cajero',     sueldo:416.67, adeudo:1700},
-  {nombre:'GABRIEL',     puesto:'Maquinista', sueldo:425,    adeudo:1975},
+  {nombre:'TANIA',       puesto:'Cajero',     sueldo:416.67, adeudo:0},
+  {nombre:'GABRIEL',     puesto:'Maquinista', sueldo:425,    adeudo:0},
   {nombre:'EDER RAMIREZ HERNANDEZ', puesto:'Encargado', sueldo:400, adeudo:0},
   // Islas
   {nombre:'GERSON',      puesto:'Lavador', sueldo:250, adeudo:0},
@@ -383,26 +383,28 @@ const EMPLEADOS_INIT = [
   {nombre:'EMANUEL',     puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'FERNANDO',    puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'TEODORO',     puesto:'Lavador', sueldo:250, adeudo:0},
-  {nombre:'FRANCISCO',   puesto:'Lavador', sueldo:250, adeudo:900},
+  {nombre:'FRANCISCO',   puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'FRANK',       puesto:'Lavador', sueldo:250, adeudo:0},
-  {nombre:'HECTOR PIÑA', puesto:'Lavador', sueldo:250, adeudo:2750},
+  {nombre:'HECTOR PIÑA', puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'JESUS MEMELA',puesto:'Lavador', sueldo:250, adeudo:0},
-  {nombre:'JESUS PIÑA',  puesto:'Lavador', sueldo:250, adeudo:250},
+  {nombre:'JESUS PIÑA',  puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'JAFET',       puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'RAMSES',      puesto:'Lavador', sueldo:400, adeudo:0},
   {nombre:'CORDERO',     puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'JORGE',       puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'LALO',        puesto:'Lavador', sueldo:250, adeudo:0},
-  {nombre:'MICHEL',      puesto:'Lavador', sueldo:250, adeudo:250},
-  {nombre:'MISAEL PANDA',puesto:'Lavador', sueldo:250, adeudo:400},
+  {nombre:'MICHEL',      puesto:'Lavador', sueldo:250, adeudo:0},
+  {nombre:'MISAEL PANDA',puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'NATANAEL',    puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'OMAR',        puesto:'Lavador', sueldo:250, adeudo:0},
-  {nombre:'SALVADOR',    puesto:'Lavador', sueldo:250, adeudo:750},
+  {nombre:'SALVADOR',    puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'ANTONIO',     puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'TONCHO',      puesto:'Lavador', sueldo:250, adeudo:0},
   {nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0},
-  // Inactivos — no aparecen en asistencia/nómina pero rastrean adeudo
-  {nombre:'DIDIER',      puesto:'Lavador', sueldo:250, adeudo:1150, inactivo:true},
+  {nombre:'HEDER',       puesto:'Lavador', sueldo:250, adeudo:0},
+  {nombre:'CALI',        puesto:'Lavador', sueldo:250, adeudo:0},
+  // Inactivos
+  {nombre:'DIDIER',      puesto:'Lavador', sueldo:250, adeudo:0, inactivo:true},
 ];
 
 // ── FIREBASE ─────────────────────────────────────────────────────
@@ -468,16 +470,40 @@ async function cargar() {
   // Migraciones
   S.empleados = (S.empleados||[]).filter(e=>e.nombre !== 'CARLOS');
   S.empleados.forEach(e=>{ if(e.puesto==='Isla') e.puesto='Lavador'; });
-  // DIDIER siempre inactivo — forzar independiente de Firestore
+  // DIDIER siempre inactivo
   const didier = S.empleados.find(e=>e.nombre==='DIDIER');
   if(didier) didier.inactivo = true;
-  if(!S.empleados.find(e=>e.nombre==='JOSE LUIS ZICO')) {
-    S.empleados.push({id:'e_zico', nombre:'JOSE LUIS ZICO', puesto:'Velador', sueldo:350, adeudo:0});
-    guardar();
-  }
   S.prestamos = S.prestamos||[];
   S.semanas = S.semanas||{};
   if(!S.semAct) S.semAct = semLunes(new Date());
+
+  // ── Migración única: adeudos del sistema viejo → préstamos ───────
+  // Adeudos conocidos al momento de la migración (19 oct 2026)
+  const ADEUDOS_MIGRAR = {
+    'FRANCISCO':   700,   // 900 - 200 abonado
+    'GABRIEL':    1725,   // 1975 - 250 abonado
+    'HECTOR PIÑA':3000,   // 2750 + 500 nuevo - 250 abonado
+    'JESUS PIÑA':    0,   // 250 - 250 = liquidado, omitir
+    'MICHEL':        0,   // 250 - 250 = liquidado, omitir
+    'MISAEL PANDA':200,   // 400 - 200 abonado
+    'SALVADOR':    500,   // 750 - 250 abonado
+    'TANIA':      1300,   // 1700 - 400 abonado
+    'NATANAEL':    500,   // préstamo nuevo
+  };
+  const migFlag = 'migrado_v2';
+  if(!S.prestamos.find(p=>p.id===migFlag)) {
+    Object.entries(ADEUDOS_MIGRAR).forEach(([nombre, saldo])=>{
+      if(saldo <= 0) return;
+      const emp = S.empleados.find(e=>e.nombre===nombre);
+      if(!emp) return;
+      S.prestamos.push({id:'pm_'+emp.id, empId:emp.id, monto:saldo, saldo, descSem:250, nota:'Adeudo migrado'});
+    });
+    // Marca para no re-migrar
+    S.prestamos.push({id:migFlag, empId:'__flag__', monto:0, saldo:0, descSem:0, nota:''});
+    guardar();
+  }
+  // Limpiar adeudo del campo viejo en todos los empleados
+  S.empleados.forEach(e=>{ e.adeudo = 0; });
 
   mostrarCargando('');
   render();
@@ -817,10 +843,9 @@ function calcTotal(emp) {
   const dias = diasCount(d.dias);
   const extraManual = parseFloat(d.extra)||0;
   const extra = extraManual + extraPos;
-  const adelanto = parseFloat(d.adelanto)||0;  // descuenta del pago del domingo
-  const abono = parseFloat(d.abono)||0;         // solo reduce adeudo, no el pago
+  const adelanto = parseFloat(d.adelanto)||0;
   const descPrest = getPrestDesc(emp.id);
-  return { dias, semanal, extra, extraManual, extraPos, adelanto, abono, descPrest, total: semanal + extra - adelanto - descPrest };
+  return { dias, semanal, extra, extraManual, extraPos, adelanto, descPrest, total: semanal + extra - adelanto - descPrest };
 }
 function puestoClass(p) {
   if(p==='Cajero') return 'pb-cajero';
@@ -833,10 +858,10 @@ function renderNom() {
   let html = ''; let globalTotal = 0;
   const empsOrden = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   empsOrden.forEach(emp=>{
-    const {dias,semanal,extra,extraManual,extraPos,adelanto,abono,descPrest,total} = calcTotal(emp);
+    const {dias,semanal,extra,extraManual,extraPos,adelanto,descPrest,total} = calcTotal(emp);
     globalTotal += Math.max(0,total);
     const datos = sem[emp.id]||{pagado:false};
-    const adeudoActual = Math.max(0, emp.adeudo - abono);
+    const saldoPrest = S.prestamos.filter(p=>p.empId===emp.id&&p.saldo>0).reduce((s,p)=>s+p.saldo,0);
     html += `<div class="nom-row">
       <div class="nom-top">
         <div><span class="nom-nombre">${emp.nombre}</span><span class="nom-puesto">${emp.puesto}</span></div>
@@ -847,9 +872,8 @@ function renderNom() {
         <div class="ni"><div class="ni-l">Semanal</div><div class="ni-v">$${fmt(semanal)}</div></div>
         <div class="ni"><div class="ni-l">Extra${extraPos>0?' (+$'+fmt(extraPos)+' puesto)':''}</div><div class="ni-v verde"><input type="number" inputmode="decimal" placeholder="0" value="${extraManual||''}" onchange="setExtra('${emp.id}',this.value)" onfocus="this.select()"></div></div>
         <div class="ni"><div class="ni-l">Adelanto</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${adelanto||''}" onchange="setAdelanto('${emp.id}',this.value)" onfocus="this.select()"></div></div>
-        <div class="ni"><div class="ni-l">Abono a adeudo</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${abono||''}" onchange="setAbono('${emp.id}',this.value)" onfocus="this.select()"></div></div>
         ${descPrest>0?`<div class="ni"><div class="ni-l">Desc. préstamo</div><div class="ni-v rojo">-$${fmt(descPrest)}</div></div>`:''}
-        ${emp.adeudo>0?`<div class="ni"><div class="ni-l">Adeudo actual</div><div class="ni-v rojo">$${fmt(adeudoActual)}</div></div>`:''}
+        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Saldo préstamo</div><div class="ni-v rojo">$${fmt(saldoPrest)}</div></div>`:''}
         ${(()=>{ const notas=sem[emp.id]&&sem[emp.id].notas; const DIASN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; if(!notas) return ''; const ns=notas.map((n,i)=>n?`${DIASN[i]}: ${n}`:'').filter(Boolean); return ns.length?`<div class="ni" style="grid-column:1/-1"><div class="ni-l">Otro</div><div class="ni-v" style="font-size:12px;color:var(--txt2)">${ns.join(' · ')}</div></div>`:''; })()}
       </div>
       <button class="pagado-btn${datos.pagado?' on':''}" onclick="togglePagado('${emp.id}')">
@@ -1236,20 +1260,19 @@ function abrirImpresionNom() {
   let grandTotal = 0;
   const emps = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   let html = `<table class="print-table"><thead><tr>
-    <th>Nombre</th><th>Días</th><th>Semanal</th><th>Adeudo</th><th>Abono adeudo</th><th>Adeudo actual</th><th>Adelanto</th><th>Extra</th><th>Total</th><th>Firma</th>
+    <th>Nombre</th><th>Días</th><th>Semanal</th><th>Desc. préstamo</th><th>Saldo préstamo</th><th>Adelanto</th><th>Extra</th><th>Total</th><th>Firma</th>
   </tr></thead><tbody>`;
   emps.forEach(emp=>{
-    const {dias,semanal,extra,adelanto,abono,descPrest,total} = calcTotal(emp);
+    const {dias,semanal,extra,adelanto,descPrest,total} = calcTotal(emp);
     grandTotal += Math.max(0,total);
     const datos = sem[emp.id]||{pagado:false};
-    const adeudoActual = Math.max(0, emp.adeudo - abono);
+    const saldoPrest = S.prestamos.filter(p=>p.empId===emp.id&&p.saldo>0).reduce((s,p)=>s+p.saldo,0);
     html += `<tr>
       <td>${emp.nombre}${datos.pagado?' ✓':''}</td>
       <td style="text-align:center">${dias}</td>
       <td>$${fmt(semanal)}</td>
-      <td>${emp.adeudo>0?'$'+fmt(emp.adeudo):''}</td>
-      <td>${abono>0?'$'+fmt(abono):''}</td>
-      <td>${emp.adeudo>0?'$'+fmt(adeudoActual):''}</td>
+      <td>${descPrest>0?'-$'+fmt(descPrest):''}</td>
+      <td>${saldoPrest>0?'$'+fmt(saldoPrest):''}</td>
       <td>${adelanto>0?'$'+fmt(adelanto):''}</td>
       <td>${extra>0?'$'+fmt(extra):''}</td>
       <td style="font-weight:700;color:#0f7a45">$${fmt(Math.max(0,total))}</td>
