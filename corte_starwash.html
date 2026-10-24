@@ -821,6 +821,9 @@ function syncFinFromResumen(prog, val){
   const odooPorProgRow={};
   PROGRAMAS.forEach(p2=>odooPorProgRow[p2.prog]=0);
   PAQUETES.forEach(paq=>{ if(paq.prog) odooPorProgRow[paq.prog]=(odooPorProgRow[paq.prog]||0)+Math.round((D.V||{})[paq.key]||0); });
+  // Cera Plus suelto = cortesía con plus → mover de prog:1 a prog:4
+  const _cp = Math.round((D.A||{}).cera_plus||0);
+  if(_cp>0){ odooPorProgRow[1]=Math.max(0,(odooPorProgRow[1]||0)-_cp); odooPorProgRow[4]=(odooPorProgRow[4]||0)+_cp; }
   const odooQ = odooPorProgRow[prog]||0;
   const dif = autos - odooQ;
   const difEl = document.getElementById(`of_dif_${prog}`);
@@ -863,6 +866,12 @@ function actualizarTablaMaqResumen(){
   PAQUETES.forEach(paq => {
     if(paq.prog) odooPorProg[paq.prog] = (odooPorProg[paq.prog]||0) + Math.round((D.V||{})[paq.key]||0);
   });
+  // Cera Plus suelto = cortesía que quiso el plus → mover de prog:1 a prog:4
+  const ceraPlus = Math.round((D.A||{}).cera_plus||0);
+  if(ceraPlus > 0){
+    odooPorProg[1] = Math.max(0, (odooPorProg[1]||0) - ceraPlus);
+    odooPorProg[4] = (odooPorProg[4]||0) + ceraPlus;
+  }
 
   omBody.innerHTML = '';
   let totMaqAutos=0, totMaqOdoo=0;
@@ -1462,6 +1471,12 @@ function buildCorte(od){
   PAQUETES.forEach(paq => {
     if(paq.prog) odooPorProg[paq.prog] = (odooPorProg[paq.prog]||0) + Math.round(V[paq.key]||0);
   });
+  // Cera Plus suelto = cortesía que quiso el plus → mover de prog:1 a prog:4
+  const ceraPlus = Math.round(A.cera_plus||0);
+  if(ceraPlus > 0){
+    odooPorProg[1] = Math.max(0, (odooPorProg[1]||0) - ceraPlus);
+    odooPorProg[4] = (odooPorProg[4]||0) + ceraPlus;
+  }
 
   const omBody = document.getElementById('o_maq_body'); omBody.innerHTML = '';
   let totMaqAutos=0, totMaqOdoo=0;
