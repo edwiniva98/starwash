@@ -1144,6 +1144,9 @@ async function cargarSesionOdoo(sessionId){
     if(inpCA) inpCA.value = cortesias.ayuntamiento || 0;
     if(inpCF) inpCF.value = cortesias.familiar || 0;
     if(inpSeg) inpSeg.value = cortesias.seguro || 0;
+    // Lavados a mano = M1 + M2 + M3 (no pasan por el túnel)
+    const inpLavm = document.getElementById('inp_lavm');
+    if(inpLavm) inpLavm.value = (adics.mano||0) + (adics.mano_cera||0) + (adics.mano_cera_tap||0) || 0;
 
     // — Cargar gastos de Odoo automáticamente —
     if(gastos_odoo.length > 0){
