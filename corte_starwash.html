@@ -792,12 +792,13 @@ function recalcMaq(){
     if(el) el.textContent = (ini||fin) ? vend : '—';
     total += vend;
   });
-  // Sumar cortesías al total de ingresos al túnel
+  // Sumar cortesías y regresos al total de ingresos al túnel
   const ct  = parseFloat(document.getElementById('inp_ct')?.value)||0;
   const ca  = parseFloat(document.getElementById('inp_ca')?.value)||0;
   const cf  = parseFloat(document.getElementById('inp_cf')?.value)||0;
   const seg = parseFloat(document.getElementById('inp_seg')?.value)||0;
-  const totalConCortes = total + ct + ca + cf + seg;
+  const reg = parseFloat(document.getElementById('inp_reg')?.value)||0;
+  const totalConCortes = total + ct + ca + cf + seg + reg;
   document.getElementById('maq_total').textContent = totalConCortes || 0;
 
   // Actualizar también la tabla de resumen (o_maq_body) con los valores actuales
@@ -883,12 +884,13 @@ function actualizarTablaMaqResumen(){
     omBody.appendChild(tr);
   });
 
-  // Sumar cortesías al total de autos que entraron al túnel
+  // Sumar cortesías y regresos al total de autos que entraron al túnel
   const _ct  = parseFloat(document.getElementById('inp_ct')?.value)||0;
   const _ca  = parseFloat(document.getElementById('inp_ca')?.value)||0;
   const _cf  = parseFloat(document.getElementById('inp_cf')?.value)||0;
   const _seg = parseFloat(document.getElementById('inp_seg')?.value)||0;
-  const totCortes = _ct + _ca + _cf + _seg;
+  const _reg = parseFloat(document.getElementById('inp_reg')?.value)||0;
+  const totCortes = _ct + _ca + _cf + _seg + _reg;
   const totMaqTotal = totMaqAutos + totCortes;
 
   const finEl = document.getElementById('o_maq_fin_tot');
@@ -1486,12 +1488,13 @@ function buildCorte(od){
   setVal('o_cf',  C.familiar     || document.getElementById('inp_cf')?.value  || 0);
   setVal('o_seg', C.seguro       || document.getElementById('inp_seg')?.value || 0);
 
-  // Sumar cortesías al total de ingresos al túnel
+  // Sumar cortesías y regresos al total de ingresos al túnel
   const _bct  = parseFloat(document.getElementById('o_ct')?.value)||0;
   const _bca  = parseFloat(document.getElementById('o_ca')?.value)||0;
   const _bcf  = parseFloat(document.getElementById('o_cf')?.value)||0;
   const _bseg = parseFloat(document.getElementById('o_seg')?.value)||0;
-  const totBCortes = _bct + _bca + _bcf + _bseg;
+  const _breg = parseFloat(document.getElementById('o_reg')?.value)||0;
+  const totBCortes = _bct + _bca + _bcf + _bseg + _breg;
   const totMaqTotal2 = totMaqAutos + totBCortes;
 
   document.getElementById('o_maq_autos_tot').textContent = totMaqTotal2 || 0;
