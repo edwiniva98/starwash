@@ -792,7 +792,13 @@ function recalcMaq(){
     if(el) el.textContent = (ini||fin) ? vend : '—';
     total += vend;
   });
-  document.getElementById('maq_total').textContent = total || 0;
+  // Sumar cortesías al total de ingresos al túnel
+  const ct  = parseFloat(document.getElementById('inp_ct')?.value)||0;
+  const ca  = parseFloat(document.getElementById('inp_ca')?.value)||0;
+  const cf  = parseFloat(document.getElementById('inp_cf')?.value)||0;
+  const seg = parseFloat(document.getElementById('inp_seg')?.value)||0;
+  const totalConCortes = total + ct + ca + cf + seg;
+  document.getElementById('maq_total').textContent = totalConCortes || 0;
 
   // Actualizar también la tabla de resumen (o_maq_body) con los valores actuales
   actualizarTablaMaqResumen();
@@ -877,16 +883,24 @@ function actualizarTablaMaqResumen(){
     omBody.appendChild(tr);
   });
 
+  // Sumar cortesías al total de autos que entraron al túnel
+  const _ct  = parseFloat(document.getElementById('inp_ct')?.value)||0;
+  const _ca  = parseFloat(document.getElementById('inp_ca')?.value)||0;
+  const _cf  = parseFloat(document.getElementById('inp_cf')?.value)||0;
+  const _seg = parseFloat(document.getElementById('inp_seg')?.value)||0;
+  const totCortes = _ct + _ca + _cf + _seg;
+  const totMaqTotal = totMaqAutos + totCortes;
+
   const finEl = document.getElementById('o_maq_fin_tot');
-  if(finEl) finEl.textContent = totMaqAutos || '—';
-  document.getElementById('o_maq_autos_tot').textContent = totMaqAutos || 0;
+  if(finEl) finEl.textContent = totMaqTotal || '—';
+  document.getElementById('o_maq_autos_tot').textContent = totMaqTotal || 0;
   document.getElementById('o_maq_odoo_tot').textContent  = totMaqOdoo;
-  const difTot = totMaqAutos - totMaqOdoo;
+  const difTot = totMaqTotal - totMaqOdoo;
   const difTotEl = document.getElementById('o_maq_dif_tot');
   if(difTotEl) difTotEl.innerHTML = `<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
 
-  // Actualizar D.maqVend para que recalcOut() use el valor correcto
-  if(D) D.maqVend = totMaqAutos;
+  // Actualizar D.maqVend para que recalcOut() use el valor correcto (incluyendo cortesías)
+  if(D) D.maqVend = totMaqTotal;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1466,16 +1480,24 @@ function buildCorte(od){
       <td class="c" id="of_dif_${p.prog}"><span class="diff-badge ${difClass}">${dif>=0?'+':''}${dif}</span></td>`;
     omBody.appendChild(tr);
   });
-  document.getElementById('o_maq_autos_tot').textContent = totMaqAutos || 0;
-  document.getElementById('o_maq_odoo_tot').textContent = totMaqOdoo;
-  const difTot = totMaqAutos - totMaqOdoo;
-  document.getElementById('o_maq_dif_tot').innerHTML = `<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
-
-  // Cortesías
+  // Cortesías (se cargan antes del total para poder sumarlas)
   setVal('o_ct',  C.taller       || document.getElementById('inp_ct')?.value  || 0);
   setVal('o_ca',  C.ayuntamiento || document.getElementById('inp_ca')?.value  || 0);
   setVal('o_cf',  C.familiar     || document.getElementById('inp_cf')?.value  || 0);
   setVal('o_seg', C.seguro       || document.getElementById('inp_seg')?.value || 0);
+
+  // Sumar cortesías al total de ingresos al túnel
+  const _bct  = parseFloat(document.getElementById('o_ct')?.value)||0;
+  const _bca  = parseFloat(document.getElementById('o_ca')?.value)||0;
+  const _bcf  = parseFloat(document.getElementById('o_cf')?.value)||0;
+  const _bseg = parseFloat(document.getElementById('o_seg')?.value)||0;
+  const totBCortes = _bct + _bca + _bcf + _bseg;
+  const totMaqTotal2 = totMaqAutos + totBCortes;
+
+  document.getElementById('o_maq_autos_tot').textContent = totMaqTotal2 || 0;
+  document.getElementById('o_maq_odoo_tot').textContent = totMaqOdoo;
+  const difTot = totMaqTotal2 - totMaqOdoo;
+  document.getElementById('o_maq_dif_tot').innerHTML = `<span class="diff-badge ${difTot===0?'diff-ok':Math.abs(difTot)<=3?'diff-warn':'diff-err'}">${difTot>=0?'+':''}${difTot}</span>`;
   setVal('o_lavm',document.getElementById('inp_lavm')?.value || 0);
   setVal('o_reg', document.getElementById('inp_reg')?.value  || 0);
 
@@ -1501,7 +1523,7 @@ function buildCorte(od){
   D.totLav = totLav;
   D.totAd  = totAd;
   D.cantPagados = cantPagados;
-  D.maqVend = totMaqAutos;
+  D.maqVend = totMaqTotal2;  // incluye cortesías
   D.maqOdoo = totMaqOdoo;
   D.efe  = P.efe;
   D.tar  = P.tar;
