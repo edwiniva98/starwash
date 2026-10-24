@@ -1744,6 +1744,21 @@ async function enviarReporte(){
 
   const gastosLineas = gastos.filter(g=>g.c&&g.m).map(g=>`  • ${g.c}: ${fmt(g.m)}`).join('\n');
 
+  // Desglose Odoo vs Máquina por programa
+  const odooPorProgRep = {};
+  PROGRAMAS.forEach(p => odooPorProgRep[p.prog] = 0);
+  PAQUETES.forEach(paq => { if(paq.prog) odooPorProgRep[paq.prog] = (odooPorProgRep[paq.prog]||0) + Math.round((D.V||{})[paq.key]||0); });
+  // Reclasificar Cera Plus y Cera y Tapetes Pro: prog:1 → prog:4
+  const ceraRep = Math.round(((D.A||{}).cera_plus||0) + ((D.A||{}).cera_tapetes||0));
+  if(ceraRep > 0){ odooPorProgRep[1] = Math.max(0,(odooPorProgRep[1]||0)-ceraRep); odooPorProgRep[4] = (odooPorProgRep[4]||0)+ceraRep; }
+  const progLineas = PROGRAMAS.map(p => {
+    const maqP = Math.max(0,(parseFloat(document.getElementById(`pi_fin_${p.prog}`)?.value)||0)-(parseFloat(document.getElementById(`pi_ini_${p.prog}`)?.value)||0));
+    const odooP = odooPorProgRep[p.prog]||0;
+    const difP = maqP - odooP;
+    const icon = difP===0 ? '✅' : Math.abs(difP)<=2 ? '⚠️' : '❌';
+    return `  P${p.prog}: Odoo ${String(odooP).padStart(2)} | Máq ${String(maqP).padStart(2)} | Dif ${difP>=0?'+':''}${difP} ${icon}`;
+  }).join('\n');
+
   const resumen =
 `⭐ *CORTE STAR WASH — ${formatFecha(fecha)} ${turnoActual==='N'?'🌙 NOCHE':'☀️ DÍA'}*
 Sesión: ${document.getElementById('o_sesion').textContent}
@@ -1763,6 +1778,9 @@ Sesión: ${document.getElementById('o_sesion').textContent}
 • Cortesías: ${v('o_ct')+v('o_ca')+v('o_cf')+v('o_seg')}
 • Total entraron: ${(D.cantPagados||0)+v('o_ct')+v('o_ca')+v('o_cf')+v('o_seg')}
 • Máquina (lectura): ${D.maqVend||0}
+
+🔢 *Túnel — Odoo vs Máquina*
+${progLineas}
 
 💸 *Gastos*: ${fmt(totGastos)}${gastosLineas ? '\n'+gastosLineas : ''}
 
