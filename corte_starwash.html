@@ -538,7 +538,8 @@ const PAQUETES = [
   {key:'t6t',       name:'6T. Pick-Up/SUV Grande Pro',      price:210, prog:6},
   {key:'x1',        name:'X1. Express',                     price:100, prog:1},
   {key:'x4',        name:'X4. Express Plus',                price:130, prog:4},
-  {key:'fiscalia',  name:'Fiscalía',                        price:80,  prog:null},
+  {key:'fiscalia',  name:'Fiscalía',                        price:80,  prog:1},
+  {key:'fiscalia4', name:'Fiscalía Plus',                   price:80,  prog:4},
   {key:'motos',     name:'Motos',                           price:70,  prog:null},
 ];
 const ADICIONALES = [
@@ -1182,7 +1183,7 @@ Responde SOLO con un objeto JSON con esta estructura exacta (sin markdown, solo 
     "t5": 0, "t5t": 0,
     "t6": 0, "t6t": 0,
     "x1": 0, "x4": 0,
-    "fiscalia": 0, "motos": 0
+    "fiscalia": 0, "fiscalia4": 0, "motos": 0
   },
   "adics": {
     "cera_plus": 0, "cera_tapetes": 0, "tapetes": 0, "motor": 0, "mano": 0, "mano_cera": 0
@@ -1207,7 +1208,7 @@ Mapea los productos así:
 - "6T. Pick-Up/SUV Grande Pro" → t6t
 - "X1. Express" → x1
 - "X4. Express Plus" → x4
-- "Fiscalía" → fiscalia, "Motos" → motos
+- "Fiscalía" → fiscalia, "Fiscalía Plus" → fiscalia4, "Motos" → motos
 - Adicionales: "+ Cera Plus" → cera_plus, "+ Cera y Tapetes Pro" → cera_tapetes, "Lavado de Tapetes" → tapetes, "Lavado de Motor" → motor, "M1. Lavado a Mano" → mano, "M2. Lavado a Mano + Cera" → mano_cera
 - Cortesías (precio $0): C1 Taller → taller, C1/C4 Ayto → ayuntamiento, CF4 Familiar → familiar, S1/S4 Seguro → seguro
 - Pagos: efectivo/cash → efe, tarjeta/card → tar, transferencia/transfer → trans
@@ -1369,6 +1370,7 @@ function mapProducto(nombre){
   if(n.startsWith('1.') || n.startsWith('1 ') || (n.includes('auto') && n.includes('basic')))   return {type:'venta', key:'t1'};
   if(n.startsWith('x4') || (n.includes('express') && n.includes('plus'))) return {type:'venta', key:'x4'};
   if(n.startsWith('x1') || n.includes('express'))  return {type:'venta', key:'x1'};
+  if(n.includes('fiscal') && n.includes('plus')) return {type:'venta', key:'fiscalia4'};
   if(n.includes('fiscal'))  return {type:'venta', key:'fiscalia'};
   if(n.includes('moto'))    return {type:'venta', key:'motos'};
   // Adicionales
