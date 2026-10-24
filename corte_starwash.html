@@ -547,8 +547,9 @@ const ADICIONALES = [
   {key:'cera_tapetes',  name:'+ Cera y Tapetes Pro', price:60},
   {key:'tapetes',       name:'Lavado de Tapetes',    price:40},
   {key:'motor',         name:'Lavado de Motor',      price:100},
-  {key:'mano',          name:'M1. Lavado a Mano',    price:20},
-  {key:'mano_cera',     name:'M2. Lavado a Mano + Cera', price:40},
+  {key:'mano',          name:'M1. Lavado a Mano',              price:20},
+  {key:'mano_cera',     name:'M2. Lavado a Mano + Cera',       price:40},
+  {key:'mano_cera_tap', name:'M3. Lavado a Mano + Cera + Tapetes', price:70},
 ];
 
 // Programas del túnel
@@ -1211,7 +1212,7 @@ Responde SOLO con un objeto JSON con esta estructura exacta (sin markdown, solo 
     "fiscalia": 0, "fiscalia4": 0, "motos": 0
   },
   "adics": {
-    "cera_plus": 0, "cera_tapetes": 0, "tapetes": 0, "motor": 0, "mano": 0, "mano_cera": 0
+    "cera_plus": 0, "cera_tapetes": 0, "tapetes": 0, "motor": 0, "mano": 0, "mano_cera": 0, "mano_cera_tap": 0
   },
   "cortesias": {
     "taller": 0, "ayuntamiento": 0, "familiar": 0, "seguro": 0
@@ -1234,7 +1235,7 @@ Mapea los productos así:
 - "X1. Express" → x1
 - "X4. Express Plus" → x4
 - "Fiscalía" → fiscalia, "Fiscalía Plus" → fiscalia4, "Motos" → motos
-- Adicionales: "+ Cera Plus" → cera_plus, "+ Cera y Tapetes Pro" → cera_tapetes, "Lavado de Tapetes" → tapetes, "Lavado de Motor" → motor, "M1. Lavado a Mano" → mano, "M2. Lavado a Mano + Cera" → mano_cera
+- Adicionales: "+ Cera Plus" → cera_plus, "+ Cera y Tapetes Pro" → cera_tapetes, "Lavado de Tapetes" → tapetes, "Lavado de Motor" → motor, "M1. Lavado a Mano" → mano, "M2. Lavado a Mano + Cera" → mano_cera, "M3. Lavado a Mano + Cera + Tapetes" → mano_cera_tap
 - Cortesías (precio $0): C1 Taller → taller, C1 Ayto → ayuntamiento, C4 Ayto Plus → ayuntamiento, CF4 Familiar → familiar, S1 Seguro Básico → seguro, S4 Seguro Plus/Pro → seguro
 - Pagos: efectivo/cash → efe, tarjeta/card → tar, transferencia/transfer → trans
 
@@ -1403,6 +1404,7 @@ function mapProducto(nombre){
   if(n.includes('cera'))                            return {type:'adic', key:'cera_plus'};
   if(n.includes('tapete'))                          return {type:'adic', key:'tapetes'};
   if(n.includes('motor'))                           return {type:'adic', key:'motor'};
+  if(n.startsWith('m3') || (n.includes('mano') && n.includes('cera') && n.includes('tapete'))) return {type:'adic', key:'mano_cera_tap'};
   if(n.startsWith('m2') || (n.includes('mano') && n.includes('cera'))) return {type:'adic', key:'mano_cera'};
   if(n.startsWith('m1') || n.includes('mano'))      return {type:'adic', key:'mano'};
   // Cortesías
