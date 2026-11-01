@@ -1241,10 +1241,6 @@ function eliminarEmp() {
 const TABS = {asis:'v-asis',nom:'v-nom',prest:'v-prest',emps:'v-emps'};
 let tabAct = 'asis';
 function irTab(tab, btn) {
-  if(tab === 'nom' && !nomDesbloqueada) {
-    pedirPin('desbloquear-nom', '🔒 Nómina', 'Ingresa la contraseña para ver la nómina.');
-    return;
-  }
   tabAct = tab;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById(TABS[tab]).classList.add('on');
