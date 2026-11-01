@@ -449,7 +449,18 @@ async function cargar() {
       S.prestamos = data.prestamos || [];
       S.semAct = data.semAct || semLunes(new Date());
       // Empleados extra guardados en Firestore (los que se agregan desde la app)
-      const extras = data.empleadosExtra || [];
+      let extras = data.empleadosExtra || [];
+      // Respaldo: fusionar con extras del localStorage si Firestore trae menos
+      try {
+        const local = JSON.parse(localStorage.getItem('sw_nom_v4')||'{}');
+        const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
+        const localExtras = (local.empleados||[]).filter(e=>!baseIds.has(e.id));
+        if(localExtras.length > extras.length) {
+          // El localStorage tiene más empleados — usar ese array pero no perder los de Firestore
+          const fsIds = new Set(extras.map(e=>e.id));
+          localExtras.forEach(e=>{ if(!fsIds.has(e.id)) extras.push(e); });
+        }
+      } catch(e2){}
       S.empleados = [...baseEmps, ...extras];
       // Aplicar sueldos/adeudos editados de empleados base
       const sueldosEditados = data.sueldosEditados || {};
