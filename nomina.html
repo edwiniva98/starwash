@@ -903,22 +903,8 @@ function setAdelanto(empId, val) {
 function setAbono(empId, val) {
   const sem = getSemana();
   if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
-  const nuevoAbono = parseFloat(val)||0;
-  sem[empId].abono = nuevoAbono;
-  const saldo = getSaldoEmp(empId);
-  const despues = Math.max(0, saldo - nuevoAbono);
-  // Actualizar saldo después en tiempo real
-  const el = document.getElementById('saldo-despues-'+empId);
-  if(el) el.textContent = '$'+fmt(despues);
-  // Actualizar total visible
-  const emp = S.empleados.find(e=>e.id===empId);
-  if(emp) {
-    const {total} = calcTotal(emp);
-    let globalTotal = 0;
-    S.empleados.forEach(e=>{ const {total:t}=calcTotal(e); globalTotal+=Math.max(0,t); });
-    document.getElementById('nom-total-global').textContent='$'+fmt(globalTotal);
-  }
-  guardar();
+  sem[empId].abono = parseFloat(val)||0;
+  guardar(); renderNom();
 }
 // Al marcar pagado aplicar el abono al saldo del préstamo en Firestore
 function aplicarAbonosPrestamos(semData) {
