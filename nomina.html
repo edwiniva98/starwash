@@ -896,7 +896,7 @@ function setAdelanto(empId, val) {
   const sem = getSemana();
   if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
   sem[empId].adelanto = parseFloat(val)||0;
-  guardar(); actualizarTotalNom(empId);
+  guardar(); renderNom();
 }
 function setAbono(empId, val) {
   const sem = getSemana();
