@@ -449,19 +449,11 @@ async function cargar() {
       S.prestamos = data.prestamos || [];
       S.semAct = data.semAct || semLunes(new Date());
       // Empleados extra guardados en Firestore (los que se agregan desde la app)
-      let extras = data.empleadosExtra || [];
-      // Respaldo: fusionar con extras del localStorage si Firestore trae menos
-      try {
-        const local = JSON.parse(localStorage.getItem('sw_nom_v4')||'{}');
-        const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
-        const localExtras = (local.empleados||[]).filter(e=>!baseIds.has(e.id));
-        if(localExtras.length > extras.length) {
-          // El localStorage tiene más empleados — usar ese array pero no perder los de Firestore
-          const fsIds = new Set(extras.map(e=>e.id));
-          localExtras.forEach(e=>{ if(!fsIds.has(e.id)) extras.push(e); });
-        }
-      } catch(e2){}
-      S.empleados = [...baseEmps, ...extras];
+      const extras = data.empleadosExtra || [];
+      // Deduplicar por ID por si quedaron duplicados de versiones anteriores
+      const vistos = new Set(baseEmps.map(e=>e.id));
+      const extrasUnicos = extras.filter(e=>{ if(vistos.has(e.id)) return false; vistos.add(e.id); return true; });
+      S.empleados = [...baseEmps, ...extrasUnicos];
       // Aplicar sueldos/adeudos editados de empleados base
       const sueldosEditados = data.sueldosEditados || {};
       S.empleados.forEach(e=>{
@@ -543,7 +535,13 @@ function guardar() {
     try {
       // Guardamos semanas, prestamos, semAct, inactivosIds, empleadosExtra y sueldosEditados
       const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
-      const empleadosExtra = S.empleados.filter(e=>!baseIds.has(e.id));
+      // Deduplicar por ID antes de guardar
+      const idsVistos = new Set();
+      const empleadosExtra = S.empleados.filter(e=>{
+        if(baseIds.has(e.id)) return false;
+        if(idsVistos.has(e.id)) return false;
+        idsVistos.add(e.id); return true;
+      });
       const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
       // Guardar sueldos/adeudos modificados de empleados base
       const sueldosEditados = {};
