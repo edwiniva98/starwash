@@ -845,9 +845,11 @@ function calcTotal(emp) {
   const adelanto = parseFloat(d.adelanto)||0;
   const abonoPrest = parseFloat(d.abono)||0;
   const saldoPrest = getSaldoPrest(emp.id);
-  // El abono no puede exceder el saldo real del préstamo
-  const descPrest = Math.min(abonoPrest, saldoPrest);
-  return { dias, semanal, extra, extraManual, extraPos, adelanto, abonoPrest, descPrest, saldoPrest, total: semanal + extra - adelanto - descPrest };
+  // Si ya está marcado pagado, el abono ya fue aplicado al saldo (que puede ser 0), usar abono directo
+  const descPrest = d.pagado ? abonoPrest : Math.min(abonoPrest, saldoPrest);
+  // Saldo a mostrar: si pagado, calcular saldo original antes del abono para mostrar en tarjeta
+  const saldoMostrar = d.pagado ? saldoPrest + abonoPrest : saldoPrest;
+  return { dias, semanal, extra, extraManual, extraPos, adelanto, abonoPrest, descPrest, saldoPrest: saldoMostrar, total: semanal + extra - adelanto - descPrest };
 }
 function puestoClass(p) {
   if(p==='Cajero') return 'pb-cajero';
