@@ -291,6 +291,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
   <div class="modal">
     <div class="modal-hd">
       <span class="modal-title" id="modal-emp-title">Nuevo empleado</span>
+      <span id="modal-emp-fecha" style="font-size:11px;color:var(--txt3);display:block;margin-top:2px"></span>
       <button class="modal-close" onclick="cerrarModal('modal-emp')">×</button>
     </div>
     <div class="modal-body">
@@ -1118,6 +1119,8 @@ function abrirModalEmp(idx) {
   empEditIdx = idx;
   const emp = idx!==null ? S.empleados[idx] : null;
   document.getElementById('modal-emp-title').textContent = emp ? 'Editar empleado' : 'Nuevo empleado';
+  const fechaEl = document.getElementById('modal-emp-fecha');
+  if(fechaEl) fechaEl.textContent = emp && emp.creadoEn ? `Agregado el ${emp.creadoEn}` : '';
   document.getElementById('inp-nombre').value = emp ? emp.nombre : '';
   document.getElementById('inp-puesto').value = emp ? emp.puesto : 'Lavador';
   document.getElementById('inp-sueldo').value = emp ? emp.sueldo : '250';
@@ -1224,7 +1227,7 @@ function guardarEmp() {
     S.empleados[empEditIdx] = {...emp, nombre, puesto, sueldo, adeudo};
   } else {
     const sueldo = parseFloat(document.getElementById('inp-sueldo').value)||250;
-    S.empleados.push({id:'e'+Date.now(), nombre, puesto, sueldo, adeudo});
+    S.empleados.push({id:'e'+Date.now(), nombre, puesto, sueldo, adeudo, creadoEn: new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})});
   }
   guardar(); cerrarModal('modal-emp'); render();
 }
