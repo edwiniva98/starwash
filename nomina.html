@@ -260,7 +260,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-s
     <div class="stat verde"><div class="stat-v" id="st-presentes">0</div><div class="stat-l">Presentes hoy</div></div>
     <div class="stat"><div class="stat-v" id="st-dias">0</div><div class="stat-l">Días promedio</div></div>
   </div>
-  <button class="print-btn" style="border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:center" onclick="abrirImpresionAsis()">🖨 Imprimir lista de asistencia</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="print-btn" style="flex:1;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:center" onclick="abrirImpresionAsis()">🖨 Lista en blanco</button>
+    <button class="print-btn" style="flex:1;border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:center" onclick="abrirImpresionAsisSemana()">🖨 Asistencia de la semana</button>
+  </div>
   <div id="asis-list"></div>
 </div>
 
@@ -1322,6 +1325,35 @@ function abrirImpresionAsis() {
   });
   html += `</tbody></table>`;
   document.getElementById('print-modal-title').textContent = 'Lista de asistencia';
+  document.getElementById('print-body').innerHTML = html;
+  document.getElementById('modal-print').hidden = false;
+}
+function abrirImpresionAsisSemana() {
+  const sem = getSemana();
+  const todos = [...S.empleados].filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const [ly,lm,ld] = (S.semAct||'').split('-').map(Number);
+  const lunesD = ly ? new Date(ly,lm-1,ld) : null;
+  const diaHdr = (i) => {
+    if(!lunesD) return '';
+    const d = new Date(lunesD.getFullYear(),lunesD.getMonth(),lunesD.getDate()+i);
+    return '<br><span style="font-weight:400;font-size:9px">'+d.getDate()+'</span>';
+  };
+  let html = `<table class="print-table"><thead><tr>
+    <th style="width:30%">Nombre</th><th>Lun${diaHdr(0)}</th><th>Mar${diaHdr(1)}</th><th>Mié${diaHdr(2)}</th><th>Jue${diaHdr(3)}</th><th>Vie${diaHdr(4)}</th><th>Sáb${diaHdr(5)}</th><th>Dom${diaHdr(6)}</th><th>Días</th>
+  </tr></thead><tbody>`;
+  todos.forEach(emp=>{
+    const d = sem[emp.id]||{dias:['','','','','','','']};
+    const dias = d.dias||['','','','','','',''];
+    const marca = (v) => v==='P' ? '✓' : v==='M' ? '½' : '—';
+    const total = diasCount(dias);
+    html += `<tr>
+      <td>${emp.nombre}</td>
+      ${dias.map(v=>`<td style="text-align:center;font-size:13px">${marca(v)}</td>`).join('')}
+      <td style="text-align:center;font-weight:700">${total||'—'}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById('print-modal-title').textContent = 'Asistencia semanal';
   document.getElementById('print-body').innerHTML = html;
   document.getElementById('modal-print').hidden = false;
 }
