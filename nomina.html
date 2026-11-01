@@ -819,7 +819,7 @@ function actualizarStats() {
 
 // ── NÓMINA ────────────────────────────────────────────────────────
 function getSaldoPrest(empId) {
-  return S.prestamos.filter(p=>p.empId===empId && p.saldo>0).reduce((s,p)=>s+p.saldo,0);
+  return getSaldoEmp(empId);
 }
 function calcTotal(emp) {
   const sem = getSemana();
@@ -873,8 +873,9 @@ function renderNom() {
         <div class="ni"><div class="ni-l">Semanal</div><div class="ni-v">$${fmt(semanal)}</div></div>
         <div class="ni"><div class="ni-l">Extra${extraPos>0?' (+$'+fmt(extraPos)+' puesto)':''}</div><div class="ni-v verde"><input type="number" inputmode="decimal" placeholder="0" value="${extraManual||''}" onchange="setExtra('${emp.id}',this.value)" onfocus="this.select()"></div></div>
         <div class="ni"><div class="ni-l">Adelanto</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${adelanto||''}" onchange="setAdelanto('${emp.id}',this.value)" onfocus="this.select()"></div></div>
-        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Abono préstamo<br><span style="font-size:10px;color:var(--txt2)">Saldo: $${fmt(saldoPrest)}</span></div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${abonoPrest||''}" onchange="setAbono('${emp.id}',this.value)" onfocus="this.select()"></div></div>`:''}
-        ${descPrest>0?`<div class="ni"><div class="ni-l">Desc. préstamo</div><div class="ni-v rojo">-$${fmt(descPrest)}</div></div>`:''}
+        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Saldo préstamo</div><div class="ni-v rojo">$${fmt(saldoPrest)}</div></div>`:''}
+        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Abono esta semana</div><div class="ni-v rojo"><input type="number" inputmode="decimal" placeholder="0" value="${abonoPrest||''}" onchange="setAbono('${emp.id}',this.value)" onfocus="this.select()"></div></div>`:''}
+        ${saldoPrest>0?`<div class="ni"><div class="ni-l">Saldo después</div><div class="ni-v rojo" id="saldo-despues-${emp.id}">$${fmt(Math.max(0,saldoPrest-descPrest))}</div></div>`:''}
         ${(()=>{ const notas=sem[emp.id]&&sem[emp.id].notas; const DIASN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; if(!notas) return ''; const ns=notas.map((n,i)=>n?`${DIASN[i]}: ${n}`:'').filter(Boolean); return ns.length?`<div class="ni" style="grid-column:1/-1"><div class="ni-l">Otro</div><div class="ni-v" style="font-size:12px;color:var(--txt2)">${ns.join(' · ')}</div></div>`:''; })()}
       </div>
       <button class="pagado-btn${datos.pagado?' on':''}" onclick="togglePagado('${emp.id}')">
@@ -901,39 +902,73 @@ function setAbono(empId, val) {
   const sem = getSemana();
   if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
   const nuevoAbono = parseFloat(val)||0;
-  const abonoAnterior = parseFloat(sem[empId].abono)||0;
-  const diff = nuevoAbono - abonoAnterior;
   sem[empId].abono = nuevoAbono;
-  // Ajustar saldo de préstamos: distribuir el diff entre préstamos activos (del más antiguo al más nuevo)
-  if(diff !== 0) {
-    let restante = diff;
-    const prests = S.prestamos.filter(p=>p.empId===empId && p.saldo>0);
+  const saldo = getSaldoEmp(empId);
+  const despues = Math.max(0, saldo - nuevoAbono);
+  // Actualizar saldo después en tiempo real
+  const el = document.getElementById('saldo-despues-'+empId);
+  if(el) el.textContent = '$'+fmt(despues);
+  // Actualizar total visible
+  const emp = S.empleados.find(e=>e.id===empId);
+  if(emp) {
+    const {total} = calcTotal(emp);
+    let globalTotal = 0;
+    S.empleados.forEach(e=>{ const {total:t}=calcTotal(e); globalTotal+=Math.max(0,t); });
+    document.getElementById('nom-total-global').textContent='$'+fmt(globalTotal);
+  }
+  guardar();
+}
+// Al marcar pagado aplicar el abono al saldo del préstamo en Firestore
+function aplicarAbonosPrestamos(semData) {
+  S.empleados.forEach(emp=>{
+    const d = semData[emp.id];
+    if(!d) return;
+    const abono = parseFloat(d.abono)||0;
+    if(abono<=0) return;
+    let restante = abono;
+    const prests = S.prestamos.filter(p=>p.empId===emp.id && p.id!=='migrado_v2' && p.saldo>0);
     for(const p of prests) {
-      if(restante === 0) break;
-      const ajuste = Math.min(restante, p.saldo);
-      p.saldo = Math.max(0, p.saldo - ajuste);
-      restante -= ajuste;
+      if(restante<=0) break;
+      const desc = Math.min(restante, p.saldo);
+      p.saldo = Math.max(0, p.saldo - desc);
+      restante -= desc;
     }
-    // Si redujeron el abono (diff negativo), restaurar saldo
-    if(diff < 0) {
-      let aRestaurar = Math.abs(diff);
-      const todosPrests = S.prestamos.filter(p=>p.empId===empId && p.monto>0);
-      for(const p of todosPrests.reverse()) {
-        if(aRestaurar === 0) break;
-        const maxRestaurar = p.monto - p.saldo;
-        const restaurar = Math.min(aRestaurar, maxRestaurar);
+  });
+}
+function togglePagado(empId) {
+  const sem = getSemana();
+  if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
+  const marcandoPagado = !sem[empId].pagado;
+  sem[empId].pagado = marcandoPagado;
+  // Al marcar pagado, aplicar abono al saldo del préstamo
+  if(marcandoPagado) {
+    const abono = parseFloat(sem[empId].abono)||0;
+    if(abono>0) {
+      let restante = abono;
+      const prests = S.prestamos.filter(p=>p.empId===empId && p.id!=='migrado_v2' && p.saldo>0);
+      for(const p of prests) {
+        if(restante<=0) break;
+        const desc = Math.min(restante, p.saldo);
+        p.saldo = Math.max(0, p.saldo - desc);
+        restante -= desc;
+      }
+    }
+  } else {
+    // Al desmarcar pagado, restaurar saldo
+    const abono = parseFloat(sem[empId].abono)||0;
+    if(abono>0) {
+      let aRestaurar = abono;
+      const prests = S.prestamos.filter(p=>p.empId===empId && p.id!=='migrado_v2');
+      for(const p of [...prests].reverse()) {
+        if(aRestaurar<=0) break;
+        const maxRest = p.monto - p.saldo;
+        const restaurar = Math.min(aRestaurar, maxRest);
         p.saldo += restaurar;
         aRestaurar -= restaurar;
       }
     }
   }
-  guardar(); renderNom();
-}
-function togglePagado(empId) {
-  const sem = getSemana();
-  if(!sem[empId]) sem[empId] = {dias:['','','','','','',''],extra:0,adelanto:0,abono:0,pagado:false};
-  sem[empId].pagado = !sem[empId].pagado;
-  guardar(); renderNom();
+  guardar(); renderNom(); renderPrest();
 }
 function actualizarTotalNom(empId) {
   const emp = S.empleados.find(e=>e.id===empId); if(!emp) return;
@@ -945,56 +980,44 @@ function actualizarTotalNom(empId) {
 }
 
 // ── PRÉSTAMOS ─────────────────────────────────────────────────────
+// Saldo unificado por empleado: suma de todos sus préstamos activos
+function getSaldoEmp(empId) {
+  return S.prestamos.filter(p=>p.empId===empId && p.id!=='migrado_v2' && p.saldo>0).reduce((s,p)=>s+p.saldo,0);
+}
 function renderPrest() {
-  const activos = S.prestamos.filter(p=>p.saldo>0);
-  const pagados = S.prestamos.filter(p=>p.saldo<=0);
-  const inactivosConAdeudo = S.empleados.filter(e=>e.inactivo && e.adeudo>0);
+  // Agrupar por empleado
+  const empsActivos = S.empleados.filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const empsConSaldo = empsActivos.filter(e=>getSaldoEmp(e.id)>0);
+  const empsSinSaldo = empsActivos.filter(e=>getSaldoEmp(e.id)<=0 && S.prestamos.filter(p=>p.empId===e.id&&p.id!=='migrado_v2').length>0);
   let html = '';
-  if(!activos.length && !pagados.length && !inactivosConAdeudo.length) {
+  if(!empsConSaldo.length && !empsSinSaldo.length) {
     html = '<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">Sin préstamos registrados</div></div>';
   }
-  if(inactivosConAdeudo.length) {
-    html += `<div class="puesto-label">Inactivos con adeudo</div>`;
-    inactivosConAdeudo.forEach(e=>{
-      html += `<div class="prest-row">
-        <div class="prest-top">
-          <span class="prest-nombre">👤 ${e.nombre} <span style="font-size:10px;color:var(--txt3);font-weight:500">(inactivo)</span></span>
-          <span class="prest-saldo">$${fmt(e.adeudo)}</span>
-        </div>
-        <div class="prest-det">
-          <span class="prest-chip">Adeudo pendiente</span>
-          <button onclick="reactivarEmpleado('${e.id}')" style="margin-left:auto;background:var(--verde-light);color:var(--verde);border:1px solid var(--verde-mid);border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">✅ Reactivar</button>
-        </div>
-      </div>`;
-    });
-  }
-  activos.forEach(p=>{
-    const emp = S.empleados.find(e=>e.id===p.empId);
+  empsConSaldo.forEach(emp=>{
+    const saldo = getSaldoEmp(emp.id);
+    const prests = S.prestamos.filter(p=>p.empId===emp.id&&p.id!=='migrado_v2'&&p.saldo>0);
     html += `<div class="prest-row">
       <div class="prest-top">
-        <span class="prest-nombre">${emp?emp.nombre:'—'}</span>
-        <span class="prest-saldo">$${fmt(p.saldo)}</span>
+        <span class="prest-nombre">${emp.nombre}</span>
+        <span class="prest-saldo">$${fmt(saldo)}</span>
       </div>
       <div class="prest-det">
-        <span class="prest-chip">Monto original: $${fmt(p.monto)}</span>
-        ${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}
-        <button onclick="pedirPinBorrarPrest('${p.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo,#e53);color:var(--rojo,#e53);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
+        ${prests.map(p=>`<span class="prest-chip">${p.nota||'Préstamo'}: $${fmt(p.saldo)}</span>`).join('')}
+        <button onclick="abrirModalAgregarMonto('${emp.id}')" style="background:var(--verde-light);color:var(--verde);border:1px solid var(--verde-mid);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">+ Agregar</button>
+        <button onclick="pedirPinBorrarEmp('${emp.id}')" style="background:none;border:1px solid var(--rojo);color:var(--rojo);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar todo</button>
       </div>
     </div>`;
   });
-  if(pagados.length) {
+  if(empsSinSaldo.length) {
     html += `<div class="puesto-label">Liquidados</div>`;
-    pagados.forEach(p=>{
-      const emp = S.empleados.find(e=>e.id===p.empId);
+    empsSinSaldo.forEach(emp=>{
       html += `<div class="prest-row">
         <div class="prest-top">
-          <span class="prest-nombre">${emp?emp.nombre:'—'}</span>
+          <span class="prest-nombre">${emp.nombre}</span>
           <span class="prest-saldo ok">✓ Liquidado</span>
         </div>
         <div class="prest-det">
-          <span class="prest-chip">$${fmt(p.monto)}</span>
-          ${p.nota?`<span class="prest-chip">${p.nota}</span>`:''}
-          <button onclick="pedirPinBorrarPrest('${p.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo,#e53);color:var(--rojo,#e53);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
+          <button onclick="pedirPinBorrarEmp('${emp.id}')" style="margin-left:auto;background:none;border:1px solid var(--rojo);color:var(--rojo);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">🗑 Borrar</button>
         </div>
       </div>`;
     });
@@ -1008,6 +1031,13 @@ function abrirModalPrest() {
   document.getElementById('inp-prest-nota').value = '';
   document.getElementById('modal-prest').hidden = false;
 }
+function abrirModalAgregarMonto(empId) {
+  const sel = document.getElementById('inp-prest-emp');
+  sel.innerHTML = S.empleados.filter(e=>!e.inactivo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(e=>`<option value="${e.id}"${e.id===empId?' selected':''}>${e.nombre}</option>`).join('');
+  document.getElementById('inp-prest-monto').value = '';
+  document.getElementById('inp-prest-nota').value = '';
+  document.getElementById('modal-prest').hidden = false;
+}
 function guardarPrest() {
   const empId = document.getElementById('inp-prest-emp').value;
   const monto = parseFloat(document.getElementById('inp-prest-monto').value)||0;
@@ -1016,15 +1046,15 @@ function guardarPrest() {
   S.prestamos.push({id:'p'+Date.now(), empId, monto, saldo:monto, descSem:0, nota});
   guardar(); cerrarModal('modal-prest'); renderPrest(); renderNom();
 }
-let _prestBorrarId = null;
-function pedirPinBorrarPrest(prestId) {
-  _prestBorrarId = prestId;
-  pedirPin('borrar-prest','🗑 Borrar préstamo','Ingresa la contraseña para eliminar este préstamo.');
+let _prestBorrarEmpId = null;
+function pedirPinBorrarEmp(empId) {
+  _prestBorrarEmpId = empId;
+  pedirPin('borrar-prest-emp','🗑 Borrar préstamos','Ingresa la contraseña para eliminar los préstamos de este empleado.');
 }
-function borrarPrest() {
-  if(!_prestBorrarId) return;
-  S.prestamos = S.prestamos.filter(p=>p.id!==_prestBorrarId);
-  _prestBorrarId = null;
+function borrarPrestEmp() {
+  if(!_prestBorrarEmpId) return;
+  S.prestamos = S.prestamos.filter(p=>p.empId!==_prestBorrarEmpId || p.id==='migrado_v2');
+  _prestBorrarEmpId = null;
   guardar(); renderPrest(); renderNom();
 }
 
@@ -1148,6 +1178,8 @@ function confirmarPin() {
     pinDesactivarId = null;
   } else if(pinAccion === 'borrar-prest') {
     borrarPrest();
+  } else if(pinAccion === 'borrar-prest-emp') {
+    borrarPrestEmp();
   }
   pinAccion = null;
 }
