@@ -451,6 +451,14 @@ async function cargar() {
       // Empleados extra guardados en Firestore (los que se agregan desde la app)
       const extras = data.empleadosExtra || [];
       S.empleados = [...baseEmps, ...extras];
+      // Aplicar sueldos/adeudos editados de empleados base
+      const sueldosEditados = data.sueldosEditados || {};
+      S.empleados.forEach(e=>{
+        if(sueldosEditados[e.id]) {
+          e.sueldo = sueldosEditados[e.id].sueldo ?? e.sueldo;
+          e.adeudo = sueldosEditados[e.id].adeudo ?? e.adeudo;
+        }
+      });
       // Aplicar estado inactivo guardado en Firestore
       const inactivosIds = data.inactivosIds || [];
       S.empleados.forEach(e=>{ e.inactivo = inactivosIds.includes(e.id); });
@@ -522,16 +530,26 @@ function guardar() {
   clearTimeout(_guardandoTimer);
   _guardandoTimer = setTimeout(async ()=>{
     try {
-      // Guardamos semanas, prestamos, semAct, inactivosIds y empleadosExtra (los que no están en EMPLEADOS_INIT)
+      // Guardamos semanas, prestamos, semAct, inactivosIds, empleadosExtra y sueldosEditados
       const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
       const empleadosExtra = S.empleados.filter(e=>!baseIds.has(e.id));
       const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
+      // Guardar sueldos/adeudos modificados de empleados base
+      const sueldosEditados = {};
+      S.empleados.forEach(e=>{
+        if(!baseIds.has(e.id)) return;
+        const orig = EMPLEADOS_INIT[parseInt(e.id.slice(1))];
+        if(orig && (e.sueldo !== orig.sueldo || e.adeudo !== orig.adeudo)) {
+          sueldosEditados[e.id] = {sueldo: e.sueldo, adeudo: e.adeudo};
+        }
+      });
       await DOC.set({
         semanas: S.semanas,
         prestamos: S.prestamos,
         semAct: S.semAct,
         inactivosIds,
-        empleadosExtra
+        empleadosExtra,
+        sueldosEditados
       });
     } catch(e) {
       mostrarCargando('⚠️ Error al guardar en la nube');
