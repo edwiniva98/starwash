@@ -12,6 +12,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 BOT_TOKEN          = os.environ.get("BOT_TOKEN", "")
 OWNER_ID           = int(os.environ.get("OWNER_ID", "0"))
 ALLOWED_USERS      = {OWNER_ID, 8838219142}  # Edwin + papá
+# IDs del celular del lavado — solo materiales, sin ver finanzas
+# Agregar el ID real cuando esté lista la cuenta de Telegram del lavado
+LAVADO_USERS       = set(int(x) for x in os.environ.get("LAVADO_USER_IDS", "").split(",") if x.strip())
 CLAUDE_KEY         = os.environ.get("ANTHROPIC_API_KEY", "")
 FIREBASE_PROJECT   = os.environ.get("FIREBASE_PROJECT_ID", "starwash-cortes")
 FIRESTORE_URL      = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT}/databases/(default)/documents"
@@ -37,6 +40,97 @@ async def get_stock_clips():
     if "integerValue" in stock:
         return int(stock["integerValue"])
     return None
+
+# ── MATERIALES ────────────────────────────────────────────────────────────────
+# Catálogo de materiales con alias para reconocimiento natural
+MATERIALES = {
+    "botas":          {"nombre": "Botas", "emoji": "🥾", "alias": ["bota","boot","boots"]},
+    "playeras":       {"nombre": "Playeras", "emoji": "👕", "alias": ["playera","camiseta","camisetas","camisa"]},
+    "fregones":       {"nombre": "Fregones", "emoji": "🧹", "alias": ["fregon","fregón","trapeador","trapeadores","mopa","mopas"]},
+    "escobas":        {"nombre": "Escobas", "emoji": "🧹", "alias": ["escoba"]},
+    "atomizadores_1l":{"nombre": "Atomizadores 1L", "emoji": "🧴", "alias": ["atomizador 1l","atomizador 1 l","atomizador grande","atomizadores 1l","atomizadores 1 l"]},
+    "atomizadores_500ml":{"nombre": "Atomizadores 500ml", "emoji": "🧴", "alias": ["atomizador 500","atomizador chico","atomizador pequeño","atomizadores 500","atomizadores 500ml"]},
+}
+
+DESTINOS = {
+    "caja":   "Caja",
+    "taller": "Taller",
+    "general":"General / Personal",
+}
+
+def normalizar_material(texto):
+    """Intenta encontrar el key del material a partir de texto libre."""
+    t = texto.lower().strip()
+    for key, info in MATERIALES.items():
+        if key in t or info["nombre"].lower() in t:
+            return key
+        for alias in info["alias"]:
+            if alias in t:
+                return key
+    return None
+
+def normalizar_destino(texto):
+    t = texto.lower().strip()
+    if any(p in t for p in ["caja","cobro"]): return "caja"
+    if any(p in t for p in ["taller","mecanico","mecánico"]): return "taller"
+    return "general"
+
+async def get_stock_materiales():
+    """Lee el stock actual de todos los materiales desde config/materiales."""
+    url = f"{FIRESTORE_URL}/config/materiales"
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        if r.status_code != 200:
+            return {}
+        data = r.json()
+    fields = data.get("fields", {})
+    stock = {}
+    for key in MATERIALES:
+        v = fields.get(key, {})
+        stock[key] = int(v.get("integerValue", 0))
+    return stock
+
+async def set_stock_materiales(stock: dict):
+    """Guarda el stock completo de materiales."""
+    url = f"{FIRESTORE_URL}/config/materiales"
+    fields = {k: {"integerValue": str(max(0, v))} for k, v in stock.items()}
+    async with httpx.AsyncClient() as client:
+        r = await client.patch(url, json={"fields": fields})
+        return r.status_code == 200
+
+async def registrar_movimiento_material(tipo, material_key, cantidad, destino, responsable, notas=""):
+    """Guarda un movimiento (entrada/salida) en la colección materiales_movimientos."""
+    import uuid
+    mov_id = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + str(uuid.uuid4())[:6]
+    url = f"{FIRESTORE_URL}/materiales_movimientos/{mov_id}"
+    fields = {
+        "tipo":        {"stringValue": tipo},          # "entrada" o "salida"
+        "material":    {"stringValue": material_key},
+        "cantidad":    {"integerValue": str(cantidad)},
+        "destino":     {"stringValue": destino},
+        "responsable": {"stringValue": responsable},
+        "notas":       {"stringValue": notas},
+        "timestamp":   {"stringValue": datetime.now().isoformat()},
+        "fecha":       {"stringValue": datetime.now().strftime("%Y-%m-%d")},
+    }
+    async with httpx.AsyncClient() as client:
+        await client.patch(url, json={"fields": fields})
+
+async def get_movimientos_materiales(limit=20, fecha=None):
+    """Obtiene movimientos recientes de materiales."""
+    url = f"{FIRESTORE_URL}/materiales_movimientos"
+    params = {"pageSize": limit, "orderBy": "timestamp desc"}
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url, params=params)
+        data = r.json()
+    movs = []
+    for doc in data.get("documents", []):
+        f = doc.get("fields", {})
+        mov = parse_firestore(f)
+        mov["_id"] = doc["name"].split("/")[-1]
+        if fecha is None or mov.get("fecha","") == fecha:
+            movs.append(mov)
+    return movs
 
 async def get_cortes(limit=5, fecha=None):
     """Obtiene cortes de Firestore."""
@@ -376,13 +470,44 @@ Pregunta de Edwin: {pregunta}"""
 # ── HANDLERS ──────────────────────────────────────────────────────────────────
 async def check_allowed(update: Update) -> bool:
     uid = update.effective_user.id
-    if OWNER_ID != 0 and uid not in ALLOWED_USERS:
+    if OWNER_ID != 0 and uid not in ALLOWED_USERS and uid not in LAVADO_USERS:
         await update.message.reply_text("⛔ No tienes acceso a este bot.")
+        return False
+    return True
+
+def is_lavado_only(update: Update) -> bool:
+    """True si el usuario es del celular del lavado (solo materiales, sin finanzas)."""
+    uid = update.effective_user.id
+    return uid in LAVADO_USERS and uid not in ALLOWED_USERS
+
+async def check_admin(update: Update) -> bool:
+    """Solo Edwin y usuarios con acceso completo."""
+    uid = update.effective_user.id
+    if uid not in ALLOWED_USERS:
+        await update.message.reply_text("⛔ Esta función es solo para administradores.")
         return False
     return True
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
+    # Menú diferente para celular del lavado
+    if is_lavado_only(update):
+        teclado = ReplyKeyboardMarkup(
+            [["📦 Stock materiales"],
+             ["➕ Entrada material", "➖ Sacar material"],
+             ["📋 Movimientos hoy"]],
+            resize_keyboard=True, is_persistent=True
+        )
+        await update.message.reply_text(
+            "🧰 *STAR WASH — MATERIALES*\n\n"
+            "Registra entradas y salidas de bodega.\n\n"
+            "Para sacar: escribe por ejemplo:\n"
+            "_sacar 2 playeras para caja_\n"
+            "_sacar 1 escoba para taller_",
+            parse_mode="Markdown",
+            reply_markup=teclado
+        )
+        return
     teclado = ReplyKeyboardMarkup(
         [["📊 Cómo vamos hoy", "🏆 Récords"],
          ["📋 Último corte", "📅 Historial"],
@@ -393,9 +518,139 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "⚡ *STAR WASH — PANEL*\n\n"
         "Elige una opción o pregúntame normalmente.\n"
-        "Ejemplos: ‘¿cómo estuvo ayer?’, ‘¿cuál fue el mejor sábado?’ o ‘¿cuánto vendimos este mes?’",
+        "Ejemplos: '¿cómo estuvo ayer?', '¿cuál fue el mejor sábado?' o '¿cuánto vendimos este mes?'",
         parse_mode="Markdown",
         reply_markup=teclado
+    )
+
+# ── COMANDOS MATERIALES ────────────────────────────────────────────────────────
+async def cmd_stock_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el stock actual de todos los materiales."""
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Revisando stock...")
+    stock = await get_stock_materiales()
+    if not stock:
+        await msg.edit_text("⚠️ No hay stock registrado aún. Usa /entrada_mat para agregar material.")
+        return
+    lineas = []
+    for key, info in MATERIALES.items():
+        cant = stock.get(key, 0)
+        alerta = " ⚠️" if cant <= 2 else ""
+        lineas.append(f"{info['emoji']} *{info['nombre']}:* {cant}{alerta}")
+    texto = "🧰 *Stock de Materiales*\n\n" + "\n".join(lineas)
+    await msg.edit_text(texto, parse_mode="Markdown")
+
+async def cmd_sacar_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Registra una salida de material. Uso: /sacar 2 playeras para caja"""
+    if not await check_allowed(update): return
+    args_txt = " ".join(context.args) if context.args else ""
+    await _procesar_salida(update, args_txt)
+
+async def cmd_entrada_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Registra una entrada de material. Uso: /entrada 10 escobas"""
+    if not await check_admin(update): return
+    args_txt = " ".join(context.args) if context.args else ""
+    await _procesar_entrada(update, args_txt)
+
+async def _procesar_salida(update: Update, texto: str):
+    """Parsea y ejecuta una salida de material."""
+    # Intentar extraer cantidad, material y destino del texto
+    # Formatos: "2 playeras para caja", "1 escoba taller", "3 botas"
+    nums = re.findall(r'\d+', texto)
+    cantidad = int(nums[0]) if nums else 1
+    material_key = normalizar_material(texto)
+    destino = normalizar_destino(texto)
+    responsable = update.effective_user.first_name or "Encargado"
+
+    if not material_key:
+        lista = "\n".join([f"  • {info['nombre']}" for info in MATERIALES.values()])
+        await update.message.reply_text(
+            f"❓ No entendí el material. Escribe por ejemplo:\n"
+            f"_sacar 2 playeras para caja_\n\n"
+            f"Materiales disponibles:\n{lista}",
+            parse_mode="Markdown"
+        )
+        return
+
+    stock = await get_stock_materiales()
+    actual = stock.get(material_key, 0)
+    if actual < cantidad:
+        info = MATERIALES[material_key]
+        await update.message.reply_text(
+            f"⚠️ Stock insuficiente.\n"
+            f"{info['emoji']} *{info['nombre']}* disponibles: *{actual}*\n"
+            f"Solicitados: {cantidad}",
+            parse_mode="Markdown"
+        )
+        return
+
+    stock[material_key] = actual - cantidad
+    await set_stock_materiales(stock)
+    await registrar_movimiento_material("salida", material_key, cantidad, destino, responsable)
+
+    info = MATERIALES[material_key]
+    destino_txt = DESTINOS.get(destino, destino)
+    nuevo = stock[material_key]
+    alerta = f"\n⚠️ _Quedan solo {nuevo}, considera reabastecer._" if nuevo <= 2 else ""
+    await update.message.reply_text(
+        f"✅ *Salida registrada*\n\n"
+        f"{info['emoji']} {info['nombre']}: -{cantidad} → para *{destino_txt}*\n"
+        f"📦 Stock restante: *{nuevo}*{alerta}",
+        parse_mode="Markdown"
+    )
+
+async def _procesar_entrada(update: Update, texto: str):
+    """Parsea y ejecuta una entrada de material."""
+    nums = re.findall(r'\d+', texto)
+    cantidad = int(nums[0]) if nums else 1
+    material_key = normalizar_material(texto)
+    responsable = update.effective_user.first_name or "Edwin"
+
+    if not material_key:
+        lista = "\n".join([f"  • {info['nombre']}" for info in MATERIALES.values()])
+        await update.message.reply_text(
+            f"❓ No entendí el material. Escribe por ejemplo:\n"
+            f"_entrada 10 playeras_\n\n"
+            f"Materiales:\n{lista}",
+            parse_mode="Markdown"
+        )
+        return
+
+    stock = await get_stock_materiales()
+    stock[material_key] = stock.get(material_key, 0) + cantidad
+    await set_stock_materiales(stock)
+    await registrar_movimiento_material("entrada", material_key, cantidad, "bodega", responsable)
+
+    info = MATERIALES[material_key]
+    await update.message.reply_text(
+        f"✅ *Entrada registrada*\n\n"
+        f"{info['emoji']} {info['nombre']}: +{cantidad}\n"
+        f"📦 Stock actual: *{stock[material_key]}*",
+        parse_mode="Markdown"
+    )
+
+async def cmd_movimientos_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra movimientos de materiales de hoy."""
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Cargando movimientos...")
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    movs = await get_movimientos_materiales(limit=50, fecha=hoy)
+    if not movs:
+        await msg.edit_text("📋 Sin movimientos de materiales hoy.")
+        return
+    lineas = []
+    for m in movs[:20]:
+        mat_key = m.get("material","")
+        mat_info = MATERIALES.get(mat_key, {"nombre": mat_key, "emoji": "📦"})
+        tipo = "➕" if m.get("tipo") == "entrada" else "➖"
+        cant = m.get("cantidad", 0)
+        dest = DESTINOS.get(m.get("destino",""), m.get("destino",""))
+        resp = m.get("responsable","")
+        hora = m.get("timestamp","")[:16].replace("T"," ") if m.get("timestamp") else ""
+        lineas.append(f"{tipo} {mat_info['emoji']} *{mat_info['nombre']}* ×{cant} → {dest} ({resp}) {hora}")
+    await msg.edit_text(
+        f"📋 *Movimientos hoy — {hoy}*\n\n" + "\n".join(lineas),
+        parse_mode="Markdown"
     )
 
 async def cmd_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -619,6 +874,38 @@ async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Convierte los botones del panel en acciones sin romper las preguntas libres."""
     texto = (update.message.text or "").strip()
+
+    # Menú del celular del lavado
+    if is_lavado_only(update):
+        if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
+        if texto == "📋 Movimientos hoy": return await cmd_movimientos_mat(update, context)
+        if texto == "➕ Entrada material":
+            await update.message.reply_text(
+                "Escribe la entrada, por ejemplo:\n_entrada 5 playeras_\n_entrada 3 escobas_",
+                parse_mode="Markdown"
+            )
+            return
+        if texto == "➖ Sacar material":
+            await update.message.reply_text(
+                "Escribe qué sacan, por ejemplo:\n_sacar 1 playera para caja_\n_sacar 2 fregones para taller_",
+                parse_mode="Markdown"
+            )
+            return
+        # Texto libre del celular del lavado → solo materiales
+        texto_lower = texto.lower()
+        if any(p in texto_lower for p in ["sacar","saqué","saque","se llevó","se llevo","salida"]):
+            return await _procesar_salida(update, texto)
+        if any(p in texto_lower for p in ["entrada","entraron","llegaron","compré","compre","agregué","agregue"]):
+            return await _procesar_entrada(update, texto)
+        if any(p in texto_lower for p in ["stock","cuánto","cuanto","quedan","hay","inventario","materiales"]):
+            return await cmd_stock_mat(update, context)
+        # Respuesta genérica para el celular del lavado
+        await update.message.reply_text(
+            "Para registrar una salida escribe:\n_sacar 2 playeras para caja_\n\nPara ver el stock:\n_¿cuántas escobas hay?_",
+            parse_mode="Markdown"
+        )
+        return
+
     if texto == "📊 Cómo vamos hoy": return await cmd_hoy(update, context)
     if texto == "🏆 Récords": return await cmd_records(update, context)
     if texto == "📋 Último corte": return await cmd_ultimo(update, context)
@@ -1416,6 +1703,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if any(p in texto_lower for p in palabras_clips):
             return await cmd_clips(update, context)
 
+        # Preguntas sobre materiales
+        palabras_mat = ['playera', 'bota', 'fregon', 'fregón', 'escoba', 'atomizador',
+                        'stock materiales', 'materiales', 'bodega', 'insumos']
+        if any(p in texto_lower for p in palabras_mat):
+            # Si menciona "sacar" o cantidad → procesar salida
+            if any(p in texto_lower for p in ["sacar","saqué","saque","salida","se llevó","se llevo"]):
+                return await _procesar_salida(update, texto)
+            if any(p in texto_lower for p in ["entrada","llegaron","compré","compre","agregué"]):
+                return await _procesar_entrada(update, texto)
+            return await cmd_stock_mat(update, context)
+
         # Si piden el corte completo → usar generar_resumen_firebase (formato fijo, siempre incluye billetes)
         es_corte_completo = any(p in texto_lower for p in PALABRAS_CORTE_COMPLETO)
 
@@ -1792,6 +2090,10 @@ def main():
     app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(CommandHandler("clips", cmd_clips))
+    app.add_handler(CommandHandler("stock_mat", cmd_stock_mat))
+    app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
+    app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
+    app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
