@@ -243,95 +243,82 @@ async def consultar_claude(pregunta: str, cortes: list) -> str:
     # Construir contexto rico con todo el detalle disponible
     contexto_cortes = []
     for c in cortes:
-        t = c.get("totales", {})
-        v = c.get("ventas", {})
-        a = c.get("adicionales", {})
-        p = c.get("pagos", {})
-        m = c.get("maquina", {})
-        o = c.get("otros", {})
-        caja = c.get("caja", {})
+        # Campos del formato nuevo (corte_starwash.html)
+        vo   = c.get("ventas_odoo", {})    # t1,t2,...t6,t4t,...,x1,x4,fiscalia,fiscalia4,motos
+        ao   = c.get("adics_odoo", {})     # cera_plus, cera_tapetes, tapetes, motor, mano, mano_cera, mano_cera_tap
+        p    = c.get("pagos", {})          # efe, tar, trans
+        caja = c.get("caja", {})           # morralla, billetes, terminal, apertura, fondo
+        cort = c.get("cortesias", {})      # taller, ayuntamiento, familiar, seguro
 
-        autos_pagados = sum([v.get(k, 0) for k in ["autos", "camionetas", "pickups", "express", "fiscalia"]])
+        # Nombres legibles por paquete
+        NOMBRES = {
+            "t1":"Auto Básico","t2":"Camioneta Básico","t3":"Pick-Up Básico",
+            "t4":"Auto Plus","t4t":"Auto Pro","t5":"Camioneta Plus","t5t":"Camioneta Pro",
+            "t6":"Pick-Up Plus","t6t":"Pick-Up Pro","x1":"Express","x4":"Express Plus",
+            "fiscalia":"Fiscalía","fiscalia4":"Fiscalía Plus","motos":"Motos"
+        }
+        NOMBRES_ADIC = {
+            "cera_plus":"+ Cera Plus","cera_tapetes":"+ Cera y Tapetes Pro",
+            "tapetes":"Lavado Tapetes","motor":"Lavado Motor",
+            "mano":"M1. Lavado a Mano","mano_cera":"M2. Mano + Cera","mano_cera_tap":"M3. Mano + Cera + Tapetes"
+        }
+
+        autos_pagados = sum(v for k, v in vo.items() if k != "motos" and isinstance(v, (int, float)))
+        total_cort = sum([cort.get(k,0) for k in ["taller","ayuntamiento","familiar","seguro"]])
 
         entrada = {
             "fecha": c.get("fecha"),
+            "turno": c.get("turno"),
             "sesion": c.get("sesion"),
             "responsable": c.get("responsable"),
             "vehiculos": {
-                "autos": v.get("autos", 0),
-                "camionetas": v.get("camionetas", 0),
-                "pickups": v.get("pickups", 0),
-                "express": v.get("express", 0),
-                "fiscalia": v.get("fiscalia", 0),
-                "motos": v.get("motos", 0),
+                "ventas_por_paquete": {NOMBRES.get(k,k): int(v) for k,v in vo.items() if v},
                 "total_pagados": autos_pagados,
-                "cortesias_taller": o.get("cortes_taller", 0),
-                "cortesias_ayto": o.get("cortes_ayto", 0),
-                "cortesias_familiar": o.get("cortes_familiar", 0),
-                "seguro_lluvia": o.get("seguro", 0),
-                "lavados_mano": o.get("lavados_mano", 0),
-                "regresos": o.get("regresos", 0),
+                "cortesias": {
+                    "taller": cort.get("taller",0),
+                    "ayuntamiento": cort.get("ayuntamiento",0),
+                    "familiar": cort.get("familiar",0),
+                    "seguro": cort.get("seguro",0),
+                    "total": total_cort,
+                },
+                "total_entraron": autos_pagados + total_cort,
+                "maquina_total": c.get("maquina_total", 0),
             },
-            "totales": {
-                "total_tickets": t.get("total_tickets", 0),
-                "total_lavados": t.get("total_lavados", 0),
-                "total_adicionales": t.get("total_adicionales", 0),
-                "total_cobrado": t.get("total_cobrado", 0),
-                "total_caja": t.get("total_caja", 0),
-                "total_gastos": t.get("total_gastos", 0),
-                "diferencia_caja": t.get("diferencia_din", 0),
-            },
+            "adicionales": {NOMBRES_ADIC.get(k,k): int(v) for k,v in ao.items() if v},
             "pagos": {
-                "efectivo": p.get("efectivo", 0),
-                "tarjeta": p.get("tarjeta", 0),
-                "transferencia": p.get("transferencia", 0),
+                "efectivo": p.get("efe", 0),
+                "tarjeta": p.get("tar", 0),
+                "transferencia": p.get("trans", 0),
+                "total_cobrado": c.get("total_cobrado", 0),
             },
             "caja": {
                 "apertura": caja.get("apertura", 0),
                 "morralla": caja.get("morralla", 0),
                 "billetes": caja.get("billetes", 0),
                 "terminal": caja.get("terminal", 0),
+                "total_caja": c.get("total_caja", 0),
+                "diferencia_caja": c.get("diferencia", 0),
             },
-            "maquina": {
-                "registrada": m.get("total_vendidos", 0),
-                "esperada": m.get("esperada", 0),
-                "diferencia": m.get("diferencia", 0),
-            },
-            "gastos": [
-                {"concepto": g["concepto"], "monto": g["monto"]}
-                for g in c.get("gastos", [])
-                if isinstance(g, dict) and g.get("concepto") and g.get("monto", 0) > 0
-            ],
-            "servicios_manuales": [
-                {"nombre": s["nombre"], "precio": s.get("precio",0), "cantidad": s.get("cantidad",1), "total": s.get("total",0)}
-                for s in c.get("servicios_manuales", [])
-                if isinstance(s, dict) and s.get("nombre")
-            ],
-            "adicionales": {
-                "tapetes_solo": a.get("tapetes_solo", 0),
-                "motor": a.get("motor", 0),
-                "lavado_mano": a.get("mano", 0),
-                "plus_cera": a.get("plus_cera", 0),
-                "pro_cera_tapetes": a.get("pro_cera_tapetes", 0),
+            "gastos": {
+                "total": c.get("total_gastos", 0),
+                "detalle": [
+                    {"concepto": g.get("c",""), "monto": g.get("m",0)}
+                    for g in c.get("gastos", [])
+                    if isinstance(g, dict) and g.get("c") and g.get("m", 0) > 0
+                ],
             },
         }
-
-        # Incluir ventas_detalle y adicionales_detalle si existen (nuevos campos)
-        if c.get("ventas_detalle"):
-            entrada["ventas_detalle"] = c["ventas_detalle"]
-        if c.get("adicionales_detalle"):
-            entrada["adicionales_detalle"] = c["adicionales_detalle"]
 
         # Lecturas iniciales y finales de máquina por paquete
         paquetes = c.get("paquetes_finales", [])
         if paquetes:
             entrada["lecturas_maquina"] = [
                 {
-                    "paquete": p.get("num", i + 1),
+                    "programa": p.get("prog", i + 1),
+                    "nombre": p.get("nombre", f"Prog {i+1}"),
                     "inicio": p.get("inicio", 0),
                     "final": p.get("final", 0),
-                    "vendidos": p.get("vendidos", 0),
-                    "monto": p.get("monto", 0),
+                    "autos": p.get("autos", 0),
                 }
                 for i, p in enumerate(paquetes)
                 if isinstance(p, dict)
