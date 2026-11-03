@@ -24,6 +24,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── FIREBASE ──────────────────────────────────────────────────────────────────
+async def get_stock_clips():
+    """Lee el stock actual de clips aromáticos desde config/clips en Firestore."""
+    url = f"{FIRESTORE_URL}/config/clips"
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+    fields = data.get("fields", {})
+    stock = fields.get("stock", {})
+    if "integerValue" in stock:
+        return int(stock["integerValue"])
+    return None
+
 async def get_cortes(limit=5, fecha=None):
     """Obtiene cortes de Firestore."""
     url = f"{FIRESTORE_URL}/cortes"
@@ -475,6 +489,33 @@ async def cmd_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     resumen = generar_resumen_firebase(cortes[0])
     await msg.edit_text(resumen, parse_mode="Markdown")
+
+async def cmd_clips(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Revisando inventario de clips...")
+    try:
+        stock = await get_stock_clips()
+        if stock is None:
+            await msg.edit_text("⚠️ No encontré el inventario de clips. Asegúrate de haberlo inicializado desde la app.")
+            return
+        # También obtener clips del último corte
+        cortes = await get_cortes(limit=1)
+        clips_ultimo = 0
+        fecha_ultimo = ""
+        turno_ultimo = ""
+        if cortes:
+            clips_ultimo = cortes[0].get("clips_usados", 0)
+            fecha_ultimo = cortes[0].get("fecha", "")
+            turno_ultimo = cortes[0].get("turno", "")
+        texto = f"🌸 *Clips Aromáticos — Inventario*\n\n"
+        texto += f"📦 *Stock actual:* {stock} clips\n"
+        if clips_ultimo and fecha_ultimo:
+            texto += f"✅ *Último corte entregó:* {clips_ultimo} clips\n"
+            texto += f"   ({fecha_ultimo} turno {turno_ultimo})\n"
+        await msg.edit_text(texto, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Error clips: {e}")
+        await msg.edit_text("❌ No pude obtener el inventario de clips.")
 
 async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_allowed(update): return
@@ -1369,6 +1410,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         fecha_detectada = detectar_fecha(texto)
 
+        # Preguntas sobre clips aromáticos
+        palabras_clips = ['clip', 'clips', 'aromatico', 'aromático', 'aromaticos', 'aromáticos',
+                          'inventario clips', 'stock clips', 'cuantos clips', 'cuántos clips']
+        if any(p in texto_lower for p in palabras_clips):
+            return await cmd_clips(update, context)
+
         # Si piden el corte completo → usar generar_resumen_firebase (formato fijo, siempre incluye billetes)
         es_corte_completo = any(p in texto_lower for p in PALABRAS_CORTE_COMPLETO)
 
@@ -1744,6 +1791,7 @@ def main():
     app.add_handler(CommandHandler("comparar_semana", cmd_comparar_semana))
     app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
+    app.add_handler(CommandHandler("clips", cmd_clips))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
