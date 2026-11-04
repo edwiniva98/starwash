@@ -774,6 +774,18 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     chat_id = update.effective_chat.id
 
+    # ── Flujo continuar / listo ───────────────────────────────────────────────
+    if query.data.startswith("flujo:"):
+        accion = query.data.split(":", 1)[1]
+        if accion == "listo":
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.answer("👍 ¡Listo!")
+        elif accion == "otra_entrada":
+            await _mostrar_menu_materiales_entrada(query, context, edit=True)
+        elif accion == "otra_salida":
+            await _mostrar_menu_materiales_salida(query, context, edit=True)
+        return
+
     # ── Responsable para entrada (lavado) ────────────────────────────────────
     if query.data.startswith("ent_resp:"):
         responsable = query.data.split(":", 1)[1]
@@ -1482,11 +1494,16 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await set_stock_materiales(stock)
             await registrar_movimiento_material("entrada", material_key, cantidad, "bodega", responsable, notas=nota)
             detalle = f" {nota}" if nota else ""
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("➕ Otra entrada", callback_data="flujo:otra_entrada"),
+                 InlineKeyboardButton("✅ Listo", callback_data="flujo:listo")]
+            ])
             await update.message.reply_text(
                 f"✅ *Entrada registrada*\n\n"
                 f"{info['emoji']} {info['nombre']}: +{cantidad}{detalle}\n"
                 f"📦 Stock actual: *{stock[material_key]}*",
-                parse_mode="Markdown"
+                parse_mode="Markdown",
+                reply_markup=markup
             )
             return
         # Si hay salida pendiente (esperando cantidad), procesar el número
@@ -1514,11 +1531,16 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await set_stock_materiales(stock)
             await registrar_movimiento_material("salida", material_key, cantidad, destino, responsable)
             destino_txt = DESTINOS.get(destino, destino)
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("➖ Otro material", callback_data="flujo:otra_salida"),
+                 InlineKeyboardButton("✅ Listo", callback_data="flujo:listo")]
+            ])
             await update.message.reply_text(
                 f"✅ *Salida registrada*\n\n"
                 f"{info['emoji']} {info['nombre']}: −{cantidad} → {destino_txt}\n"
                 f"📦 Stock actual: *{stock[material_key]}*",
-                parse_mode="Markdown"
+                parse_mode="Markdown",
+                reply_markup=markup
             )
             return
         # Texto libre del celular del lavado → solo materiales
@@ -2764,7 +2786,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat|sal_mat_grp|sal_dest):"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat|sal_mat_grp|sal_dest|flujo):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
