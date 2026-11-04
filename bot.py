@@ -840,7 +840,7 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
         if not info:
             await query.edit_message_text("⚠️ Material no encontrado.")
             return
-        _salidas_pendientes[chat_id] = {"material_key": material_key, "destino": destino, "esperando": "cantidad_lavado"}
+        context.user_data["salida_pendiente_lavado"] = {"material_key": material_key, "destino": destino}
         destino_txt = DESTINOS.get(destino, destino)
         await query.edit_message_text(
             f"{info['emoji']} *{info['nombre']}* → {destino_txt}\n\n¿Cuántos?",
@@ -919,7 +919,7 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         else:
             # Sin cajas: pedir cantidad directamente
-            _entradas_pendientes[chat_id] = {"material_key": material_key, "tipo": "piezas"}
+            context.user_data["entrada_pendiente"] = {"material_key": material_key, "tipo": "piezas"}
             await query.edit_message_text(
                 f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas piezas entraron? Escribe el número:",
                 parse_mode="Markdown"
@@ -933,7 +933,7 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
         if not info:
             await query.edit_message_text("⚠️ Material no encontrado.")
             return
-        _entradas_pendientes[chat_id] = {"material_key": material_key, "tipo": tipo}
+        context.user_data["entrada_pendiente"] = {"material_key": material_key, "tipo": tipo}
         pzs = PIEZAS_POR_CAJA.get(material_key, 1)
         if tipo == "piezas":
             prompt = f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas piezas? Escribe el número:"
@@ -1452,15 +1452,15 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         # Si hay entrada pendiente (esperando cantidad), procesar el número
         chat_id = update.effective_chat.id
-        ep = _entradas_pendientes.get(chat_id)
+        ep = context.user_data.pop("entrada_pendiente", None)
         if ep:
             nums = re.findall(r'\d+', texto)
             if not nums:
+                context.user_data["entrada_pendiente"] = ep  # restaurar
                 await update.message.reply_text("Escribe solo el número, por ejemplo: _5_", parse_mode="Markdown")
                 return
             material_key = ep["material_key"]
             tipo = ep["tipo"]
-            del _entradas_pendientes[chat_id]
             info = MATERIALES[material_key]
             responsable = context.user_data.get("lavado_responsable") or update.effective_user.first_name or "Lavado"
             if tipo == "piezas":
@@ -1490,16 +1490,16 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         # Si hay salida pendiente (esperando cantidad), procesar el número
-        sp = _salidas_pendientes.get(chat_id, {})
-        if sp.get("esperando") == "cantidad_lavado":
+        sp = context.user_data.pop("salida_pendiente_lavado", None)
+        if sp:
             nums = re.findall(r'\d+', texto)
             if not nums:
+                context.user_data["salida_pendiente_lavado"] = sp  # restaurar
                 await update.message.reply_text("Escribe solo el número, por ejemplo: _2_", parse_mode="Markdown")
                 return
             material_key = sp["material_key"]
             destino = sp["destino"]
             responsable = context.user_data.get("lavado_responsable") or "Lavado"
-            del _salidas_pendientes[chat_id]
             cantidad = int(nums[0])
             info = MATERIALES[material_key]
             stock = await get_stock_materiales()
