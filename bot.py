@@ -105,6 +105,7 @@ PIEZAS_POR_CAJA = {
     "fibra_scotch":   12,
     "bolsas_1kg":     12,
     "sanitas":        12,
+    "jabon_tork":      6,
 }
 
 DESTINOS = {
