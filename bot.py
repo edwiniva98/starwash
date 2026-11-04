@@ -76,6 +76,7 @@ MATERIALES = {
     "despachador_jabon":{"nombre": "Despachador Jabón", "emoji": "🧴", "alias": ["despachador","despachador jabon","despachador jabón","dispenser","dispensador"]},
     "cubetas":         {"nombre": "Cubetas", "emoji": "🪣", "alias": ["cubeta","cubetas","balde","baldes"]},
     "jerga":           {"nombre": "Jerga", "emoji": "🧻", "alias": ["jerga","jergas","rollo jerga","rollos jerga"]},
+    "jabon_tork":      {"nombre": "Jabón Manos Tork", "emoji": "🧴", "alias": ["jabon tork","jabón tork","jabon manos tork","jabón manos tork","tork manos","soap tork"]},
 }
 
 # Grupos con variantes — cuando el texto menciona el grupo genérico,
