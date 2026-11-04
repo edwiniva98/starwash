@@ -75,6 +75,7 @@ MATERIALES = {
     "sanitas":         {"nombre": "Sanitas", "emoji": "🧻", "alias": ["sanita","sanitas","papel sanitas","servilleta","servilletas"]},
     "despachador_jabon":{"nombre": "Despachador Jabón", "emoji": "🧴", "alias": ["despachador","despachador jabon","despachador jabón","dispenser","dispensador"]},
     "cubetas":         {"nombre": "Cubetas", "emoji": "🪣", "alias": ["cubeta","cubetas","balde","baldes"]},
+    "jerga":           {"nombre": "Jerga", "emoji": "🧻", "alias": ["jerga","jergas","rollo jerga","rollos jerga"]},
 }
 
 # Grupos con variantes — cuando el texto menciona el grupo genérico,
