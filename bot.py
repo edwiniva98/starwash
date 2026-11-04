@@ -71,6 +71,10 @@ MATERIALES = {
     "cloralex_1l":     {"nombre": "Cloralex 1L", "emoji": "🫙", "alias": ["cloralex","cloro","cloralex 1l","cloro 1l"]},
     "papel_tork":      {"nombre": "Papel Baño Tork", "emoji": "🧻", "alias": ["papel tork","tork","papel baño","papel de baño","papel higienico","papel higiénico"]},
     "fibra_scotch":    {"nombre": "Fibra Scotch-Brite", "emoji": "🟩", "alias": ["fibra","scotch","scotch brite","scotch-brite","fibra verde","fibra scotch"]},
+    "bolsas_1kg":      {"nombre": "Bolsas 1kg 60/90", "emoji": "🛍️", "alias": ["bolsa 1kg","bolsas 1kg","bolsa 60","bolsa 90","bolsas 60","bolsas 90","bolsa kilo","bolsas kilo"]},
+    "sanitas":         {"nombre": "Sanitas", "emoji": "🧻", "alias": ["sanita","sanitas","papel sanitas","servilleta","servilletas"]},
+    "despachador_jabon":{"nombre": "Despachador Jabón", "emoji": "🧴", "alias": ["despachador","despachador jabon","despachador jabón","dispenser","dispensador"]},
+    "cubetas":         {"nombre": "Cubetas", "emoji": "🪣", "alias": ["cubeta","cubetas","balde","baldes"]},
 }
 
 # Grupos con variantes — cuando el texto menciona el grupo genérico,
@@ -97,6 +101,8 @@ PIEZAS_POR_CAJA = {
     "jabon_roma_500": 20,
     "jabon_roma_250": 40,
     "fibra_scotch":   12,
+    "bolsas_1kg":     12,
+    "sanitas":        12,
 }
 
 DESTINOS = {
