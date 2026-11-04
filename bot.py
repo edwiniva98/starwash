@@ -940,10 +940,27 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         # Texto libre del celular del lavado → solo materiales
         texto_lower = texto.lower()
-        if any(p in texto_lower for p in ["sacar","saqué","saque","se llevó","se llevo","salida",
-                                           "se agarro","se agarró","agarré","agarre","tome","tomé",
-                                           "sali","salí","usé","use","gastó","gasto","se usó","se uso",
-                                           "se sacaron","se saco","se sacó","sacaron"]):
+        PALABRAS_SALIDA = [
+            # sacar
+            "sacar","saqué","saque","sacaron","se saco","se sacó","se sacaron",
+            # llevar
+            "se llevó","se llevo","se llevaron","llevaron","me llevé","me lleve",
+            # agarrar
+            "se agarro","se agarró","se agarraron","agarré","agarre","agarraron",
+            # tomar
+            "tome","tomé","tomaron","se tomó","se tomo","se tomaron",
+            # dar / entregar
+            "se dio","se dió","se dieron","dieron","entregué","entregue","se entregó",
+            "se entrego","se entregaron","entregaron","di ","dí ",
+            # usar / gastar
+            "usé","use","usaron","se usó","se uso","se usaron",
+            "gastó","gasto","gastaron","se gastó","se gasto","se gastaron",
+            # salida genérica
+            "salida","salieron","se fue","se fueron",
+            # ocupar (mexicanismo)
+            "ocupé","ocupe","ocuparon","se ocupó","se ocupo","se ocuparon",
+        ]
+        if any(p in texto_lower for p in PALABRAS_SALIDA):
             return await _procesar_salida(update, texto)
         if any(p in texto_lower for p in ["entrada","entraron","llegaron","compré","compre","agregué","agregue"]):
             return await _procesar_entrada(update, texto)
@@ -1761,10 +1778,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         'palo escoba', 'mechudo', 'stock materiales', 'materiales', 'bodega', 'insumos']
         if any(p in texto_lower for p in palabras_mat):
             # Si menciona "sacar" o cantidad → procesar salida
-            if any(p in texto_lower for p in ["sacar","saqué","saque","salida","se llevó","se llevo",
-                                               "se agarro","se agarró","agarré","agarre","tome","tomé",
-                                               "sali","salí","usé","use","gastó","gasto","se usó","se uso",
-                                               "se sacaron","se saco","se sacó","sacaron"]):
+            PALABRAS_SALIDA_H = [
+                "sacar","saqué","saque","sacaron","se saco","se sacó","se sacaron",
+                "se llevó","se llevo","se llevaron","llevaron","me llevé","me lleve",
+                "se agarro","se agarró","se agarraron","agarré","agarre","agarraron",
+                "tome","tomé","tomaron","se tomó","se tomo","se tomaron",
+                "se dio","se dió","se dieron","dieron","entregué","entregue",
+                "se entregó","se entrego","se entregaron","entregaron",
+                "usé","use","usaron","se usó","se uso","se usaron",
+                "gastó","gasto","gastaron","se gastó","se gasto","se gastaron",
+                "salida","salieron","se fue","se fueron",
+                "ocupé","ocupe","ocuparon","se ocupó","se ocupo","se ocuparon",
+            ]
+            if any(p in texto_lower for p in PALABRAS_SALIDA_H):
                 return await _procesar_salida(update, texto)
             if any(p in texto_lower for p in ["entrada","llegaron","compré","compre","agregué"]):
                 return await _procesar_entrada(update, texto)
