@@ -5,8 +5,8 @@ import re
 from datetime import datetime, timedelta
 import httpx
 from aiohttp import web
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 BOT_TOKEN          = os.environ.get("BOT_TOKEN", "")
@@ -95,6 +95,12 @@ DESTINOS = {
     "isla5":   "Isla 5",
     "general": "General / Personal",
 }
+
+RESPONSABLES = ["Eder", "Piña", "Edwin", "Luis", "Taller", "Lavado"]
+
+# Almacén temporal de salidas pendientes de confirmar responsable
+# { chat_id: { material_key, cantidad, destino, destinatario } }
+_salidas_pendientes: dict = {}
 
 def normalizar_material(texto):
     """Intenta encontrar el key del material a partir de texto libre."""
@@ -660,6 +666,71 @@ async def _procesar_salida(update: Update, texto: str):
         )
         return
 
+    # Guardar datos pendientes y pedir responsable con botones
+    chat_id = update.effective_chat.id
+    _salidas_pendientes[chat_id] = {
+        "material_key": material_key,
+        "cantidad": cantidad,
+        "destino": destino,
+        "destinatario": destinatario,
+        "stock_actual": actual,
+    }
+
+    info = MATERIALES[material_key]
+    destino_txt = destinatario if destinatario else DESTINOS.get(destino, destino)
+
+    # Botones inline con los responsables
+    botones = []
+    fila = []
+    for i, nombre in enumerate(RESPONSABLES):
+        fila.append(InlineKeyboardButton(nombre, callback_data=f"resp:{nombre}"))
+        if len(fila) == 3:
+            botones.append(fila)
+            fila = []
+    if fila:
+        botones.append(fila)
+
+    await update.message.reply_text(
+        f"📦 *{info['emoji']} {info['nombre']}* ×{cantidad} → *{destino_txt}*\n\n"
+        f"¿Quién registra la salida?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(botones)
+    )
+
+async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Recibe el botón de responsable y completa el registro de la salida."""
+    query = update.callback_query
+    await query.answer()
+
+    if not query.data.startswith("resp:"):
+        return
+
+    responsable = query.data.split(":", 1)[1]
+    chat_id = update.effective_chat.id
+    datos = _salidas_pendientes.pop(chat_id, None)
+
+    if not datos:
+        await query.edit_message_text("⚠️ No hay salida pendiente. Intenta de nuevo.")
+        return
+
+    material_key = datos["material_key"]
+    cantidad     = datos["cantidad"]
+    destino      = datos["destino"]
+    destinatario = datos["destinatario"]
+    stock_actual = datos["stock_actual"]
+
+    stock = await get_stock_materiales()
+    # Re-verificar stock (pudo cambiar)
+    actual = stock.get(material_key, 0)
+    if actual < cantidad:
+        info = MATERIALES[material_key]
+        await query.edit_message_text(
+            f"⚠️ Stock insuficiente.\n"
+            f"{info['emoji']} *{info['nombre']}* disponibles: *{actual}*",
+            parse_mode="Markdown"
+        )
+        return
+
     stock[material_key] = actual - cantidad
     await set_stock_materiales(stock)
     notas = f"para {destinatario}" if destinatario else ""
@@ -669,10 +740,11 @@ async def _procesar_salida(update: Update, texto: str):
     destino_txt = destinatario if destinatario else DESTINOS.get(destino, destino)
     nuevo = stock[material_key]
     alerta = f"\n⚠️ _Quedan solo {nuevo}, considera reabastecer._" if nuevo <= 2 else ""
-    await update.message.reply_text(
+
+    await query.edit_message_text(
         f"✅ *Salida registrada*\n\n"
-        f"{info['emoji']} {info['nombre']}: -{cantidad} → para *{destino_txt}*\n"
-        f"👤 Registró: {responsable}\n"
+        f"{info['emoji']} {info['nombre']}: -{cantidad} → *{destino_txt}*\n"
+        f"👤 Registró: *{responsable}*\n"
         f"📦 Stock restante: *{nuevo}*{alerta}",
         parse_mode="Markdown"
     )
@@ -2223,6 +2295,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^resp:"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
