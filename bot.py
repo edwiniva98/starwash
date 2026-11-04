@@ -940,7 +940,9 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         # Texto libre del celular del lavado → solo materiales
         texto_lower = texto.lower()
-        if any(p in texto_lower for p in ["sacar","saqué","saque","se llevó","se llevo","salida"]):
+        if any(p in texto_lower for p in ["sacar","saqué","saque","se llevó","se llevo","salida",
+                                           "se agarro","se agarró","agarré","agarre","tome","tomé",
+                                           "sali","salí","usé","use","gastó","gasto","se usó","se uso"]):
             return await _procesar_salida(update, texto)
         if any(p in texto_lower for p in ["entrada","entraron","llegaron","compré","compre","agregué","agregue"]):
             return await _procesar_entrada(update, texto)
@@ -1758,7 +1760,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         'palo escoba', 'mechudo', 'stock materiales', 'materiales', 'bodega', 'insumos']
         if any(p in texto_lower for p in palabras_mat):
             # Si menciona "sacar" o cantidad → procesar salida
-            if any(p in texto_lower for p in ["sacar","saqué","saque","salida","se llevó","se llevo"]):
+            if any(p in texto_lower for p in ["sacar","saqué","saque","salida","se llevó","se llevo",
+                                               "se agarro","se agarró","agarré","agarre","tome","tomé",
+                                               "sali","salí","usé","use","gastó","gasto","se usó","se uso"]):
                 return await _procesar_salida(update, texto)
             if any(p in texto_lower for p in ["entrada","llegaron","compré","compre","agregué"]):
                 return await _procesar_entrada(update, texto)
