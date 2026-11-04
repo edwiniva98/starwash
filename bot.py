@@ -583,21 +583,48 @@ async def cmd_entrada_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args_txt = " ".join(context.args) if context.args else ""
     await _procesar_entrada(update, args_txt)
 
+def extraer_destinatario(texto: str) -> str:
+    """Extrae el nombre de la persona o área a quien se le entregó el material.
+    Busca patrones como: 'para X', 'a X', 'para la isla X', 'al taller', etc.
+    Devuelve el destinatario como string, o "" si no se encontró.
+    """
+    t = texto.lower()
+    # Destinos especiales conocidos
+    if any(p in t for p in ["para caja","a caja","en caja"]): return "Caja"
+    if any(p in t for p in ["para taller","al taller","en taller"]): return "Taller"
+    if any(p in t for p in ["isla 1","islas 1"]): return "Isla 1"
+    if any(p in t for p in ["isla 2","islas 2"]): return "Isla 2"
+    if any(p in t for p in ["isla 3","islas 3"]): return "Isla 3"
+    if any(p in t for p in ["isla 4","islas 4"]): return "Isla 4"
+    # Patrón: "para <nombre>" o "a <nombre>"
+    m = re.search(r'(?:para|a la|al|a)\s+([A-Za-záéíóúüñÁÉÍÓÚÜÑ]{3,}(?:\s+[A-Za-záéíóúüñÁÉÍÓÚÜÑ]{2,})?)', texto, re.IGNORECASE)
+    if m:
+        candidato = m.group(1).strip()
+        # Filtrar palabras que no son nombres
+        no_nombres = {"caja","taller","bodega","isla","general","lavado","encargado","todos"}
+        if candidato.lower() not in no_nombres:
+            return candidato.title()
+    return ""
+
 async def _procesar_salida(update: Update, texto: str):
-    """Parsea y ejecuta una salida de material."""
-    # Intentar extraer cantidad, material y destino del texto
-    # Formatos: "2 playeras para caja", "1 escoba taller", "3 botas"
+    """Parsea y ejecuta una salida de material.
+    Detecta cantidad, material, destino/área y nombre de quien lo recibe.
+    Ejemplos: 'se dieron 2 playeras a Juan', 'se agarró 1 gatillo para isla 3'
+    """
     nums = re.findall(r'\d+', texto)
     cantidad = int(nums[0]) if nums else 1
     material_key = normalizar_material(texto)
     destino = normalizar_destino(texto)
+    destinatario = extraer_destinatario(texto)
     responsable = update.effective_user.first_name or "Encargado"
 
     if not material_key:
         lista = "\n".join([f"  • {info['nombre']}" for info in MATERIALES.values()])
         await update.message.reply_text(
             f"❓ No entendí el material. Escribe por ejemplo:\n"
-            f"_sacar 2 playeras para caja_\n\n"
+            f"_se dieron 2 playeras a Juan_\n"
+            f"_se agarró 1 gatillo para isla 3_\n"
+            f"_sacar 2 fregones para taller_\n\n"
             f"Materiales disponibles:\n{lista}",
             parse_mode="Markdown"
         )
@@ -617,15 +644,17 @@ async def _procesar_salida(update: Update, texto: str):
 
     stock[material_key] = actual - cantidad
     await set_stock_materiales(stock)
-    await registrar_movimiento_material("salida", material_key, cantidad, destino, responsable)
+    notas = f"para {destinatario}" if destinatario else ""
+    await registrar_movimiento_material("salida", material_key, cantidad, destino, responsable, notas=notas)
 
     info = MATERIALES[material_key]
-    destino_txt = DESTINOS.get(destino, destino)
+    destino_txt = destinatario if destinatario else DESTINOS.get(destino, destino)
     nuevo = stock[material_key]
     alerta = f"\n⚠️ _Quedan solo {nuevo}, considera reabastecer._" if nuevo <= 2 else ""
     await update.message.reply_text(
         f"✅ *Salida registrada*\n\n"
         f"{info['emoji']} {info['nombre']}: -{cantidad} → para *{destino_txt}*\n"
+        f"👤 Registró: {responsable}\n"
         f"📦 Stock restante: *{nuevo}*{alerta}",
         parse_mode="Markdown"
     )
