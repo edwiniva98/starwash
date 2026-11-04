@@ -64,11 +64,23 @@ MATERIALES = {
     "botes_1l":        {"nombre": "Botes 1L", "emoji": "🧴", "alias": ["bote 1l","bote 1 l","bote grande","botes 1l","botes 1 l","atomizador 1l","atomizadores 1l"]},
     "botes_500ml":     {"nombre": "Botes 500ml", "emoji": "🧴", "alias": ["bote 500","bote 500ml","bote chico","botes 500","botes 500ml","atomizador 500","atomizadores 500ml"]},
     "gatillos":        {"nombre": "Gatillos", "emoji": "🔫", "alias": ["gatillo","gatillos","trigger","pistola spray"]},
-    "jabon_roma":      {"nombre": "Jabón Roma (bolsa)", "emoji": "🧼", "alias": ["jabon roma","jabón roma","roma","detergente roma"]},
+    "jabon_roma_500":  {"nombre": "Jabón Roma 500gr", "emoji": "🧼", "alias": ["roma 500","jabon roma 500","jabón roma 500","roma grande"]},
+    "jabon_roma_250":  {"nombre": "Jabón Roma 250gr", "emoji": "🧼", "alias": ["roma 250","jabon roma 250","jabón roma 250","roma chica","roma chico"]},
     "pinol_1l":        {"nombre": "Pinol 1L", "emoji": "🫙", "alias": ["pinol","piñol","pinol 1l","piñol 1l"]},
     "fabuloso_1l":     {"nombre": "Fabuloso 1L", "emoji": "🫙", "alias": ["fabuloso","fabuloso 1l"]},
     "cloralex_1l":     {"nombre": "Cloralex 1L", "emoji": "🫙", "alias": ["cloralex","cloro","cloralex 1l","cloro 1l"]},
     "papel_tork":      {"nombre": "Papel Baño Tork", "emoji": "🧻", "alias": ["papel tork","tork","papel baño","papel de baño","papel higienico","papel higiénico"]},
+    "fibra_scotch":    {"nombre": "Fibra Scotch-Brite", "emoji": "🟩", "alias": ["fibra","scotch","scotch brite","scotch-brite","fibra verde","fibra scotch"]},
+}
+
+# Piezas por caja para entrada rápida
+PIEZAS_POR_CAJA = {
+    "cloralex_1l":    12,
+    "fabuloso_1l":    12,
+    "papel_tork":      6,
+    "jabon_roma_500": 20,
+    "jabon_roma_250": 40,
+    "fibra_scotch":   12,
 }
 
 DESTINOS = {
@@ -619,17 +631,31 @@ async def _procesar_salida(update: Update, texto: str):
     )
 
 async def _procesar_entrada(update: Update, texto: str):
-    """Parsea y ejecuta una entrada de material."""
+    """Parsea y ejecuta una entrada de material.
+    Soporta piezas directas o cajas: 'entrada 2 cajas cloro' → 2×12 = 24 piezas.
+    """
+    texto_lower = texto.lower()
     nums = re.findall(r'\d+', texto)
-    cantidad = int(nums[0]) if nums else 1
+    cantidad_raw = int(nums[0]) if nums else 1
     material_key = normalizar_material(texto)
     responsable = update.effective_user.first_name or "Edwin"
+
+    # Detectar si es entrada por caja
+    es_caja = any(p in texto_lower for p in ["caja","cajas","box"])
+    if es_caja and material_key and material_key in PIEZAS_POR_CAJA:
+        pzs = PIEZAS_POR_CAJA[material_key]
+        cantidad = cantidad_raw * pzs
+        nota_caja = f"({cantidad_raw} caja{'s' if cantidad_raw > 1 else ''} × {pzs} pzs)"
+    else:
+        cantidad = cantidad_raw
+        nota_caja = ""
 
     if not material_key:
         lista = "\n".join([f"  • {info['nombre']}" for info in MATERIALES.values()])
         await update.message.reply_text(
             f"❓ No entendí el material. Escribe por ejemplo:\n"
-            f"_entrada 10 playeras_\n\n"
+            f"_entrada 10 playeras_\n"
+            f"_entrada 2 cajas cloro_\n\n"
             f"Materiales:\n{lista}",
             parse_mode="Markdown"
         )
@@ -638,12 +664,14 @@ async def _procesar_entrada(update: Update, texto: str):
     stock = await get_stock_materiales()
     stock[material_key] = stock.get(material_key, 0) + cantidad
     await set_stock_materiales(stock)
-    await registrar_movimiento_material("entrada", material_key, cantidad, "bodega", responsable)
+    await registrar_movimiento_material("entrada", material_key, cantidad, "bodega", responsable,
+                                        notas=nota_caja)
 
     info = MATERIALES[material_key]
+    detalle = f" {nota_caja}" if nota_caja else ""
     await update.message.reply_text(
         f"✅ *Entrada registrada*\n\n"
-        f"{info['emoji']} {info['nombre']}: +{cantidad}\n"
+        f"{info['emoji']} {info['nombre']}: +{cantidad}{detalle}\n"
         f"📦 Stock actual: *{stock[material_key]}*",
         parse_mode="Markdown"
     )
@@ -1724,7 +1752,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Preguntas sobre materiales
         palabras_mat = ['playera', 'bota', 'fregon', 'fregón', 'escoba', 'atomizador',
-                        'stock materiales', 'materiales', 'bodega', 'insumos']
+                        'bote', 'gatillo', 'jalador', 'recogedor', 'mechudo', 'cepillo',
+                        'microfibra', 'roma', 'pinol', 'piñol', 'fabuloso', 'cloralex',
+                        'cloro', 'papel tork', 'tork', 'fibra', 'scotch', 'bomba',
+                        'palo escoba', 'mechudo', 'stock materiales', 'materiales', 'bodega', 'insumos']
         if any(p in texto_lower for p in palabras_mat):
             # Si menciona "sacar" o cantidad → procesar salida
             if any(p in texto_lower for p in ["sacar","saqué","saque","salida","se llevó","se llevo"]):
