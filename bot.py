@@ -110,6 +110,7 @@ DESTINOS = {
     "taller":  "Taller",
     "rines":   "Rines",
     "maquina": "Máquina",
+    "islas":   "Islas",
     "isla1":   "Isla 1",
     "isla2":   "Isla 2",
     "isla3":   "Isla 3",
@@ -117,6 +118,16 @@ DESTINOS = {
     "isla5":   "Isla 5",
     "general": "General / Personal",
 }
+
+# Destinos que aparecen en los botones del lavado (islas colapsadas)
+DESTINOS_BOTONES = [
+    ("🏝️ Islas",    "islas"),
+    ("🏪 Caja",     "caja"),
+    ("🔧 Taller",   "taller"),
+    ("⚙️ Máquina",  "maquina"),
+    ("🔩 Rines",    "rines"),
+    ("👤 General",  "general"),
+]
 
 RESPONSABLES = ["Eder", "Piña", "Edwin", "Luis", "Taller", "Lavado"]
 
@@ -760,6 +771,80 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     chat_id = update.effective_chat.id
 
+    # ── Responsable para entrada (lavado) ────────────────────────────────────
+    if query.data.startswith("ent_resp:"):
+        responsable = query.data.split(":", 1)[1]
+        context.user_data["lavado_responsable"] = responsable
+        await _mostrar_menu_materiales_entrada(query, context, edit=True)
+        return
+
+    # ── Responsable para salida (lavado) ─────────────────────────────────────
+    if query.data.startswith("sal_resp:"):
+        responsable = query.data.split(":", 1)[1]
+        context.user_data["lavado_responsable"] = responsable
+        await _mostrar_menu_materiales_salida(query, context, edit=True)
+        return
+
+    # ── Material de salida (individual) ──────────────────────────────────────
+    if query.data.startswith("sal_mat:"):
+        material_key = query.data.split(":", 1)[1]
+        info = MATERIALES.get(material_key)
+        if not info:
+            await query.edit_message_text("⚠️ Material no encontrado.")
+            return
+        # Preguntar destino
+        botones = []
+        fila = []
+        for label, dkey in DESTINOS_BOTONES:
+            fila.append(InlineKeyboardButton(label, callback_data=f"sal_dest:{material_key}:{dkey}"))
+            if len(fila) == 2:
+                botones.append(fila)
+                fila = []
+        if fila:
+            botones.append(fila)
+        await query.edit_message_text(
+            f"{info['emoji']} *{info['nombre']}*\n\n¿Para dónde?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(botones)
+        )
+        return
+
+    # ── Submenú de grupo para salida ─────────────────────────────────────────
+    if query.data.startswith("sal_mat_grp:"):
+        gkey = query.data.split(":", 1)[1]
+        if gkey == "back":
+            await _mostrar_menu_materiales_salida(query, context, edit=True)
+            return
+        grupo = GRUPOS_ENTRADA.get(gkey)
+        if not grupo:
+            await query.edit_message_text("⚠️ Grupo no encontrado.")
+            return
+        botones = []
+        for key in grupo["keys"]:
+            info = MATERIALES[key]
+            botones.append([InlineKeyboardButton(f"{info['emoji']} {info['nombre']}", callback_data=f"sal_mat:{key}")])
+        botones.append([InlineKeyboardButton("⬅️ Regresar", callback_data="sal_mat_grp:back")])
+        await query.edit_message_text(
+            f"{grupo['label']} — ¿cuál?",
+            reply_markup=InlineKeyboardMarkup(botones)
+        )
+        return
+
+    # ── Destino de salida → pedir cantidad ───────────────────────────────────
+    if query.data.startswith("sal_dest:"):
+        _, material_key, destino = query.data.split(":", 2)
+        info = MATERIALES.get(material_key)
+        if not info:
+            await query.edit_message_text("⚠️ Material no encontrado.")
+            return
+        _salidas_pendientes[chat_id] = {"material_key": material_key, "destino": destino, "esperando": "cantidad_lavado"}
+        destino_txt = DESTINOS.get(destino, destino)
+        await query.edit_message_text(
+            f"{info['emoji']} *{info['nombre']}* → {destino_txt}\n\n¿Cuántos?",
+            parse_mode="Markdown"
+        )
+        return
+
     # ── Submenú de grupo (botas/playeras/botes/roma) ─────────────────────────
     if query.data.startswith("ent_grp:"):
         gkey = query.data.split(":", 1)[1]
@@ -1239,6 +1324,80 @@ async def cmd_historial(update: Update, context: ContextTypes.DEFAULT_TYPE):
         texto += f"   🚗 {autos} autos | 💰 {fmt(t.get('total_tickets',0))} | 💸 {fmt(t.get('total_gastos',0))} gastos\n\n"
     await msg.edit_text(texto, parse_mode="Markdown")
 
+GRUPOS_ENTRADA = {
+    "botas":    {"label": "🥾 Botas",    "keys": ["botas_25","botas_26","botas_27","botas_28"]},
+    "playeras": {"label": "👕 Playeras",  "keys": ["playeras_ch","playeras_m","playeras_g"]},
+    "botes":    {"label": "🧴 Botes",     "keys": ["botes_1l","botes_500ml"]},
+    "roma":     {"label": "🧼 Jabón Roma","keys": ["jabon_roma_500","jabon_roma_250"]},
+}
+KEYS_EN_GRUPO = {k for g in GRUPOS_ENTRADA.values() for k in g["keys"]}
+
+def _botones_materiales_entrada():
+    """Genera la lista de botones inline para seleccionar material de entrada."""
+    botones = []
+    fila = []
+    for gkey, ginfo in GRUPOS_ENTRADA.items():
+        fila.append(InlineKeyboardButton(ginfo["label"], callback_data=f"ent_grp:{gkey}"))
+        if len(fila) == 2:
+            botones.append(fila)
+            fila = []
+    if fila:
+        botones.append(fila)
+        fila = []
+    for key, info in MATERIALES.items():
+        if key in KEYS_EN_GRUPO:
+            continue
+        fila.append(InlineKeyboardButton(f"{info['emoji']} {info['nombre']}", callback_data=f"ent_mat:{key}"))
+        if len(fila) == 2:
+            botones.append(fila)
+            fila = []
+    if fila:
+        botones.append(fila)
+    return botones
+
+def _botones_materiales_salida():
+    """Genera la lista de botones inline para seleccionar material de salida."""
+    botones = []
+    fila = []
+    for gkey, ginfo in GRUPOS_ENTRADA.items():
+        fila.append(InlineKeyboardButton(ginfo["label"], callback_data=f"sal_mat_grp:{gkey}"))
+        if len(fila) == 2:
+            botones.append(fila)
+            fila = []
+    if fila:
+        botones.append(fila)
+        fila = []
+    for key, info in MATERIALES.items():
+        if key in KEYS_EN_GRUPO:
+            continue
+        fila.append(InlineKeyboardButton(f"{info['emoji']} {info['nombre']}", callback_data=f"sal_mat:{key}"))
+        if len(fila) == 2:
+            botones.append(fila)
+            fila = []
+    if fila:
+        botones.append(fila)
+    return botones
+
+async def _mostrar_menu_materiales_entrada(update_or_query, context, edit=False):
+    responsable = context.user_data.get("lavado_responsable", "")
+    texto = f"➕ *Entrada material* — {responsable}\n\n¿Qué material entró?"
+    markup = InlineKeyboardMarkup(_botones_materiales_entrada())
+    if edit and hasattr(update_or_query, 'edit_message_text'):
+        await update_or_query.edit_message_text(texto, parse_mode="Markdown", reply_markup=markup)
+    else:
+        msg = update_or_query.message if hasattr(update_or_query, 'message') else update_or_query
+        await msg.reply_text(texto, parse_mode="Markdown", reply_markup=markup)
+
+async def _mostrar_menu_materiales_salida(update_or_query, context, edit=False):
+    responsable = context.user_data.get("lavado_responsable", "")
+    texto = f"➖ *Sacar material* — {responsable}\n\n¿Qué material sacan?"
+    markup = InlineKeyboardMarkup(_botones_materiales_salida())
+    if edit and hasattr(update_or_query, 'edit_message_text'):
+        await update_or_query.edit_message_text(texto, parse_mode="Markdown", reply_markup=markup)
+    else:
+        msg = update_or_query.message if hasattr(update_or_query, 'message') else update_or_query
+        await msg.reply_text(texto, parse_mode="Markdown", reply_markup=markup)
+
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Convierte los botones del panel en acciones sin romper las preguntas libres."""
     texto = (update.message.text or "").strip()
@@ -1248,58 +1407,50 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
         if texto == "📋 Movimientos hoy": return await cmd_movimientos_mat(update, context)
         if texto == "➕ Entrada material":
-            # Grupos que se expanden en submenú de tallas/tamaños
-            GRUPOS_ENTRADA = {
-                "botas":    {"label": "🥾 Botas",    "keys": ["botas_25","botas_26","botas_27","botas_28"]},
-                "playeras": {"label": "👕 Playeras",  "keys": ["playeras_ch","playeras_m","playeras_g"]},
-                "botes":    {"label": "🧴 Botes",     "keys": ["botes_1l","botes_500ml"]},
-                "roma":     {"label": "🧼 Jabón Roma","keys": ["jabon_roma_500","jabon_roma_250"]},
-            }
-            # Keys que ya están cubiertos por un grupo
-            keys_en_grupo = {k for g in GRUPOS_ENTRADA.values() for k in g["keys"]}
-            botones = []
-            fila = []
-            # Primero los grupos
-            for gkey, ginfo in GRUPOS_ENTRADA.items():
-                fila.append(InlineKeyboardButton(ginfo["label"], callback_data=f"ent_grp:{gkey}"))
-                if len(fila) == 2:
-                    botones.append(fila)
-                    fila = []
-            if fila:
-                botones.append(fila)
+            # Primero preguntar quién registra (solo si no está guardado)
+            chat_id = update.effective_chat.id
+            if not context.user_data.get("lavado_responsable"):
+                botones = []
                 fila = []
-            # Luego el resto de materiales individuales
-            for key, info in MATERIALES.items():
-                if key in keys_en_grupo:
-                    continue
-                label = f"{info['emoji']} {info['nombre']}"
-                fila.append(InlineKeyboardButton(label, callback_data=f"ent_mat:{key}"))
-                if len(fila) == 2:
+                for nombre in RESPONSABLES:
+                    fila.append(InlineKeyboardButton(nombre, callback_data=f"ent_resp:{nombre}"))
+                    if len(fila) == 3:
+                        botones.append(fila)
+                        fila = []
+                if fila:
                     botones.append(fila)
-                    fila = []
-            if fila:
-                botones.append(fila)
-            await update.message.reply_text(
-                "¿Qué material entró?",
-                reply_markup=InlineKeyboardMarkup(botones)
-            )
+                await update.message.reply_text(
+                    "➕ *Entrada material*\n\n¿Quién registra?",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(botones)
+                )
+            else:
+                await _mostrar_menu_materiales_entrada(update, context)
             return
         if texto == "➖ Sacar material":
-            context.user_data["modo_lavado"] = "salida"
-            await update.message.reply_text(
-                "Escribe qué sacan, por ejemplo:\n_sacar 1 playera para caja_\n_sacar 2 fregones para taller_",
-                parse_mode="Markdown"
-            )
+            chat_id = update.effective_chat.id
+            if not context.user_data.get("lavado_responsable"):
+                botones = []
+                fila = []
+                for nombre in RESPONSABLES:
+                    fila.append(InlineKeyboardButton(nombre, callback_data=f"sal_resp:{nombre}"))
+                    if len(fila) == 3:
+                        botones.append(fila)
+                        fila = []
+                if fila:
+                    botones.append(fila)
+                await update.message.reply_text(
+                    "➖ *Sacar material*\n\n¿Quién saca?",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(botones)
+                )
+            else:
+                await _mostrar_menu_materiales_salida(update, context)
             return
-        # Si el usuario escribió después de presionar el botón de salida, usar el modo guardado
-        modo = context.user_data.pop("modo_lavado", None)
-        if modo == "salida":
-            return await _procesar_salida(update, texto)
         # Si hay entrada pendiente (esperando cantidad), procesar el número
         chat_id = update.effective_chat.id
         ep = _entradas_pendientes.get(chat_id)
         if ep:
-            # Espera un número (o "X y Y" para cajas y piezas sueltas)
             nums = re.findall(r'\d+', texto)
             if not nums:
                 await update.message.reply_text("Escribe solo el número, por ejemplo: _5_", parse_mode="Markdown")
@@ -1308,7 +1459,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tipo = ep["tipo"]
             del _entradas_pendientes[chat_id]
             info = MATERIALES[material_key]
-            responsable = update.effective_user.first_name or "Lavado"
+            responsable = context.user_data.get("lavado_responsable") or update.effective_user.first_name or "Lavado"
             if tipo == "piezas":
                 cantidad = int(nums[0])
                 nota = ""
@@ -1331,6 +1482,38 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"✅ *Entrada registrada*\n\n"
                 f"{info['emoji']} {info['nombre']}: +{cantidad}{detalle}\n"
+                f"📦 Stock actual: *{stock[material_key]}*",
+                parse_mode="Markdown"
+            )
+            return
+        # Si hay salida pendiente (esperando cantidad), procesar el número
+        sp = _salidas_pendientes.get(chat_id, {})
+        if sp.get("esperando") == "cantidad_lavado":
+            nums = re.findall(r'\d+', texto)
+            if not nums:
+                await update.message.reply_text("Escribe solo el número, por ejemplo: _2_", parse_mode="Markdown")
+                return
+            material_key = sp["material_key"]
+            destino = sp["destino"]
+            responsable = context.user_data.get("lavado_responsable") or "Lavado"
+            del _salidas_pendientes[chat_id]
+            cantidad = int(nums[0])
+            info = MATERIALES[material_key]
+            stock = await get_stock_materiales()
+            actual = stock.get(material_key, 0)
+            if actual < cantidad:
+                await update.message.reply_text(
+                    f"⚠️ Stock insuficiente.\n{info['emoji']} *{info['nombre']}* disponibles: *{actual}*",
+                    parse_mode="Markdown"
+                )
+                return
+            stock[material_key] = actual - cantidad
+            await set_stock_materiales(stock)
+            await registrar_movimiento_material("salida", material_key, cantidad, destino, responsable)
+            destino_txt = DESTINOS.get(destino, destino)
+            await update.message.reply_text(
+                f"✅ *Salida registrada*\n\n"
+                f"{info['emoji']} {info['nombre']}: −{cantidad} → {destino_txt}\n"
                 f"📦 Stock actual: *{stock[material_key]}*",
                 parse_mode="Markdown"
             )
@@ -2578,7 +2761,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp):"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat|sal_mat_grp|sal_dest):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
