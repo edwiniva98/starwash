@@ -68,6 +68,7 @@ MATERIALES = {
     "pinol_1l":        {"nombre": "Pinol 1L", "emoji": "🫙", "alias": ["pinol","piñol","pinol 1l","piñol 1l"]},
     "fabuloso_1l":     {"nombre": "Fabuloso 1L", "emoji": "🫙", "alias": ["fabuloso","fabuloso 1l"]},
     "cloralex_1l":     {"nombre": "Cloralex 1L", "emoji": "🫙", "alias": ["cloralex","cloro","cloralex 1l","cloro 1l"]},
+    "papel_tork":      {"nombre": "Papel Baño Tork", "emoji": "🧻", "alias": ["papel tork","tork","papel baño","papel de baño","papel higienico","papel higiénico"]},
 }
 
 DESTINOS = {
