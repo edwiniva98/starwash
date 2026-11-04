@@ -760,6 +760,55 @@ async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     chat_id = update.effective_chat.id
 
+    # ── Submenú de grupo (botas/playeras/botes/roma) ─────────────────────────
+    if query.data.startswith("ent_grp:"):
+        gkey = query.data.split(":", 1)[1]
+        GRUPOS_ENTRADA = {
+            "botas":    {"label": "🥾 Botas",     "keys": ["botas_25","botas_26","botas_27","botas_28"]},
+            "playeras": {"label": "👕 Playeras",   "keys": ["playeras_ch","playeras_m","playeras_g"]},
+            "botes":    {"label": "🧴 Botes",      "keys": ["botes_1l","botes_500ml"]},
+            "roma":     {"label": "🧼 Jabón Roma", "keys": ["jabon_roma_500","jabon_roma_250"]},
+        }
+        # Botón regresar → volver al menú principal de materiales
+        if gkey == "back":
+            keys_en_grupo = {k for g in GRUPOS_ENTRADA.values() for k in g["keys"]}
+            botones = []
+            fila = []
+            for gk, gi in GRUPOS_ENTRADA.items():
+                fila.append(InlineKeyboardButton(gi["label"], callback_data=f"ent_grp:{gk}"))
+                if len(fila) == 2:
+                    botones.append(fila)
+                    fila = []
+            if fila:
+                botones.append(fila)
+                fila = []
+            for key, info in MATERIALES.items():
+                if key in keys_en_grupo:
+                    continue
+                fila.append(InlineKeyboardButton(f"{info['emoji']} {info['nombre']}", callback_data=f"ent_mat:{key}"))
+                if len(fila) == 2:
+                    botones.append(fila)
+                    fila = []
+            if fila:
+                botones.append(fila)
+            await query.edit_message_text("¿Qué material entró?", reply_markup=InlineKeyboardMarkup(botones))
+            return
+
+        grupo = GRUPOS_ENTRADA.get(gkey)
+        if not grupo:
+            await query.edit_message_text("⚠️ Grupo no encontrado.")
+            return
+        botones = []
+        for key in grupo["keys"]:
+            info = MATERIALES[key]
+            botones.append([InlineKeyboardButton(f"{info['emoji']} {info['nombre']}", callback_data=f"ent_mat:{key}")])
+        botones.append([InlineKeyboardButton("⬅️ Regresar", callback_data="ent_grp:back")])
+        await query.edit_message_text(
+            f"{grupo['label']} — ¿cuál?",
+            reply_markup=InlineKeyboardMarkup(botones)
+        )
+        return
+
     # ── Selección de material para entrada (lavado) ───────────────────────────
     if query.data.startswith("ent_mat:"):
         material_key = query.data.split(":", 1)[1]
@@ -1199,10 +1248,30 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
         if texto == "📋 Movimientos hoy": return await cmd_movimientos_mat(update, context)
         if texto == "➕ Entrada material":
-            # Mostrar botones con todos los materiales
+            # Grupos que se expanden en submenú de tallas/tamaños
+            GRUPOS_ENTRADA = {
+                "botas":    {"label": "🥾 Botas",    "keys": ["botas_25","botas_26","botas_27","botas_28"]},
+                "playeras": {"label": "👕 Playeras",  "keys": ["playeras_ch","playeras_m","playeras_g"]},
+                "botes":    {"label": "🧴 Botes",     "keys": ["botes_1l","botes_500ml"]},
+                "roma":     {"label": "🧼 Jabón Roma","keys": ["jabon_roma_500","jabon_roma_250"]},
+            }
+            # Keys que ya están cubiertos por un grupo
+            keys_en_grupo = {k for g in GRUPOS_ENTRADA.values() for k in g["keys"]}
             botones = []
             fila = []
+            # Primero los grupos
+            for gkey, ginfo in GRUPOS_ENTRADA.items():
+                fila.append(InlineKeyboardButton(ginfo["label"], callback_data=f"ent_grp:{gkey}"))
+                if len(fila) == 2:
+                    botones.append(fila)
+                    fila = []
+            if fila:
+                botones.append(fila)
+                fila = []
+            # Luego el resto de materiales individuales
             for key, info in MATERIALES.items():
+                if key in keys_en_grupo:
+                    continue
                 label = f"{info['emoji']} {info['nombre']}"
                 fila.append(InlineKeyboardButton(label, callback_data=f"ent_mat:{key}"))
                 if len(fila) == 2:
@@ -2509,7 +2578,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo):"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
