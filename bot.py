@@ -58,7 +58,7 @@ MATERIALES = {
     "jalador":         {"nombre": "Jaladores", "emoji": "🪣", "alias": ["jalador","jaladores","haladera"]},
     "mechudos_blancos":{"nombre": "Mechudos Blancos", "emoji": "🧽", "alias": ["mechudo blanco","mechudos blancos","mecha blanca","mechas blancas"]},
     "mechudos_color":  {"nombre": "Mechudos Color", "emoji": "🧽", "alias": ["mechudo color","mechudos color","mechudo de color","mechudos de color","mecha color"]},
-    "cepillos_bano":   {"nombre": "Cepillos Baño", "emoji": "🪥", "alias": ["cepillo baño","cepillos baño","cepillo taza","cepillos taza","cepillo wc"]},
+    "cepillos_bano":   {"nombre": "Cepillos Baño", "emoji": "🪥", "alias": ["cepillo baño","cepillos baño","cepillo de baño","cepillos de baño","cepillo taza","cepillos taza","cepillo wc"]},
     "bomba_destapa":   {"nombre": "Bomba/Destapacaños", "emoji": "🔧", "alias": ["bomba","destapacaños","destapador","destapa"]},
     "microfibras":     {"nombre": "Bolsas Microfibra", "emoji": "🧣", "alias": ["microfibra","microfibras","bolsa microfibra","bolsas microfibra","paño microfibra"]},
     "botes_1l":        {"nombre": "Botes 1L", "emoji": "🧴", "alias": ["bote 1l","bote 1 l","bote grande","botes 1l","botes 1 l","atomizador 1l","atomizadores 1l"]},
