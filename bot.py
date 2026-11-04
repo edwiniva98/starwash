@@ -840,17 +840,28 @@ async def _procesar_entrada(update: Update, texto: str):
     """
     texto_lower = texto.lower()
     nums = re.findall(r'\d+', texto)
-    cantidad_raw = int(nums[0]) if nums else 1
     material_key = normalizar_material(texto)
     responsable = update.effective_user.first_name or "Edwin"
 
-    # Detectar si es entrada por caja
+    # Detectar si es entrada mixta: "X cajas y Y piezas" (ej: "fabuloso 3 cajas y 1 pieza")
     es_caja = any(p in texto_lower for p in ["caja","cajas","box"])
+    tiene_pieza_extra = bool(re.search(r'\d+\s*(?:pieza|piezas|pz|pzs|unidad|unidades)', texto_lower))
+
     if es_caja and material_key and material_key in PIEZAS_POR_CAJA:
         pzs = PIEZAS_POR_CAJA[material_key]
-        cantidad = cantidad_raw * pzs
-        nota_caja = f"({cantidad_raw} caja{'s' if cantidad_raw > 1 else ''} × {pzs} pzs)"
+        cajas_raw = int(nums[0]) if nums else 1
+        cantidad = cajas_raw * pzs
+        nota_caja = f"({cajas_raw} caja{'s' if cajas_raw > 1 else ''} × {pzs} pzs"
+        # Sumar piezas sueltas adicionales si las hay (ej: "3 cajas y 1 pieza")
+        m_extra = re.search(r'[yY]\s+(\d+)\s*(?:pieza|piezas|pz|pzs|unidad|unidades)', texto_lower)
+        if m_extra:
+            extra = int(m_extra.group(1))
+            cantidad += extra
+            nota_caja += f" + {extra} suelta{'s' if extra > 1 else ''}"
+        nota_caja += ")"
+        cantidad_raw = cajas_raw
     else:
+        cantidad_raw = int(nums[0]) if nums else 1
         cantidad = cantidad_raw
         nota_caja = ""
 
@@ -1131,17 +1142,25 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
         if texto == "📋 Movimientos hoy": return await cmd_movimientos_mat(update, context)
         if texto == "➕ Entrada material":
+            context.user_data["modo_lavado"] = "entrada"
             await update.message.reply_text(
                 "Escribe la entrada, por ejemplo:\n_entrada 5 playeras_\n_entrada 3 escobas_",
                 parse_mode="Markdown"
             )
             return
         if texto == "➖ Sacar material":
+            context.user_data["modo_lavado"] = "salida"
             await update.message.reply_text(
                 "Escribe qué sacan, por ejemplo:\n_sacar 1 playera para caja_\n_sacar 2 fregones para taller_",
                 parse_mode="Markdown"
             )
             return
+        # Si el usuario escribió después de presionar el botón, usar el modo guardado
+        modo = context.user_data.pop("modo_lavado", None)
+        if modo == "entrada":
+            return await _procesar_entrada(update, texto)
+        if modo == "salida":
+            return await _procesar_salida(update, texto)
         # Texto libre del celular del lavado → solo materiales
         texto_lower = texto.lower()
         PALABRAS_SALIDA = [
@@ -1996,7 +2015,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             if any(p in texto_lower for p in PALABRAS_SALIDA_H):
                 return await _procesar_salida(update, texto)
-            if any(p in texto_lower for p in ["entrada","llegaron","compré","compre","agregué"]):
+            # Si hay número + (caja/cajas/pieza/piezas) → entrada de material
+            palabras_entrada = ["entrada","llegaron","compré","compre","agregué","agregue","recibí","recibi","trajeron","traje"]
+            palabras_cantidad = ["caja","cajas","pieza","piezas","unidad","unidades","pz","pzs"]
+            tiene_numero = bool(re.search(r'\d', texto_lower))
+            if any(p in texto_lower for p in palabras_entrada) or \
+               (tiene_numero and any(p in texto_lower for p in palabras_cantidad)):
                 return await _procesar_entrada(update, texto)
             return await cmd_stock_mat(update, context)
 
