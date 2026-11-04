@@ -73,6 +73,22 @@ MATERIALES = {
     "fibra_scotch":    {"nombre": "Fibra Scotch-Brite", "emoji": "🟩", "alias": ["fibra","scotch","scotch brite","scotch-brite","fibra verde","fibra scotch"]},
 }
 
+# Grupos con variantes — cuando el texto menciona el grupo genérico,
+# el bot pregunta la variante específica con botones
+VARIANTES = {
+    "botas":    {"label": "¿Qué talla de botas?",    "opciones": ["botas_25","botas_26","botas_27","botas_28"]},
+    "playeras": {"label": "¿Qué talla de playera?",  "opciones": ["playeras_ch","playeras_m","playeras_g"]},
+    "botes":    {"label": "¿Qué tamaño de bote?",    "opciones": ["botes_1l","botes_500ml"]},
+    "roma":     {"label": "¿Qué tamaño de Roma?",    "opciones": ["jabon_roma_500","jabon_roma_250"]},
+}
+# Alias genéricos que disparan selección de variante
+ALIAS_VARIANTES = {
+    "bota":    "botas", "botas": "botas",
+    "playera": "playeras", "playeras": "playeras", "camiseta": "playeras",
+    "bote":    "botes", "botes": "botes",
+    "roma":    "roma", "jabon roma": "roma", "jabón roma": "roma",
+}
+
 # Piezas por caja para entrada rápida
 PIEZAS_POR_CAJA = {
     "cloralex_1l":    12,
@@ -630,9 +646,19 @@ def extraer_destinatario(texto: str) -> str:
             return candidato.title()
     return ""
 
+def detectar_grupo_variante(texto: str):
+    """Detecta si el texto menciona un grupo genérico (botas, playeras, botes, roma).
+    Devuelve el key del grupo o None."""
+    t = texto.lower()
+    for alias, grupo in ALIAS_VARIANTES.items():
+        if alias in t:
+            return grupo
+    return None
+
 async def _procesar_salida(update: Update, texto: str):
     """Parsea y ejecuta una salida de material.
     Detecta cantidad, material, destino/área y nombre de quien lo recibe.
+    Si el material tiene variantes (tallas/tamaños), pregunta con botones.
     Ejemplos: 'se dieron 2 playeras a Juan', 'se agarró 1 gatillo para isla 3'
     """
     nums = re.findall(r'\d+', texto)
@@ -640,7 +666,28 @@ async def _procesar_salida(update: Update, texto: str):
     material_key = normalizar_material(texto)
     destino = normalizar_destino(texto)
     destinatario = extraer_destinatario(texto)
-    responsable = update.effective_user.first_name or "Encargado"
+    chat_id = update.effective_chat.id
+
+    # Si el material es genérico y tiene variantes, preguntar talla/tamaño
+    grupo = detectar_grupo_variante(texto) if not material_key else None
+    if not material_key and grupo and grupo in VARIANTES:
+        var = VARIANTES[grupo]
+        # Guardar datos parciales pendientes de variante
+        _salidas_pendientes[chat_id] = {
+            "material_key": None,
+            "grupo": grupo,
+            "cantidad": cantidad,
+            "destino": destino,
+            "destinatario": destinatario,
+            "esperando": "variante",
+        }
+        botones = [[InlineKeyboardButton(MATERIALES[k]["nombre"], callback_data=f"var:{k}")]
+                   for k in var["opciones"]]
+        await update.message.reply_text(
+            var["label"],
+            reply_markup=InlineKeyboardMarkup(botones)
+        )
+        return
 
     if not material_key:
         lista = "\n".join([f"  • {info['nombre']}" for info in MATERIALES.values()])
@@ -698,10 +745,48 @@ async def _procesar_salida(update: Update, texto: str):
     )
 
 async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Recibe el botón de responsable y completa el registro de la salida."""
+    """Maneja botones inline: selección de variante (var:) y responsable (resp:)."""
     query = update.callback_query
     await query.answer()
+    chat_id = update.effective_chat.id
 
+    # ── Selección de variante (talla/tamaño) ──────────────────────────────────
+    if query.data.startswith("var:"):
+        material_key = query.data.split(":", 1)[1]
+        datos = _salidas_pendientes.get(chat_id, {})
+        if not datos or datos.get("esperando") != "variante":
+            await query.edit_message_text("⚠️ No hay salida pendiente. Intenta de nuevo.")
+            return
+
+        # Actualizar con la variante elegida y pedir responsable
+        datos["material_key"] = material_key
+        datos["esperando"] = "responsable"
+        _salidas_pendientes[chat_id] = datos
+
+        info = MATERIALES[material_key]
+        destinatario = datos.get("destinatario", "")
+        destino = datos.get("destino", "general")
+        destino_txt = destinatario if destinatario else DESTINOS.get(destino, destino)
+
+        botones = []
+        fila = []
+        for i, nombre in enumerate(RESPONSABLES):
+            fila.append(InlineKeyboardButton(nombre, callback_data=f"resp:{nombre}"))
+            if len(fila) == 3:
+                botones.append(fila)
+                fila = []
+        if fila:
+            botones.append(fila)
+
+        await query.edit_message_text(
+            f"📦 *{info['emoji']} {info['nombre']}* ×{datos['cantidad']} → *{destino_txt}*\n\n"
+            f"¿Quién registra la salida?",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(botones)
+        )
+        return
+
+    # ── Selección de responsable ───────────────────────────────────────────────
     if not query.data.startswith("resp:"):
         return
 
@@ -2295,7 +2380,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^resp:"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
