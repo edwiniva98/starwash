@@ -44,12 +44,29 @@ async def get_stock_clips():
 # ── MATERIALES ────────────────────────────────────────────────────────────────
 # Catálogo de materiales con alias para reconocimiento natural
 MATERIALES = {
-    "botas":          {"nombre": "Botas", "emoji": "🥾", "alias": ["bota","boot","boots"]},
-    "playeras":       {"nombre": "Playeras", "emoji": "👕", "alias": ["playera","camiseta","camisetas","camisa"]},
-    "fregones":       {"nombre": "Fregones", "emoji": "🧹", "alias": ["fregon","fregón","trapeador","trapeadores","mopa","mopas"]},
-    "escobas":        {"nombre": "Escobas", "emoji": "🧹", "alias": ["escoba"]},
-    "atomizadores_1l":{"nombre": "Atomizadores 1L", "emoji": "🧴", "alias": ["atomizador 1l","atomizador 1 l","atomizador grande","atomizadores 1l","atomizadores 1 l"]},
-    "atomizadores_500ml":{"nombre": "Atomizadores 500ml", "emoji": "🧴", "alias": ["atomizador 500","atomizador chico","atomizador pequeño","atomizadores 500","atomizadores 500ml"]},
+    "botas_25":        {"nombre": "Botas T25", "emoji": "🥾", "alias": ["bota 25","botas 25","talla 25"]},
+    "botas_26":        {"nombre": "Botas T26", "emoji": "🥾", "alias": ["bota 26","botas 26","talla 26"]},
+    "botas_27":        {"nombre": "Botas T27", "emoji": "🥾", "alias": ["bota 27","botas 27","talla 27"]},
+    "botas_28":        {"nombre": "Botas T28", "emoji": "🥾", "alias": ["bota 28","botas 28","talla 28"]},
+    "playeras_ch":     {"nombre": "Playeras Chica", "emoji": "👕", "alias": ["playera ch","playera chica","playeras ch","playeras chica","camiseta chica"]},
+    "playeras_m":      {"nombre": "Playeras Mediana", "emoji": "👕", "alias": ["playera m","playera mediana","playeras m","playeras mediana","camiseta mediana"]},
+    "playeras_g":      {"nombre": "Playeras Grande", "emoji": "👕", "alias": ["playera g","playera grande","playeras g","playeras grande","camiseta grande"]},
+    "fregones":        {"nombre": "Fregones", "emoji": "🧹", "alias": ["fregon","fregón","trapeador","trapeadores","mopa","mopas"]},
+    "escobas":         {"nombre": "Escobas", "emoji": "🧹", "alias": ["escoba"]},
+    "palos_escoba":    {"nombre": "Palos de Escoba", "emoji": "🪵", "alias": ["palo escoba","palo de escoba","palos escoba"]},
+    "recogedor":       {"nombre": "Recogedores", "emoji": "🧺", "alias": ["recogedor","recogedores"]},
+    "jalador":         {"nombre": "Jaladores", "emoji": "🪣", "alias": ["jalador","jaladores","haladera"]},
+    "mechudos":        {"nombre": "Mechudos", "emoji": "🧽", "alias": ["mechudo","mechudos","mecha","mechas"]},
+    "cepillos_bano":   {"nombre": "Cepillos Baño", "emoji": "🪥", "alias": ["cepillo baño","cepillos baño","cepillo taza","cepillos taza","cepillo wc"]},
+    "bomba_destapa":   {"nombre": "Bomba/Destapacaños", "emoji": "🔧", "alias": ["bomba","destapacaños","destapador","destapa"]},
+    "microfibras":     {"nombre": "Bolsas Microfibra", "emoji": "🧣", "alias": ["microfibra","microfibras","bolsa microfibra","bolsas microfibra","paño microfibra"]},
+    "botes_1l":        {"nombre": "Botes 1L", "emoji": "🧴", "alias": ["bote 1l","bote 1 l","bote grande","botes 1l","botes 1 l","atomizador 1l","atomizadores 1l"]},
+    "botes_500ml":     {"nombre": "Botes 500ml", "emoji": "🧴", "alias": ["bote 500","bote 500ml","bote chico","botes 500","botes 500ml","atomizador 500","atomizadores 500ml"]},
+    "gatillos":        {"nombre": "Gatillos", "emoji": "🔫", "alias": ["gatillo","gatillos","trigger","pistola spray"]},
+    "jabon_roma":      {"nombre": "Jabón Roma (bolsa)", "emoji": "🧼", "alias": ["jabon roma","jabón roma","roma","detergente roma"]},
+    "pinol_1l":        {"nombre": "Pinol 1L", "emoji": "🫙", "alias": ["pinol","piñol","pinol 1l","piñol 1l"]},
+    "fabuloso_1l":     {"nombre": "Fabuloso 1L", "emoji": "🫙", "alias": ["fabuloso","fabuloso 1l"]},
+    "cloralex_1l":     {"nombre": "Cloralex 1L", "emoji": "🫙", "alias": ["cloralex","cloro","cloralex 1l","cloro 1l"]},
 }
 
 DESTINOS = {
