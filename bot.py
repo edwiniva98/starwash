@@ -84,9 +84,16 @@ PIEZAS_POR_CAJA = {
 }
 
 DESTINOS = {
-    "caja":   "Caja",
-    "taller": "Taller",
-    "general":"General / Personal",
+    "caja":    "Caja",
+    "taller":  "Taller",
+    "rines":   "Rines",
+    "maquina": "Máquina",
+    "isla1":   "Isla 1",
+    "isla2":   "Isla 2",
+    "isla3":   "Isla 3",
+    "isla4":   "Isla 4",
+    "isla5":   "Isla 5",
+    "general": "General / Personal",
 }
 
 def normalizar_material(texto):
@@ -104,6 +111,13 @@ def normalizar_destino(texto):
     t = texto.lower().strip()
     if any(p in t for p in ["caja","cobro"]): return "caja"
     if any(p in t for p in ["taller","mecanico","mecánico"]): return "taller"
+    if any(p in t for p in ["rines"]): return "rines"
+    if any(p in t for p in ["maquina","máquina"]): return "maquina"
+    if any(p in t for p in ["isla 1","isla1"]): return "isla1"
+    if any(p in t for p in ["isla 2","isla2"]): return "isla2"
+    if any(p in t for p in ["isla 3","isla3"]): return "isla3"
+    if any(p in t for p in ["isla 4","isla4"]): return "isla4"
+    if any(p in t for p in ["isla 5","isla5"]): return "isla5"
     return "general"
 
 async def get_stock_materiales():
@@ -590,12 +604,16 @@ def extraer_destinatario(texto: str) -> str:
     """
     t = texto.lower()
     # Destinos especiales conocidos
-    if any(p in t for p in ["para caja","a caja","en caja"]): return "Caja"
-    if any(p in t for p in ["para taller","al taller","en taller"]): return "Taller"
-    if any(p in t for p in ["isla 1","islas 1"]): return "Isla 1"
-    if any(p in t for p in ["isla 2","islas 2"]): return "Isla 2"
-    if any(p in t for p in ["isla 3","islas 3"]): return "Isla 3"
-    if any(p in t for p in ["isla 4","islas 4"]): return "Isla 4"
+    if any(p in t for p in ["para caja","a caja","en caja","la caja"]): return "Caja"
+    if any(p in t for p in ["para taller","al taller","en taller","el taller"]): return "Taller"
+    if any(p in t for p in ["para rines","al rines","en rines","los rines"]): return "Rines"
+    if any(p in t for p in ["para maquina","a maquina","en maquina","la maquina","máquina","para máquina"]): return "Máquina"
+    if any(p in t for p in ["isla 1","islas 1","para isla1","a isla1"]): return "Isla 1"
+    if any(p in t for p in ["isla 2","islas 2","para isla2","a isla2"]): return "Isla 2"
+    if any(p in t for p in ["isla 3","islas 3","para isla3","a isla3"]): return "Isla 3"
+    if any(p in t for p in ["isla 4","islas 4","para isla4","a isla4"]): return "Isla 4"
+    if any(p in t for p in ["isla 5","islas 5","para isla5","a isla5"]): return "Isla 5"
+    if any(p in t for p in ["general","todos","personal"]): return "General"
     # Patrón: "para <nombre>" o "a <nombre>"
     m = re.search(r'(?:para|a la|al|a)\s+([A-Za-záéíóúüñÁÉÍÓÚÜÑ]{3,}(?:\s+[A-Za-záéíóúüñÁÉÍÓÚÜÑ]{2,})?)', texto, re.IGNORECASE)
     if m:
