@@ -118,6 +118,10 @@ RESPONSABLES = ["Eder", "Piña", "Edwin", "Luis", "Taller", "Lavado"]
 # { chat_id: { material_key, cantidad, destino, destinatario } }
 _salidas_pendientes: dict = {}
 
+# Almacén temporal de entradas pendientes (flujo por botones)
+# { chat_id: { material_key, tipo } }  tipo = "piezas" | "cajas" | "cajas_y_piezas"
+_entradas_pendientes: dict = {}
+
 def normalizar_material(texto):
     """Intenta encontrar el key del material a partir de texto libre."""
     t = texto.lower().strip()
@@ -745,10 +749,57 @@ async def _procesar_salida(update: Update, texto: str):
     )
 
 async def callback_responsable(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja botones inline: selección de variante (var:) y responsable (resp:)."""
+    """Maneja botones inline: entradas por botón (ent_mat/ent_tipo), variantes y responsables."""
     query = update.callback_query
     await query.answer()
     chat_id = update.effective_chat.id
+
+    # ── Selección de material para entrada (lavado) ───────────────────────────
+    if query.data.startswith("ent_mat:"):
+        material_key = query.data.split(":", 1)[1]
+        info = MATERIALES.get(material_key)
+        if not info:
+            await query.edit_message_text("⚠️ Material no encontrado.")
+            return
+        # Si el material tiene cajas definidas, preguntar tipo
+        if material_key in PIEZAS_POR_CAJA:
+            pzs = PIEZAS_POR_CAJA[material_key]
+            botones = [
+                [InlineKeyboardButton("🔢 Piezas sueltas", callback_data=f"ent_tipo:{material_key}:piezas")],
+                [InlineKeyboardButton(f"📦 Cajas (×{pzs} c/u)", callback_data=f"ent_tipo:{material_key}:cajas")],
+                [InlineKeyboardButton(f"📦+🔢 Cajas y piezas", callback_data=f"ent_tipo:{material_key}:cajas_y_piezas")],
+            ]
+            await query.edit_message_text(
+                f"{info['emoji']} *{info['nombre']}*\n\n¿Cómo entró?",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(botones)
+            )
+        else:
+            # Sin cajas: pedir cantidad directamente
+            _entradas_pendientes[chat_id] = {"material_key": material_key, "tipo": "piezas"}
+            await query.edit_message_text(
+                f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas piezas entraron? Escribe el número:",
+                parse_mode="Markdown"
+            )
+        return
+
+    # ── Selección de tipo (piezas/cajas/cajas_y_piezas) ──────────────────────
+    if query.data.startswith("ent_tipo:"):
+        _, material_key, tipo = query.data.split(":", 2)
+        info = MATERIALES.get(material_key)
+        if not info:
+            await query.edit_message_text("⚠️ Material no encontrado.")
+            return
+        _entradas_pendientes[chat_id] = {"material_key": material_key, "tipo": tipo}
+        pzs = PIEZAS_POR_CAJA.get(material_key, 1)
+        if tipo == "piezas":
+            prompt = f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas piezas? Escribe el número:"
+        elif tipo == "cajas":
+            prompt = f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas cajas? (cada caja = {pzs} pzs)\nEscribe el número:"
+        else:
+            prompt = f"{info['emoji']} *{info['nombre']}*\n\n¿Cuántas cajas y piezas sueltas?\nEscribe así: _3 1_ (3 cajas y 1 pieza suelta)\nO solo: _3_ si no hay sueltas"
+        await query.edit_message_text(prompt, parse_mode="Markdown")
+        return
 
     # ── Selección de variante (talla/tamaño) ──────────────────────────────────
     if query.data.startswith("var:"):
@@ -1142,10 +1193,20 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
         if texto == "📋 Movimientos hoy": return await cmd_movimientos_mat(update, context)
         if texto == "➕ Entrada material":
-            context.user_data["modo_lavado"] = "entrada"
+            # Mostrar botones con todos los materiales
+            botones = []
+            fila = []
+            for key, info in MATERIALES.items():
+                label = f"{info['emoji']} {info['nombre']}"
+                fila.append(InlineKeyboardButton(label, callback_data=f"ent_mat:{key}"))
+                if len(fila) == 2:
+                    botones.append(fila)
+                    fila = []
+            if fila:
+                botones.append(fila)
             await update.message.reply_text(
-                "Escribe la entrada, por ejemplo:\n_entrada 5 playeras_\n_entrada 3 escobas_",
-                parse_mode="Markdown"
+                "¿Qué material entró?",
+                reply_markup=InlineKeyboardMarkup(botones)
             )
             return
         if texto == "➖ Sacar material":
@@ -1155,12 +1216,50 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
             return
-        # Si el usuario escribió después de presionar el botón, usar el modo guardado
+        # Si el usuario escribió después de presionar el botón de salida, usar el modo guardado
         modo = context.user_data.pop("modo_lavado", None)
-        if modo == "entrada":
-            return await _procesar_entrada(update, texto)
         if modo == "salida":
             return await _procesar_salida(update, texto)
+        # Si hay entrada pendiente (esperando cantidad), procesar el número
+        chat_id = update.effective_chat.id
+        ep = _entradas_pendientes.get(chat_id)
+        if ep:
+            # Espera un número (o "X y Y" para cajas y piezas sueltas)
+            nums = re.findall(r'\d+', texto)
+            if not nums:
+                await update.message.reply_text("Escribe solo el número, por ejemplo: _5_", parse_mode="Markdown")
+                return
+            material_key = ep["material_key"]
+            tipo = ep["tipo"]
+            del _entradas_pendientes[chat_id]
+            info = MATERIALES[material_key]
+            responsable = update.effective_user.first_name or "Lavado"
+            if tipo == "piezas":
+                cantidad = int(nums[0])
+                nota = ""
+            elif tipo == "cajas":
+                pzs = PIEZAS_POR_CAJA.get(material_key, 1)
+                cajas = int(nums[0])
+                cantidad = cajas * pzs
+                nota = f"({cajas} caja{'s' if cajas > 1 else ''} × {pzs} pzs)"
+            else:  # cajas_y_piezas
+                pzs = PIEZAS_POR_CAJA.get(material_key, 1)
+                cajas = int(nums[0]) if len(nums) >= 1 else 0
+                sueltas = int(nums[1]) if len(nums) >= 2 else 0
+                cantidad = cajas * pzs + sueltas
+                nota = f"({cajas} caja{'s' if cajas > 1 else ''} × {pzs} pzs + {sueltas} suelta{'s' if sueltas != 1 else ''})"
+            stock = await get_stock_materiales()
+            stock[material_key] = stock.get(material_key, 0) + cantidad
+            await set_stock_materiales(stock)
+            await registrar_movimiento_material("entrada", material_key, cantidad, "bodega", responsable, notas=nota)
+            detalle = f" {nota}" if nota else ""
+            await update.message.reply_text(
+                f"✅ *Entrada registrada*\n\n"
+                f"{info['emoji']} {info['nombre']}: +{cantidad}{detalle}\n"
+                f"📦 Stock actual: *{stock[material_key]}*",
+                parse_mode="Markdown"
+            )
+            return
         # Texto libre del celular del lavado → solo materiales
         texto_lower = texto.lower()
         PALABRAS_SALIDA = [
@@ -2404,7 +2503,7 @@ def main():
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var):"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
