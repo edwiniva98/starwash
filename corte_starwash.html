@@ -1882,9 +1882,25 @@ ${progLineas}
     const rc = await fetch(configUrl);
     if(rc.ok){
       const dc = await rc.json();
-      const stockActual = parseInt(dc.fields?.stock?.integerValue||0);
+      const stockEnFirebase = parseInt(dc.fields?.stock?.integerValue||0);
       const clipsHoy = calcClips();
-      seccionClips = `\n\n🌸 *Clips aromáticos*\n• Entregados hoy: ${clipsHoy}\n• Stock restante: ${stockActual}`;
+      // Verificar si el corte ya fue guardado leyendo clips_usados del documento
+      const docId  = fecha.replace(/-/g,'') + '_' + turnoActual;
+      const corteUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/cortes/${docId}`;
+      let clipsYaDescontados = 0;
+      try{
+        const rCorte = await fetch(corteUrl);
+        if(rCorte.ok){
+          const dCorte = await rCorte.json();
+          clipsYaDescontados = parseInt(dCorte.fields?.clips_usados?.integerValue||0);
+        }
+      }catch(e2){}
+      // Si el corte ya está guardado con los mismos clips → Firebase ya tiene el stock correcto
+      // Si NO está guardado aún → restar clipsHoy del stock para mostrar el valor correcto
+      const stockRestante = clipsYaDescontados === clipsHoy
+        ? stockEnFirebase
+        : Math.max(0, stockEnFirebase - clipsHoy);
+      seccionClips = `\n\n🌸 *Clips aromáticos*\n• Entregados hoy: ${clipsHoy}\n• Stock restante: ${stockRestante}`;
     }
   }catch(e){ seccionClips = ''; }
 
