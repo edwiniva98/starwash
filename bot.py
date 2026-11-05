@@ -2798,35 +2798,13 @@ async def cmd_recalcular_clips(update: Update, context: ContextTypes.DEFAULT_TYP
         await msg.edit_text(f"❌ Error: {e}")
 
 async def handle_arreglar_clips(request):
-    """Recalcula stock de clips desde 1900 (22-oct-2026) y actualiza Firestore."""
+    """Fija el stock de clips a 665 (1900 inicial - 1235 usados del 22-oct al 4-nov)."""
     try:
-        url = f"{FIRESTORE_URL}/cortes?pageSize=300"
-        async with httpx.AsyncClient() as client:
-            r = await client.get(url)
-            data = r.json()
-        docs = data.get("documents", [])
-        INICIO = "2026-10-22"
-        STOCK_INICIAL = 1900
-        total_clips = 0
-        detalle = []
-        for doc in docs:
-            fields = doc.get("fields", {})
-            fecha = fields.get("fecha", {}).get("stringValue", "")
-            clips = int(fields.get("clips_usados", {}).get("integerValue", 0) or 0)
-            if fecha >= INICIO:
-                total_clips += clips
-                if clips > 0:
-                    detalle.append(f"{fecha}: {clips} clips")
-        stock_real = max(0, STOCK_INICIAL - total_clips)
         config_url = f"{FIRESTORE_URL}/config/clips"
         async with httpx.AsyncClient() as client:
             await client.patch(config_url,
-                json={"fields": {"stock": {"integerValue": str(stock_real)}}})
-        detalle_txt = "\n".join(sorted(detalle)) if detalle else "(ninguno)"
-        result = (f"✅ Stock actualizado\n"
-                  f"Inicial: {STOCK_INICIAL}\nUsados desde {INICIO}: {total_clips}\n"
-                  f"STOCK REAL: {stock_real}\n\nDetalle:\n{detalle_txt}")
-        return web.Response(text=result)
+                json={"fields": {"stock": {"integerValue": "665"}}})
+        return web.Response(text="✅ Stock de clips actualizado a 665\n(1900 inicial - 1235 usados del 22-oct al 4-nov)")
     except Exception as e:
         return web.Response(text=f"ERROR: {e}", status=500)
 
