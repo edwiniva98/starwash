@@ -2750,6 +2750,53 @@ async def handle_corte_nuevo(request):
         logger.error(f"Error en handle_corte_nuevo: {e}")
         return web.Response(text=f"error: {e}", status=500)
 
+async def cmd_recalcular_clips(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Recalcula el stock de clips desde el 22 de octubre partiendo de 1900."""
+    if not await check_allowed(update): return
+    msg = await update.message.reply_text("⏳ Calculando stock real de clips...")
+    try:
+        # Leer todos los cortes
+        url = f"{FIRESTORE_URL}/cortes?pageSize=300"
+        async with httpx.AsyncClient() as client:
+            r = await client.get(url)
+            data = r.json()
+        docs = data.get("documents", [])
+
+        INICIO = "2026-10-22"
+        STOCK_INICIAL = 1900
+        total_clips = 0
+        detalle = []
+
+        for doc in docs:
+            fields = doc.get("fields", {})
+            fecha = fields.get("fecha", {}).get("stringValue", "")
+            clips = int(fields.get("clips_usados", {}).get("integerValue", 0) or 0)
+            if fecha >= INICIO:
+                total_clips += clips
+                if clips > 0:
+                    detalle.append(f"  {fecha}: {clips}")
+
+        stock_real = max(0, STOCK_INICIAL - total_clips)
+
+        # Actualizar en Firebase
+        config_url = f"{FIRESTORE_URL}/config/clips"
+        async with httpx.AsyncClient() as client:
+            await client.patch(config_url,
+                json={"fields": {"stock": {"integerValue": str(stock_real)}}})
+
+        detalle_txt = "\n".join(sorted(detalle)) if detalle else "  (ninguno)"
+        await msg.edit_text(
+            f"✅ *Stock de clips actualizado*\n\n"
+            f"📦 Stock inicial (22 oct): *{STOCK_INICIAL}*\n"
+            f"➖ Usados desde entonces: *{total_clips}*\n"
+            f"📦 *Stock real ahora: {stock_real}*\n\n"
+            f"Cortes con clips:\n{detalle_txt}",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.error(f"Error recalcular clips: {e}")
+        await msg.edit_text(f"❌ Error: {e}")
+
 async def run_web_server():
     """Servidor HTTP para recibir notificaciones del HTML."""
     server = web.Application()
@@ -2782,6 +2829,7 @@ def main():
     app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(CommandHandler("clips", cmd_clips))
+    app.add_handler(CommandHandler("recalcular_clips", cmd_recalcular_clips))
     app.add_handler(CommandHandler("stock_mat", cmd_stock_mat))
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
