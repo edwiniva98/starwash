@@ -2829,7 +2829,7 @@ def main():
     app.add_handler(CommandHandler("actualizar_cortes", cmd_actualizar_cortes))
     app.add_handler(CommandHandler("exportar", cmd_exportar))
     app.add_handler(CommandHandler("clips", cmd_clips))
-    app.add_handler(CommandHandler("recalcular_clips", cmd_recalcular_clips))
+    app.add_handler(CommandHandler("fijar_stock", cmd_recalcular_clips))
     app.add_handler(CommandHandler("stock_mat", cmd_stock_mat))
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
