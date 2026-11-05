@@ -602,7 +602,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     teclado = ReplyKeyboardMarkup(
         [["📊 Cómo vamos hoy", "🏆 Récords"],
          ["📋 Último corte", "📅 Historial"],
-         ["⚖️ Comparar corte", "📥 Exportar"]],
+         ["⚖️ Comparar corte", "📥 Exportar"],
+         ["📦 Stock materiales", "➖ Sacar material"],
+         ["➕ Entrada material"]],
         resize_keyboard=True,
         is_persistent=True
     )
@@ -1596,7 +1598,8 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Escribe /comparar AAAA-MM-DD, por ejemplo: /comparar 2026-09-20")
         return
     if texto == "📥 Exportar": return await cmd_exportar(update, context)
-    # Accesos directos de materiales para usuarios admin
+    # Materiales para usuarios admin
+    if texto == "📦 Stock materiales": return await cmd_stock_mat(update, context)
     if texto in ("➖ Sacar material", "Sacar material", "salida de material", "Salida de material"):
         return await _mostrar_menu_materiales_salida(update, context)
     if texto in ("➕ Entrada material", "Entrada material", "entrada de material", "Entrada de material"):
