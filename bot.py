@@ -643,6 +643,16 @@ async def cmd_entrada_mat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args_txt = " ".join(context.args) if context.args else ""
     await _procesar_entrada(update, args_txt)
 
+async def cmd_salidadematerial(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el menú de salida de material por botones (para usuarios admin también)."""
+    if not await check_allowed(update): return
+    await _mostrar_menu_materiales_salida(update, context)
+
+async def cmd_entradamaterial(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el menú de entrada de material por botones (para usuarios admin también)."""
+    if not await check_admin(update): return
+    await _mostrar_menu_materiales_entrada(update, context)
+
 def extraer_destinatario(texto: str) -> str:
     """Extrae el nombre de la persona o área a quien se le entregó el material.
     Busca patrones como: 'para X', 'a X', 'para la isla X', 'al taller', etc.
@@ -1586,6 +1596,12 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Escribe /comparar AAAA-MM-DD, por ejemplo: /comparar 2026-09-20")
         return
     if texto == "📥 Exportar": return await cmd_exportar(update, context)
+    # Accesos directos de materiales para usuarios admin
+    if texto in ("➖ Sacar material", "Sacar material", "salida de material", "Salida de material"):
+        return await _mostrar_menu_materiales_salida(update, context)
+    if texto in ("➕ Entrada material", "Entrada material", "entrada de material", "Entrada de material"):
+        if not await check_admin(update): return
+        return await _mostrar_menu_materiales_entrada(update, context)
     return await handle_text(update, context)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2845,6 +2861,8 @@ def main():
     app.add_handler(CommandHandler("stock_mat", cmd_stock_mat))
     app.add_handler(CommandHandler("sacar", cmd_sacar_mat))
     app.add_handler(CommandHandler("entrada", cmd_entrada_mat))
+    app.add_handler(CommandHandler("salidadematerial", cmd_salidadematerial))
+    app.add_handler(CommandHandler("entradamaterial", cmd_entradamaterial))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
     app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat|sal_mat_grp|sal_dest|flujo):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
