@@ -530,6 +530,38 @@ function mapPuesto(p) {
   return m[(p||'').toLowerCase()] || p || 'Lavador';
 }
 
+function _buildPayload() {
+  const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
+  const idsVistos = new Set();
+  const empleadosExtra = S.empleados.filter(e=>{
+    if(baseIds.has(e.id)) return false;
+    if(idsVistos.has(e.id)) return false;
+    idsVistos.add(e.id); return true;
+  });
+  const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
+  const sueldosEditados = {};
+  S.empleados.forEach(e=>{
+    if(!baseIds.has(e.id)) return;
+    const orig = EMPLEADOS_INIT[parseInt(e.id.slice(1))];
+    if(orig && (e.sueldo !== orig.sueldo || e.adeudo !== orig.adeudo)) {
+      sueldosEditados[e.id] = {sueldo: e.sueldo, adeudo: e.adeudo};
+    }
+  });
+  return { semanas: S.semanas, prestamos: S.prestamos, semAct: S.semAct, inactivosIds, empleadosExtra, sueldosEditados };
+}
+
+async function guardarInmediato() {
+  // Guardar a Firestore SIN debounce — para cambios financieros críticos (préstamos)
+  clearTimeout(_guardandoTimer); // cancela el debounce pendiente
+  try { localStorage.setItem('sw_nom_v4', JSON.stringify(S)); } catch(e){}
+  try {
+    await DOC.set(_buildPayload());
+  } catch(e) {
+    mostrarCargando('⚠️ Error al guardar en la nube');
+    setTimeout(()=>mostrarCargando(''), 3000);
+  }
+}
+
 function guardar() {
   // Guardar local inmediato como respaldo
   try { localStorage.setItem('sw_nom_v4', JSON.stringify(S)); } catch(e){}
@@ -537,33 +569,7 @@ function guardar() {
   clearTimeout(_guardandoTimer);
   _guardandoTimer = setTimeout(async ()=>{
     try {
-      // Guardamos semanas, prestamos, semAct, inactivosIds, empleadosExtra y sueldosEditados
-      const baseIds = new Set(EMPLEADOS_INIT.map((_,i)=>'e'+i));
-      // Deduplicar por ID antes de guardar
-      const idsVistos = new Set();
-      const empleadosExtra = S.empleados.filter(e=>{
-        if(baseIds.has(e.id)) return false;
-        if(idsVistos.has(e.id)) return false;
-        idsVistos.add(e.id); return true;
-      });
-      const inactivosIds = S.empleados.filter(e=>e.inactivo).map(e=>e.id);
-      // Guardar sueldos/adeudos modificados de empleados base
-      const sueldosEditados = {};
-      S.empleados.forEach(e=>{
-        if(!baseIds.has(e.id)) return;
-        const orig = EMPLEADOS_INIT[parseInt(e.id.slice(1))];
-        if(orig && (e.sueldo !== orig.sueldo || e.adeudo !== orig.adeudo)) {
-          sueldosEditados[e.id] = {sueldo: e.sueldo, adeudo: e.adeudo};
-        }
-      });
-      await DOC.set({
-        semanas: S.semanas,
-        prestamos: S.prestamos,
-        semAct: S.semAct,
-        inactivosIds,
-        empleadosExtra,
-        sueldosEditados
-      });
+      await DOC.set(_buildPayload());
     } catch(e) {
       mostrarCargando('⚠️ Error al guardar en la nube');
       setTimeout(()=>mostrarCargando(''), 3000);
@@ -987,7 +993,7 @@ function togglePagado(empId) {
       }
     }
   }
-  guardar(); renderNom(); renderPrest();
+  guardarInmediato(); renderNom(); renderPrest();
 }
 function actualizarTotalNom(empId) {
   const emp = S.empleados.find(e=>e.id===empId); if(!emp) return;
@@ -1063,7 +1069,7 @@ function guardarPrest() {
   const nota = document.getElementById('inp-prest-nota').value.trim();
   if(!monto) return;
   S.prestamos.push({id:'p'+Date.now(), empId, monto, saldo:monto, descSem:0, nota});
-  guardar(); cerrarModal('modal-prest'); renderPrest(); renderNom();
+  guardarInmediato(); cerrarModal('modal-prest'); renderPrest(); renderNom();
 }
 let _prestBorrarEmpId = null;
 function pedirPinBorrarEmp(empId) {
@@ -1074,7 +1080,7 @@ function borrarPrestEmp() {
   if(!_prestBorrarEmpId) return;
   S.prestamos = S.prestamos.filter(p=>p.empId!==_prestBorrarEmpId || p.id==='migrado_v2');
   _prestBorrarEmpId = null;
-  guardar(); renderPrest(); renderNom();
+  guardarInmediato(); renderPrest(); renderNom();
 }
 
 // ── EQUIPO ────────────────────────────────────────────────────────
