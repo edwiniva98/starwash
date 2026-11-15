@@ -504,6 +504,22 @@ async function cargar() {
     'TANIA':      1300,   // 1700 - 400 abonado
     'NATANAEL':    500,   // préstamo nuevo
   };
+  // ── Parche único: corregir saldos que se corrompieron por el bug del debounce ──
+  const patchFlag = 'patch_saldos_v1';
+  if(!S.prestamos.find(p=>p.id===patchFlag)) {
+    const correcciones = {
+      'TANIA': 450,
+    };
+    Object.entries(correcciones).forEach(([nombre, saldoCorrecto])=>{
+      const emp = S.empleados.find(e=>e.nombre===nombre);
+      if(!emp) return;
+      const prest = S.prestamos.find(p=>p.empId===emp.id && p.id!=='migrado_v2');
+      if(prest) prest.saldo = saldoCorrecto;
+    });
+    S.prestamos.push({id:patchFlag, empId:'__flag__', monto:0, saldo:0, descSem:0, nota:''});
+    guardarInmediato();
+  }
+
   const migFlag = 'migrado_v2';
   if(!S.prestamos.find(p=>p.id===migFlag)) {
     Object.entries(ADEUDOS_MIGRAR).forEach(([nombre, saldo])=>{
