@@ -505,10 +505,11 @@ async function cargar() {
     'NATANAEL':    500,   // préstamo nuevo
   };
   // ── Parche único: corregir saldos que se corrompieron por el bug del debounce ──
-  const patchFlag = 'patch_saldos_v1';
+  const patchFlag = 'patch_saldos_v2';
   if(!S.prestamos.find(p=>p.id===patchFlag)) {
     const correcciones = {
       'TANIA': 450,
+      'HEDER': 1000,
     };
     Object.entries(correcciones).forEach(([nombre, saldoCorrecto])=>{
       const emp = S.empleados.find(e=>e.nombre===nombre);
