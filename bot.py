@@ -2867,7 +2867,7 @@ def main():
     app.add_handler(CommandHandler("salidadematerial", cmd_salidadematerial))
     app.add_handler(CommandHandler("entradamaterial", cmd_entradamaterial))
     app.add_handler(CommandHandler("movimientos_mat", cmd_movimientos_mat))
-    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat|sal_mat_grp|sal_dest|flujo):"))
+    app.add_handler(CallbackQueryHandler(callback_responsable, pattern="^(resp|var|ent_mat|ent_tipo|ent_grp|ent_resp|sal_resp|sal_mat_grp|sal_mat|sal_dest|flujo):"))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu))
     import asyncio
